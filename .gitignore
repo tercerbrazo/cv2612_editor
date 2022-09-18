@@ -1,0 +1,20 @@
+# Logs
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+
+# Typescript v1 declaration files
+typings/
+
+# Optional eslint cache
+.eslintcache
+
+# dotenv environment variables file
+.env
+
+# Parcel related files
+dist/
+.cache/
+.parcel-cache/
