@@ -1,36 +1,20 @@
-/* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useContext } from "react"
-import { CV2612Context } from "./context"
-import Channel from "./channel"
-import Slider from "./slider"
+import React, { useContext } from "react";
+import { CV2612Context } from "./context";
+import Channel from "./channel";
+import Slider from "./slider";
 
 const Scene = () => {
-  const { state, dispatch } = useContext(CV2612Context)
+  const { state, dispatch } = useContext(CV2612Context);
 
-  /*
-  const storeScene = (ev) =>{
-    ev.preventDefault()
-    const s = parseInt(ev.target.attributes.scene.value, 10)
-    //dispatch({ type: "update-param", code: code, value: s*256+127 })
-    dispatch({ type: "set-patch", index: s })
-  }
+  const onChangePatch = (index) => (ev) => {
+    ev.preventDefault();
+    dispatch({ type: "change-patch", index });
+  };
 
-  const recallScene = (ev) =>{
-    ev.preventDefault()
-    const s = parseInt(ev.target.attributes.scene.value, 10)
-    dispatch({ type: "select-patch", index: s })
-  }
-  */
-
-  const onChangePatch = index => ev => {
-    ev.preventDefault()
-    dispatch({ type: "change-patch", index })
-  }
-
-  const onChangeChannel = index => ev => {
-    ev.preventDefault()
-    dispatch({ type: "change-channel", index })
-  }
+  const onChangeChannel = (index) => (ev) => {
+    ev.preventDefault();
+    dispatch({ type: "change-channel", index });
+  };
 
   return (
     <>
@@ -38,18 +22,51 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
-          <Slider label="pm" cc={122} noChannel bits={3} />
-          <Slider label="li" cc={123} noChannel bits={7} />
+          <Slider label="bl" title="Blend" cc={119} noChannel bits={7} />
+          {/*
+          <Slider label="polyphony" cc={96} noChannel bits={2} />
+          <Slider label="quantize" cc={97} noChannel bits={1} />
+          <Slider label="legato" cc={98} noChannel bits={1} />
+          <Slider label="portamento" cc={99} noChannel bits={7} />
+          <Slider label="velocity" cc={100} noChannel bits={1} />
+          */}
         </div>
-        <div className="col"></div>
-        <div className="col"></div>
-        <div className="col"></div>
+        <div className="col">
+          <Slider label="pm" title={"Play Mode"} cc={90} noChannel bits={3} />
+          <Slider
+            label="lb"
+            title="Led Brightness"
+            cc={91}
+            noChannel
+            bits={7}
+          />
+        </div>
+        <div className="col">
+          <Slider label="tr" title="Transpose" cc={94} noChannel bits={7} />
+          <Slider label="tu" title="Tunning" cc={95} noChannel bits={7} />
+        </div>
+        <div className="col">
+          <Slider
+            label="rc"
+            title="Midi Receive Channel"
+            cc={92}
+            noChannel
+            bits={5}
+          />
+          <Slider
+            label="am"
+            title="Attenuverter Mode"
+            cc={93}
+            noChannel
+            bits={2}
+          />
+        </div>
       </div>
 
       <div className="two-cols">
         <div className="col">
           <nav>
-            {[0, 1, 2, 3].map(i => (
+            {[0, 1, 2, 3].map((i) => (
               <a
                 href="/"
                 className={state.patchIdx === i ? "active" : ""}
@@ -64,7 +81,7 @@ const Scene = () => {
         </div>
         <div className="col">
           <nav>
-            {[0, 1, 2, 3, 4, 5].map(i => (
+            {[0, 1, 2, 3, 4, 5].map((i) => (
               <a
                 href="/"
                 className={state.channelIdx === i ? "active" : ""}
@@ -81,7 +98,7 @@ const Scene = () => {
 
       <Channel />
     </>
-  )
-}
+  );
+};
 
-export default Scene
+export default Scene;
