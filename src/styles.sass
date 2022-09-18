@@ -1,0 +1,245 @@
+$black: #222
+$white: #ddd
+$blue: #509eec
+
+%no-select
+  user-select: none
+  -webkit-user-select: none
+  -ms-user-select: none
+  -webkit-touch-callout: none
+  -o-user-select: none
+  -moz-user-select: none
+  -webkit-tap-highlight-color: rgba(0,0,0,0)
+  -webkit-tap-highlight-color: transparent
+
+
+#app
+  user-select: none
+  *
+    -webkit-user-drag: none
+
+  select, button, input
+    font-family: inherit
+  h4
+    padding: 0
+    margin: 10px 0
+    text-align: left
+  h5
+    padding: 0
+    margin: 10px 0
+    text-align: center
+  .envelope
+    svg
+      width: 220px
+      stroke: $blue
+      stroke-width: 4px
+  .vert
+    transform: rotate(270deg)
+
+  pre.algorithm
+    margin: 0
+    padding: 0 0 0 10px
+    font-family: 'Courier New'
+    line-height: 0.65em
+    font-size: 1em
+    color: $blue
+
+  .globals
+    margin: 30px auto
+    width: 100%
+
+  nav
+    position: relative
+    @extend %no-select
+    margin: 10px auto 0
+    border: 1px solid $white
+    box-sizing: border-box
+    display: flex
+    align-items: stretch
+    &.clone
+      margin: 0 0 10px 33%
+      border-top: none
+
+    span
+      flex-grow: 0.5
+      padding: 0.5em 0
+      height: 1em
+      pointer-events: none
+      text-align: center
+    a
+      flex-grow: 1
+      text-decoration: none
+      padding: 0.5em 0
+      height: 1em
+      cursor: pointer
+      text-align: center
+      &.active,&:active, &:hover
+        background: #ddd
+        color: $black
+
+    a[title]:after
+      content: attr(title)
+      position: absolute
+      top: -32px
+      padding: 4px
+      height: 20px
+      right: 0
+      word-break: keep-all
+      width: 300px
+      background: white
+      color: #509eec
+      opacity: 0
+      transition: opacity 0.3s linear
+      pointer-events: none
+    a[title]:hover:after
+      opacity: 0.8
+    select
+      flex-grow: 5
+      font-size: 1em
+      outline: 0
+      margin: 3px 5px
+      border: 0
+      option
+        text-align: center
+    &.midi
+      span i
+        line-height: 1em
+        background-color: #ccc
+        box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #000000 0 -1px 6px
+        width: 18px
+        height: 18px
+        display: inline-block
+        border-radius: 50%
+        margin-left: 15px
+        &.active
+          animation: blinkLed 0.1s infinite
+      .learning
+        background: #ddd
+        color: black
+      select
+        max-width: 33%
+        font-size: 0.8em
+      &.connected
+        select.in, select.out
+          background: #81e5ff
+      a
+        font-weight: bold
+        &.x
+          color: red
+        &.y
+          color: green
+        &.z
+          color: blue
+  .two-cols
+    display: flex
+    gap: 12px
+    .col
+      width: 50%
+
+  .four-cols
+    display: flex
+    gap: 12px
+    .col
+      width: 25%
+
+  .globals
+    .slider
+      label
+        text-overflow: clip
+        text-align: right
+        white-space: nowrap
+
+  .scene
+    margin: 15px 0
+    display: flex
+    .slider
+      margin-left: 20px
+      width: 250px
+      input
+        width: 250px
+    nav
+      width: 150px
+      margin: 4px
+      height: 25px
+      border: 0
+      a
+        height: 25px
+        line-height: 25px
+        padding: 0
+
+  .slider
+    position: relative
+    padding: 0
+    border: 2px solid transparent
+    width: 230px
+    &.boundToX
+      background: rgba(255,0,0,1)
+    &.learn
+      background: rgba(0,255,255,0.12)
+      &.mapped
+        background: rgba(0,255,255,0.35)
+        border-color: transparent
+      &:hover
+        cursor: pointer
+        border: 2px dashed rgba(0,255,255,0.2)
+    label
+      line-height: 10px
+      width: 32px
+      display: inline-block
+      vertical-align: super
+      position: relative
+      i
+        &.x, &.y, &.z
+          position: absolute
+          bottom: -12px
+          height: 6px
+          width: 6px
+          border-radius: 50%
+          box-shadow: 0 0 2px white
+        &.x
+          left: 0
+          background: red
+        &.y
+          background: green
+          left: 10px
+        &.z
+          background: blue
+          left: 20px
+    span
+      position: absolute
+      top: 3px
+      left: 50%
+      z-index: 10
+      color: #333
+      height: 25px
+      line-height: 25px
+      pointer-events: none
+    input
+      -webkit-appearance: none
+      width: 190px
+      height: 25px
+      background: #d3d3d3
+      outline: none
+      &::-webkit-slider-thumb
+        -webkit-appearance: none
+        appearance: none
+        width: 25px
+        height: 25px
+        background: #509eec
+        cursor: pointer
+      &::-moz-range-thumb
+        appearance: none
+        width: 25px
+        height: 25px
+        background: #509eec
+        cursor: pointer
+
+
+@keyframes blinkLed
+  from
+    background-color: $blue
+  50%
+    background-color: #24E0FF
+    box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #006 0 -1px 9px, #3F8CFF 0 2px 14px
+  to
+    background-color: $blue
