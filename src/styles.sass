@@ -12,8 +12,37 @@ $blue: #509eec
   -webkit-tap-highlight-color: rgba(0,0,0,0)
   -webkit-tap-highlight-color: transparent
 
+body
+  background-color: $black
+  &, a, a:visited
+    color: $white
+
+html,body
+  margin: 0
+  padding: 0
+
+html
+  overflow-y: scroll
+  scrollbar-width: none /* Firefox */
+  -ms-overflow-style: none  /* IE 10+ */
+  &::-webkit-scrollbar  /* WebKit */
+    width: 0
+
+body
+  font-family: 'Inconsolata', monospace
+  font-size: 20px
+
+p
+  line-height: 1.6em
+  &.spacey
+    margin: 90px auto 30px
+
+button
+  font-family: inherit
 
 #app
+  margin: 0 auto
+  width: 1000px
   user-select: none
   *
     -webkit-user-drag: none
