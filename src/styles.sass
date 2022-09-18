@@ -1,6 +1,6 @@
 $black: #222
 $white: #ddd
-$blue: #509eec
+$primary: #3ed107
 
 %no-select
   user-select: none
@@ -60,7 +60,8 @@ button
   .envelope
     svg
       width: 220px
-      stroke: $blue
+      fill: transparent
+      stroke: $primary
       stroke-width: 4px
   .vert
     transform: rotate(270deg)
@@ -71,7 +72,7 @@ button
     font-family: 'Courier New'
     line-height: 0.65em
     font-size: 1em
-    color: $blue
+    color: $primary
 
   .globals
     margin: 30px auto
@@ -114,14 +115,14 @@ button
       height: 20px
       right: 0
       word-break: keep-all
-      width: 300px
-      background: white
-      color: #509eec
+      width: 250px
+      border: 1px solid $white
+      color: $primary
       opacity: 0
       transition: opacity 0.3s linear
       pointer-events: none
     a[title]:hover:after
-      opacity: 0.8
+      opacity: 0.99
     select
       flex-grow: 5
       font-size: 1em
@@ -224,7 +225,7 @@ button
           height: 6px
           width: 6px
           border-radius: 50%
-          box-shadow: 0 0 2px white
+          box-shadow: 0 0 2px $white
         &.x
           left: 0
           background: red
@@ -254,21 +255,21 @@ button
         appearance: none
         width: 25px
         height: 25px
-        background: #509eec
+        background: $primary
         cursor: pointer
       &::-moz-range-thumb
         appearance: none
         width: 25px
         height: 25px
-        background: #509eec
+        background: $primary
         cursor: pointer
 
 
 @keyframes blinkLed
   from
-    background-color: $blue
+    background-color: $primary
   50%
     background-color: #24E0FF
     box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #006 0 -1px 9px, #3F8CFF 0 2px 14px
   to
-    background-color: $blue
+    background-color: $primary
