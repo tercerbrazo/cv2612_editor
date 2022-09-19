@@ -22,6 +22,14 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
+          <Slider
+            label="pz"
+            title="Patch Zone"
+            cc={118}
+            unbounded
+            noChannel
+            bits={2}
+          />
           <Slider label="bl" title="Blend" cc={119} noChannel bits={7} />
           {/*
           <Slider label="polyphony" cc={96} noChannel bits={2} />
@@ -32,18 +40,40 @@ const Scene = () => {
           */}
         </div>
         <div className="col">
-          <Slider label="pm" title={"Play Mode"} cc={90} noChannel bits={3} />
+          <Slider
+            label="pm"
+            title={"Play Mode"}
+            cc={90}
+            unbounded
+            noChannel
+            bits={3}
+          />
           <Slider
             label="lb"
             title="Led Brightness"
             cc={91}
             noChannel
+            unbounded
             bits={7}
           />
         </div>
         <div className="col">
-          <Slider label="tr" title="Transpose" cc={94} noChannel bits={7} />
-          <Slider label="tu" title="Tunning" cc={95} noChannel bits={7} />
+          <Slider
+            label="tr"
+            title="Transpose"
+            cc={94}
+            noChannel
+            unbounded
+            bits={7}
+          />
+          <Slider
+            label="tu"
+            title="Tunning"
+            cc={95}
+            noChannel
+            unbounded
+            bits={7}
+          />
         </div>
         <div className="col">
           <Slider
@@ -51,6 +81,7 @@ const Scene = () => {
             title="Midi Receive Channel"
             cc={92}
             noChannel
+            unbounded
             bits={5}
           />
           <Slider
@@ -58,6 +89,7 @@ const Scene = () => {
             title="Attenuverter Mode"
             cc={93}
             noChannel
+            unbounded
             bits={2}
           />
         </div>

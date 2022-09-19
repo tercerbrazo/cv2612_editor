@@ -2,7 +2,14 @@
 import React, { useContext } from "react";
 import { CV2612Context } from "./context";
 
-const Slider = ({ title, label, cc, bits, noChannel = false }) => {
+const Slider = ({
+  title,
+  label,
+  cc,
+  bits,
+  noChannel = false,
+  unbounded = false,
+}) => {
   const { state, dispatch } = useContext(CV2612Context);
 
   // get the cc channel
@@ -12,7 +19,9 @@ const Slider = ({ title, label, cc, bits, noChannel = false }) => {
   const ccs = patch[ch];
 
   const max = 127 >> (7 - bits);
-  const className = "slider".concat(state.activeBinding ? " learn" : "");
+  const className = `slider ${
+    !unbounded && state.activeBinding ? "learn" : ""
+  }`;
   const value = ccs[cc] >> (7 - bits);
 
   const onChange = (ev) => {
@@ -29,7 +38,9 @@ const Slider = ({ title, label, cc, bits, noChannel = false }) => {
 
   const onClick = (ev) => {
     ev.preventDefault();
-    dispatch({ type: "touch-param", cc });
+    if (!unbounded) {
+      dispatch({ type: "touch-param", cc });
+    }
   };
 
   return (
@@ -37,7 +48,7 @@ const Slider = ({ title, label, cc, bits, noChannel = false }) => {
       className={className}
       onClick={onClick}
       aria-hidden="true"
-      title={title}
+      data-title={`${title} - CC${cc}`}
     >
       <label>
         {label}

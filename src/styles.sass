@@ -203,16 +203,16 @@ button
     padding: 0
     border: 2px solid transparent
     width: 230px
-    &[title]:after
-      font-size: 0.8em
-      content: attr(title)
+    &[data-title]:after
+      font-size: 0.75em
+      content: attr(data-title)
       position: absolute
       top: -24px 
       height: 24px
       line-height: 24px
       text-align: center
-      left: 0
-      right: 0
+      left: -32px
+      right: -32px
       word-break: keep-all
       z-index: 1000
       background: $black
@@ -220,10 +220,8 @@ button
       opacity: 0
       transition: opacity 0.1s linear
       pointer-events: none
-    &[title]:hover:after
+    &[data-title]:hover:after
       opacity: 0.9
-    &.boundToX
-      background: rgba(255,0,0,1)
     &.learn
       background: rgba(0,255,255,0.12)
       &.mapped
@@ -231,7 +229,7 @@ button
         border-color: transparent
       &:hover
         cursor: pointer
-        border: 2px dashed rgba(0,255,255,0.2)
+        border: 2px dashed $primary
     label
       line-height: 10px
       width: 32px

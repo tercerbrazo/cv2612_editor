@@ -62,10 +62,10 @@ const Channel = () => {
           <Operator op={0} />
         </div>
         <div className="col">
-          <Operator op={2} />
+          <Operator op={1} />
         </div>
         <div className="col">
-          <Operator op={1} />
+          <Operator op={2} />
         </div>
         <div className="col">
           <Operator op={3} />
