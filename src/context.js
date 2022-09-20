@@ -105,7 +105,6 @@ const updateParam = (state, ch, cc, val) => {
   // update patch state
   patch[ch][cc] = val;
 
-  // sync midi cc
   MidiIO.sendCC(ch, cc, val);
 
   const envelopes = { ...state.envelopes };
@@ -135,21 +134,22 @@ const updateParams = (state) => {
 };
 
 const syncMidi = (state) => {
-  const patch = state.patches[state.patchIdx];
-
-  patch.forEach((ccs, ch) => {
-    Object.entries(ccs).forEach(([key, val]) => {
-      const cc = parseInt(key, 10);
-      // sync midi cc
-      MidiIO.sendCC(ch, cc, val);
-      if (ch === 0) {
-        // sync bindings
-        MidiIO.sendCC(0, 110, state.bindings.x.includes(cc) ? 127 : 0);
-        MidiIO.sendCC(0, 111, state.bindings.y.includes(cc) ? 127 : 0);
-        MidiIO.sendCC(0, 112, state.bindings.z.includes(cc) ? 127 : 0);
-      }
+  for (let i = 0; i < 4; i++) {
+    const patch = state.patches[i];
+    patch.forEach((ccs, ch) => {
+      Object.entries(ccs).forEach(([key, val]) => {
+        const cc = parseInt(key, 10);
+        // sync midi cc
+        MidiIO.sendCC(ch, cc, val);
+        if (i === 0 && ch === 0) {
+          // sync bindings
+          MidiIO.sendCC(0, 110, state.bindings.x.includes(cc) ? 127 : 0);
+          MidiIO.sendCC(0, 111, state.bindings.y.includes(cc) ? 127 : 0);
+          MidiIO.sendCC(0, 112, state.bindings.z.includes(cc) ? 127 : 0);
+        }
+      });
     });
-  });
+  }
 };
 
 const resetChannel = (state) => {
