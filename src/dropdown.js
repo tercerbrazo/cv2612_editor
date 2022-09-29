@@ -29,9 +29,9 @@ const Dropdown = ({ title, label, cc, options }) => {
       data-title={`${title} - CC${cc}`}
     >
       <label>{label}</label>
-      <select onChange={onChange}>
+      <select onChange={onChange} value={value}>
         {options.map((o, i) => (
-          <option key={o} selected={i === value} value={i}>
+          <option key={o} value={i}>
             {o}
           </option>
         ))}

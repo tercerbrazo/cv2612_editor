@@ -37,6 +37,8 @@ const emptyPatch = () => {
     ccsPerChannel.push(ccs);
   }
   ccsPerChannel[0][1] = 0; // lfo
+  ccsPerChannel[0][94] = 64; // transpose
+  ccsPerChannel[0][95] = 64; // tuning
   ccsPerChannel[0][119] = 0; // blend
 
   return ccsPerChannel;
