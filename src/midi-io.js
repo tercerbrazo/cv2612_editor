@@ -3,7 +3,7 @@ const state = {
   midiOutId: null,
 };
 
-const interval = 30;
+const INTERVAL = 20;
 const cc_queue = new Map();
 const cc_cache = new Map();
 
@@ -51,8 +51,8 @@ const refresh = () => {
   });
 };
 
-//todo: make a web woker to handle mii out msasge queue
-const sendCC = async (channel, number, value) => {
+//TODO: make a web woker to handle midi out message queue
+const sendCC_Old = async (channel, number, value) => {
   if (!state.ma) return;
   //throw new Error("No midiAcces object.")
 
@@ -73,7 +73,7 @@ const sendCC = async (channel, number, value) => {
   let index = cc_queue.size;
   let start = performance.now();
   //todo: change this awful sleep with a queue and a worker
-  await sleep(interval * index);
+  await sleep(INTERVAL * index);
 
   if (cc_queue.has(key)) {
     const value = cc_queue.get(key);
@@ -91,6 +91,22 @@ const sendCC = async (channel, number, value) => {
 
     pub("midiOutProgress", { elapsed, done });
   }
+};
+
+let pendingCCs = 0;
+const sendCC = async (channel, number, value) => {
+  if (!state.ma) return;
+
+  const midiOut = state.ma.outputs.get(state.midiOutId);
+  if (!midiOut) return;
+
+  pendingCCs++;
+  await sleep(INTERVAL * pendingCCs);
+  const msg = [0xb0 + channel, number, value];
+  midiOut.send(msg);
+  pendingCCs--;
+  console.log(`CC ${channel}:${number} -> ${value}`, pendingCCs);
+  pub("midiOutProgress", { done: pendingCCs === 0 });
 };
 
 export default {
