@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { CV2612Context } from "./context";
 import Channel from "./channel";
 import Slider from "./slider";
+import Dropdown from "./dropdown";
 
 const Scene = () => {
   const { state, dispatch } = useContext(CV2612Context);
@@ -22,13 +23,11 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
-          <Slider
+          <Dropdown
             label="pz"
             title="Patch Zone"
             cc={118}
-            unbounded
-            noChannel
-            bits={2}
+            options={["A- B", "B - C", "C - D"]}
           />
           <Slider label="bl" title="Blend" cc={119} noChannel bits={7} />
           {/*
@@ -40,13 +39,11 @@ const Scene = () => {
           */}
         </div>
         <div className="col">
-          <Slider
+          <Dropdown
             label="pm"
             title={"Play Mode"}
             cc={90}
-            unbounded
-            noChannel
-            bits={3}
+            options={["MONO", "DUO", "TRIO", "CHORD", "CYCLE", "RAND", "POLY"]}
           />
           <Slider
             label="lb"
@@ -76,21 +73,36 @@ const Scene = () => {
           />
         </div>
         <div className="col">
-          <Slider
+          <Dropdown
             label="rc"
             title="Midi Receive Channel"
             cc={92}
-            noChannel
-            unbounded
-            bits={5}
+            options={[
+              "OMNI",
+              "RESPECT",
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+            ]}
           />
-          <Slider
+          <Dropdown
             label="am"
             title="Attenuverter Mode"
             cc={93}
-            noChannel
-            unbounded
-            bits={2}
+            options={["AUTO", "OFFSET", "ATTENUVERTER"]}
           />
         </div>
       </div>

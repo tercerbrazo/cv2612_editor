@@ -223,7 +223,7 @@ const reducer = (state, action) => {
       return resetOperator(state, action.op);
     case "change-patch":
       const patchIdx = action.index;
-      MidiIO.sendCC(0, 120, patchIdx * 32);
+      MidiIO.sendCC(0, 120, patchIdx);
       return updateParams({ ...state, patchIdx }, false);
     case "change-channel":
       const channelIdx = action.index;

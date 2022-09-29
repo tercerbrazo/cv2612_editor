@@ -173,38 +173,23 @@ button
     .col
       width: 25%
 
-  .globals
-    .slider
-      label
-        text-overflow: clip
-        text-align: right
-        white-space: nowrap
-
-  .scene
-    margin: 15px 0
-    display: flex
-    .slider
-      margin-left: 20px
-      width: 250px
-      input
-        width: 250px
-    nav
-      width: 150px
-      margin: 4px
-      height: 25px
-      border: 0
-      a
-        height: 25px
-        line-height: 25px
-        padding: 0
-
-  .slider
+  .slider, .dropdown
     position: relative
     padding: 0
     border: 2px solid transparent
     width: 230px
+    select, input
+      text-align: center
+      width: 190px
+      height: 25px
+      background: #d3d3d3
+      outline: none
+      margin: 0
+      padding: 0
+      border: 0
+
     &[data-title]:after
-      font-size: 0.75em
+      font-size: 14px
       content: attr(data-title)
       position: absolute
       top: -24px 
@@ -222,6 +207,23 @@ button
       pointer-events: none
     &[data-title]:hover:after
       opacity: 0.9
+    label
+      line-height: 10px
+      width: 32px
+      display: inline-block
+      vertical-align: super
+      position: relative
+
+  .dropdown
+    // nasty whitespace removal trick
+    font-size: 0
+    label
+      font-size: 20px
+    select
+      font-size: 16px
+      text-align: center
+
+  .slider
     &.learn
       background: rgba(0,255,255,0.12)
       &.mapped
@@ -231,11 +233,6 @@ button
         cursor: pointer
         border: 2px dashed $primary
     label
-      line-height: 10px
-      width: 32px
-      display: inline-block
-      vertical-align: super
-      position: relative
       i
         &.x, &.y, &.z
           position: absolute
@@ -264,10 +261,6 @@ button
       pointer-events: none
     input
       -webkit-appearance: none
-      width: 190px
-      height: 25px
-      background: #d3d3d3
-      outline: none
       &::-webkit-slider-thumb
         -webkit-appearance: none
         appearance: none
