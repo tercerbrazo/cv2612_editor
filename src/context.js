@@ -90,7 +90,6 @@ const touchParam = (state, cc) => {
 
     // re-send cc value (of first channel) just to make it the lastParameter
     const patch = state.patches[state.patchIdx];
-    console.log(patch[0][cc], cc, patch[0]);
     MidiIO.sendCC(0, cc, patch[0][cc]);
     // bind parameter
     MidiIO.sendCC(0, bindingsMap[state.activeBinding], exists ? 0 : 127);
@@ -137,6 +136,7 @@ const updateParams = (state) => {
 
 const syncMidi = (state) => {
   for (let i = 0; i < 4; i++) {
+    MidiIO.sendCC(0, 120, i);
     const patch = state.patches[i];
     patch.forEach((ccs, ch) => {
       Object.entries(ccs).forEach(([key, val]) => {
