@@ -15,7 +15,7 @@ export const calculateEnvelopePoints = ({ ar, tl, d1, sl, d2, rr }) => {
     [x4, 100],
   ]
   return points
-    .map(p => p.join(","))
-    .join(" ")
-    .replace(/NaN/g, "0")
+    .map((p) => p.join(','))
+    .join(' ')
+    .replace(/NaN/g, '0')
 }

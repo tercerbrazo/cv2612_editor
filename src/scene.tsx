@@ -1,21 +1,21 @@
-import React, { useContext } from "react";
-import { CV2612Context } from "./context";
-import Channel from "./channel";
-import Slider from "./slider";
-import Dropdown from "./dropdown";
+import React, { useContext } from 'react'
+import Channel from './channel'
+import { CV2612Context } from './context'
+import Dropdown from './dropdown'
+import Slider from './slider'
 
-const Scene = () => {
-  const { state, dispatch } = useContext(CV2612Context);
+function Scene() {
+  const { state, dispatch } = useContext(CV2612Context)
 
   const onChangePatch = (index) => (ev) => {
-    ev.preventDefault();
-    dispatch({ type: "change-patch", index });
-  };
+    ev.preventDefault()
+    dispatch({ type: 'change-patch', index })
+  }
 
   const onChangeChannel = (index) => (ev) => {
-    ev.preventDefault();
-    dispatch({ type: "change-channel", index });
-  };
+    ev.preventDefault()
+    dispatch({ type: 'change-channel', index })
+  }
 
   return (
     <>
@@ -27,7 +27,7 @@ const Scene = () => {
             label="pz"
             title="Patch Zone"
             cc={118}
-            options={["A- B", "B - C", "C - D"]}
+            options={['A- B', 'B - C', 'C - D']}
           />
           <Slider label="bl" title="Blend" cc={119} noChannel bits={7} />
           {/*
@@ -41,9 +41,9 @@ const Scene = () => {
         <div className="col">
           <Dropdown
             label="pm"
-            title={"Play Mode"}
+            title="Play Mode"
             cc={90}
-            options={["MONO", "DUO", "TRIO", "CHORD", "CYCLE", "RAND", "POLY"]}
+            options={['MONO', 'DUO', 'TRIO', 'CHORD', 'CYCLE', 'RAND', 'POLY']}
           />
           <Slider
             label="lb"
@@ -78,8 +78,8 @@ const Scene = () => {
             title="Midi Receive Channel"
             cc={92}
             options={[
-              "OMNI",
-              "RESPECT",
+              'OMNI',
+              'RESPECT',
               1,
               2,
               3,
@@ -102,7 +102,7 @@ const Scene = () => {
             label="am"
             title="Attenuverter Mode"
             cc={93}
-            options={["AUTO", "OFFSET", "ATTENUVERTER"]}
+            options={['AUTO', 'OFFSET', 'ATTENUVERTER']}
           />
         </div>
       </div>
@@ -113,12 +113,12 @@ const Scene = () => {
             {[0, 1, 2, 3].map((i) => (
               <a
                 href="/"
-                className={state.patchIdx === i ? "active" : ""}
+                className={state.patchIdx === i ? 'active' : ''}
                 key={i}
                 onClick={onChangePatch(i)}
-                title={`Patch ${"ABCD"[i]}`}
+                title={`Patch ${'ABCD'[i]}`}
               >
-                {"ABCD"[i]}
+                {'ABCD'[i]}
               </a>
             ))}
           </nav>
@@ -128,7 +128,7 @@ const Scene = () => {
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <a
                 href="/"
-                className={state.channelIdx === i ? "active" : ""}
+                className={state.channelIdx === i ? 'active' : ''}
                 key={i}
                 onClick={onChangeChannel(i)}
                 title={`Channel ${i + 1}`}
@@ -142,7 +142,7 @@ const Scene = () => {
 
       <Channel />
     </>
-  );
-};
+  )
+}
 
-export default Scene;
+export default Scene

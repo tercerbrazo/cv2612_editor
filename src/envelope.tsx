@@ -1,7 +1,7 @@
-import React, { useContext } from "react"
-import { CV2612Context } from "./context"
+import React, { useContext } from 'react'
+import { CV2612Context } from './context'
 
-const Envelope = ({ op }) => {
+function Envelope({ op }) {
   const { state } = useContext(CV2612Context)
   return (
     <div className="envelope">

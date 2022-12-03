@@ -1,15 +1,15 @@
-import React, { useContext } from "react";
-import Envelope from "./envelope";
-import Slider from "./slider";
-import { CV2612Context } from "./context";
+import React, { useContext } from 'react'
+import { CV2612Context } from './context'
+import Envelope from './envelope'
+import Slider from './slider'
 
-const Operator = ({ op }) => {
-  const { dispatch } = useContext(CV2612Context);
+function Operator({ op }) {
+  const { dispatch } = useContext(CV2612Context)
 
   const onEnvelopeClick = (ev) => {
-    ev.preventDefault();
-    dispatch({ type: "reset-operator", op });
-  };
+    ev.preventDefault()
+    dispatch({ type: 'reset-operator', op })
+  }
 
   return (
     <div className="operator">
@@ -62,7 +62,7 @@ const Operator = ({ op }) => {
         bits={1}
       />
     </div>
-  );
-};
+  )
+}
 
-export default Operator;
+export default Operator

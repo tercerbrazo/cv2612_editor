@@ -1,20 +1,20 @@
-import React, { useContext } from "react";
-import Operator from "./operator";
-import Slider from "./slider";
-import algorithmAscii from "./utils/algorithmAscii";
-import { CV2612Context } from "./context";
+import React, { useContext } from 'react'
+import { CV2612Context } from './context'
+import Operator from './operator'
+import Slider from './slider'
+import algorithmAscii from './utils/algorithmAscii'
 
-const Channel = () => {
-  const { state, dispatch } = useContext(CV2612Context);
+function Channel() {
+  const { state, dispatch } = useContext(CV2612Context)
 
-  const patch = state.patches[state.patchIdx];
+  const patch = state.patches[state.patchIdx]
   // get the patch/channel algorithm
-  const al = patch[state.channelIdx][20] >> 4;
+  const al = patch[state.channelIdx][20] >> 4
 
   const onAlgorithmClick = (ev) => {
-    ev.preventDefault();
-    dispatch({ type: "reset-channel" });
-  };
+    ev.preventDefault()
+    dispatch({ type: 'reset-channel' })
+  }
 
   return (
     <>
@@ -51,7 +51,7 @@ const Channel = () => {
           <a
             href="!#"
             onClick={onAlgorithmClick}
-            style={{ textDecoration: "none" }}
+            style={{ textDecoration: 'none' }}
           >
             <pre className="algorithm">{algorithmAscii(al)}</pre>
           </a>
@@ -72,7 +72,7 @@ const Channel = () => {
         </div>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default Channel;
+export default Channel
