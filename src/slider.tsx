@@ -7,19 +7,23 @@ function Slider({
   label,
   cc,
   bits,
+  noPatch = false,
   noChannel = false,
   unbounded = false,
 }) {
   const { state, dispatch } = useContext(CV2612Context)
 
+  // get the patch index
+  const patchIdx = noPatch ? 0 : state.patchIdx
+
   // get the cc channel
   const ch = noChannel ? 0 : state.channelIdx
 
-  const patch = state.patches[state.patchIdx]
+  const patch = state.patches[patchIdx]
   const ccs = patch[ch]
 
   const max = 127 >> (7 - bits)
-  const className = `slider ${!unbounded && state.activeBinding ? 'learn' : ''}`
+  const className = `slider ${!unbounded && state.bindingKey ? 'learn' : ''}`
   const value = ccs[cc] >> (7 - bits)
 
   const onChange = (ev) => {
@@ -28,6 +32,7 @@ function Slider({
 
     dispatch({
       type: 'update-param',
+      patchIdx,
       ch,
       cc,
       val,
@@ -37,7 +42,7 @@ function Slider({
   const onClick = (ev) => {
     ev.preventDefault()
     if (!unbounded) {
-      dispatch({ type: 'touch-param', cc })
+      dispatch({ type: 'touch-param', patchIdx, cc })
     }
   }
 

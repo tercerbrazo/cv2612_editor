@@ -7,12 +7,12 @@ import Slider from './slider'
 function Scene() {
   const { state, dispatch } = useContext(CV2612Context)
 
-  const onChangePatch = (index) => (ev) => {
+  const onChangePatch = (index: number) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-patch', index })
   }
 
-  const onChangeChannel = (index) => (ev) => {
+  const onChangeChannel = (index: number) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-channel', index })
   }
@@ -29,7 +29,14 @@ function Scene() {
             cc={118}
             options={['A- B', 'B - C', 'C - D']}
           />
-          <Slider label="bl" title="Blend" cc={119} noChannel bits={7} />
+          <Slider
+            label="bl"
+            title="Blend"
+            cc={119}
+            noPatch
+            noChannel
+            bits={7}
+          />
           {/*
           <Slider label="polyphony" cc={96} noChannel bits={2} />
           <Slider label="quantize" cc={97} noChannel bits={1} />
@@ -49,6 +56,7 @@ function Scene() {
             label="lb"
             title="Led Brightness"
             cc={91}
+            noPatch
             noChannel
             unbounded
             bits={7}
@@ -60,6 +68,7 @@ function Scene() {
             title="Transpose"
             cc={94}
             noChannel
+            noPatch
             unbounded
             bits={7}
           />
@@ -68,6 +77,7 @@ function Scene() {
             title="Tunning"
             cc={95}
             noChannel
+            noPatch
             unbounded
             bits={7}
           />

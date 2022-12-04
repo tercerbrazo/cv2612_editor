@@ -4,8 +4,6 @@ module.exports = {
   env: {
     es6: true,
     browser: true,
-    node: true,
-    jest: true,
   },
   parserOptions: {
     sourceType: 'module',
@@ -21,6 +19,8 @@ module.exports = {
     camelcase: 'warn',
     'no-plusplus': 'off',
     'jsx-a11y/label-has-associated-control': 'off',
+    'jsx-a11y/label-has-associated-label': 'off',
     'no-param-reassign': 'off',
+    '@typescript-eslint/no-shadow': 'off',
   },
 }

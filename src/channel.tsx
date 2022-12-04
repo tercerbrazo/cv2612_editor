@@ -11,7 +11,9 @@ function Channel() {
   // get the patch/channel algorithm
   const al = patch[state.channelIdx][20] >> 4
 
-  const onAlgorithmClick = (ev) => {
+  const onAlgorithmClick = (
+    ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+  ) => {
     ev.preventDefault()
     dispatch({ type: 'reset-channel' })
   }

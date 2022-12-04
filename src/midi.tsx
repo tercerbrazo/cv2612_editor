@@ -1,7 +1,6 @@
-/* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { CV2612Context } from './context'
+import { BindingKey, CV2612Context } from './context'
 import MidiIO from './midi-io'
 
 const activityDuration = 80
@@ -14,6 +13,30 @@ function Midi() {
   const [midiOutActivity, setMidiOutActivity] = useState(false)
 
   useEffect(() => {
+    if (midiOutId !== '-') {
+      reactLocalStorage.set('midiOutId', midiOutId)
+      MidiIO.setMidiOutId(midiOutId)
+    }
+  }, [midiOutId])
+
+  const onMidiOutProgress = useCallback(({ done }) => {
+    setMidiOutActivity(true)
+    if (done) setTimeout(() => setMidiOutActivity(false), activityDuration)
+  }, [])
+
+  const onStateChange = useCallback(
+    ({ outputs }) => {
+      if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
+        const mOut = reactLocalStorage.get('midiOutId', '')
+        // is last id still available??
+        setMidiOutId(outputs.map((a) => a.id).includes(mOut) ? mOut : '')
+        setMidiOuts(outputs)
+      }
+    },
+    [midiOuts]
+  )
+
+  useEffect(() => {
     MidiIO.sub('midiStateChanged', onStateChange)
     MidiIO.sub('midiOutProgress', onMidiOutProgress)
 
@@ -21,31 +44,7 @@ function Midi() {
       MidiIO.unsub('midiStateChanged', onStateChange)
       MidiIO.unsub('midiOutProgress', onMidiOutProgress)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    if (midiOutId !== '-') {
-      reactLocalStorage.set('midiOutId', midiOutId)
-      MidiIO.setMidiOutId(midiOutId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [midiOutId])
-
-  const onMidiOutProgress = ({ done }) => {
-    setMidiOutActivity(true)
-    if (done) setTimeout(() => setMidiOutActivity(false), activityDuration)
-  }
-
-  const onStateChange = ({ outputs }) => {
-    if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
-      const m_out = reactLocalStorage.get('midiOutId', '')
-      // is last id still available??
-      setMidiOutId(outputs.map((a) => a.id).includes(m_out) ? m_out : '')
-      setMidiOuts(outputs)
-    }
-  }
+  }, [onStateChange, onMidiOutProgress])
 
   return (
     <nav className="midi">
@@ -70,14 +69,14 @@ function Midi() {
       </select>
       <span> </span>
       <span> </span>
-      {'xyz'.split('').map((i) => (
+      {(['x', 'y', 'z'] as BindingKey[]).map((i) => (
         <a
           href="/"
           title={`Bind parameters to ${i.toUpperCase()}`}
-          className={`${i} ${state.activeBinding === i ? 'active' : ''}`}
+          className={`${i} ${state.bindingKey === i ? 'active' : ''}`}
           onClick={(ev) => {
             ev.preventDefault()
-            dispatch({ type: 'toggle-binding', binding: i })
+            dispatch({ type: 'toggle-binding', bindingKey: i })
           }}
           key={i}
         >
