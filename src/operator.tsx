@@ -3,7 +3,7 @@ import { CV2612Context } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
 
-function Operator({ op }) {
+const Operator = ({ op }) => {
   const { dispatch } = useContext(CV2612Context)
 
   const onEnvelopeClick = (ev) => {

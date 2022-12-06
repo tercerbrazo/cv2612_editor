@@ -5,7 +5,7 @@ import MidiIO from './midi-io'
 
 const activityDuration = 80
 
-function Midi() {
+const Midi = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
   const [midiOutId, setMidiOutId] = useState('-')

@@ -5,7 +5,7 @@ import Midi from './midi'
 import Scene from './scene'
 import './styles.sass'
 
-function App() {
+const App = () => {
   return (
     <CV2612Provider>
       <div className="two-cols">

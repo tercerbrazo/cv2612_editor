@@ -1,25 +1,156 @@
-import React, { useContext } from 'react'
+import {
+  DndContext,
+  MouseSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  restrictToHorizontalAxis,
+  restrictToParentElement,
+} from '@dnd-kit/modifiers'
+
+import React, { useCallback, useContext, useMemo } from 'react'
 import Channel from './channel'
 import { CV2612Context } from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
 
-function Scene() {
+function useCombinedRefs<T>(...refs: ((node: T) => void)[]): (node: T) => void {
+  return useMemo(
+    () => (node: T) => {
+      refs.forEach((ref) => ref(node))
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    refs
+  )
+}
+
+const Draggable = ({ index, text, active, onClick }) => {
+  const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
+    id: `draggable-${index}`,
+    data: { index, action: 'copy' },
+  })
+  const {
+    attributes,
+    setNodeRef: setDraggableNodeRef,
+    listeners,
+    isDragging,
+    transform,
+  } = useDraggable({
+    id: `draggable-${index}`,
+    data: { index },
+  })
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
+      }
+    : undefined
+
+  const setNodeRef = useCombinedRefs(setDroppableNodeRef, setDraggableNodeRef)
+
+  return (
+    <button
+      type="button"
+      // eslint-disable-next-line no-nested-ternary
+      className={` 
+        ${active ? 'active' : ''} 
+        ${isDragging ? 'dragging' : ''} 
+        ${!isDragging && isOver ? 'over' : ''}
+        `}
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...listeners}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...attributes}
+    >
+      {text}
+    </button>
+  )
+}
+
+const Droppable = ({ index }) => {
+  const { over, isOver, setNodeRef } = useDroppable({
+    id: `droppable-${index}`,
+    data: { index, action: 'move' },
+  })
+
+  return (
+    <div
+      className={`droppable
+        ${isOver ? 'over' : ''}
+        ${over ? 'dragging' : ''}
+        `}
+      ref={setNodeRef}
+    />
+  )
+}
+
+const Scene = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
-  const onChangePatch = (index: number) => (ev) => {
+  const mouseSensor = useSensor(MouseSensor, {
+    // Require the mouse to move by 10 pixels before activating
+    activationConstraint: {
+      delay: 250,
+      tolerance: 5,
+    },
+  })
+
+  const sensors = useSensors(mouseSensor)
+
+  const handlePatchClick = (index: number) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-patch', index })
   }
 
-  const onChangeChannel = (index: number) => (ev) => {
+  const handleChannelClick = (index: number) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-channel', index })
   }
 
+  const handlePatchDragEnd = useCallback(
+    (event) => {
+      const drag = event.active?.data?.current
+      const drop = event.over?.data?.current
+
+      if (drop?.action === 'move') {
+        dispatch({ type: 'move-patch', index: drag.index, before: drop.index })
+      } else if (drop?.action === 'copy') {
+        dispatch({ type: 'copy-patch', source: drag.index, target: drop.index })
+      }
+    },
+    [dispatch]
+  )
+
+  const handleChannelDragEnd = useCallback(
+    (event) => {
+      const drag = event.active?.data?.current
+      const drop = event.over?.data?.current
+
+      if (drop?.action === 'move') {
+        dispatch({
+          type: 'move-channel',
+          index: drag.index,
+          before: drop.index,
+        })
+      } else if (drop?.action === 'copy') {
+        dispatch({
+          type: 'copy-channel',
+          source: drag.index,
+          target: drop.index,
+        })
+      }
+    },
+    [dispatch]
+  )
+
   return (
     <>
-      <br />
       <br />
       <div className="four-cols">
         <div className="col">
@@ -33,7 +164,7 @@ function Scene() {
             label="bl"
             title="Blend"
             cc={119}
-            noPatch
+            setting
             noChannel
             bits={7}
           />
@@ -56,7 +187,7 @@ function Scene() {
             label="lb"
             title="Led Brightness"
             cc={91}
-            noPatch
+            setting
             noChannel
             unbounded
             bits={7}
@@ -68,7 +199,7 @@ function Scene() {
             title="Transpose"
             cc={94}
             noChannel
-            noPatch
+            setting
             unbounded
             bits={7}
           />
@@ -77,7 +208,7 @@ function Scene() {
             title="Tunning"
             cc={95}
             noChannel
-            noPatch
+            setting
             unbounded
             bits={7}
           />
@@ -119,32 +250,50 @@ function Scene() {
 
       <div className="two-cols">
         <div className="col">
-          <nav>
-            {[0, 1, 2, 3].map((i) => (
-              <a
-                href="/"
-                className={state.patchIdx === i ? 'active' : ''}
-                key={i}
-                onClick={onChangePatch(i)}
-                title={`Patch ${'ABCD'[i]}`}
-              >
-                {'ABCD'[i]}
-              </a>
-            ))}
-          </nav>
+          <DndContext
+            onDragEnd={handlePatchDragEnd}
+            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+            collisionDetection={pointerWithin}
+            sensors={sensors}
+          >
+            <nav>
+              {['A', 'B', 'C', 'D'].map((item, i) => (
+                <React.Fragment key={item}>
+                  <Droppable index={i} />
+                  <Draggable
+                    index={i}
+                    text={item}
+                    active={state.patchIdx === i}
+                    onClick={handlePatchClick(i)}
+                  />
+                </React.Fragment>
+              ))}
+              <Droppable index={4} />
+            </nav>
+          </DndContext>
         </div>
         <div className="col">
-          <nav>
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <a
-                href="/"
-                className={state.channelIdx === i ? 'active' : ''}
-                key={i}
-                onClick={onChangeChannel(i)}
-                title={`Channel ${i + 1}`}
-              >{`${i + 1}`}</a>
-            ))}
-          </nav>
+          <DndContext
+            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+            collisionDetection={pointerWithin}
+            sensors={sensors}
+            onDragEnd={handleChannelDragEnd}
+          >
+            <nav>
+              {['1', '2', '3', '4', '5', '6'].map((item, i) => (
+                <React.Fragment key={item}>
+                  <Droppable index={i} />
+                  <Draggable
+                    index={i}
+                    text={item}
+                    active={state.channelIdx === i}
+                    onClick={handleChannelClick(i)}
+                  />
+                </React.Fragment>
+              ))}
+              <Droppable index={6} />
+            </nav>
+          </DndContext>
         </div>
       </div>
 

@@ -2,29 +2,29 @@
 import React, { useContext } from 'react'
 import { CV2612Context } from './context'
 
-function Slider({
+const Slider = ({
   title,
   label,
   cc,
   bits,
-  noPatch = false,
+  setting = false,
   noChannel = false,
   unbounded = false,
-}) {
+}) => {
   const { state, dispatch } = useContext(CV2612Context)
 
   // get the patch index
-  const patchIdx = noPatch ? 0 : state.patchIdx
-
+  const patchIdx = setting ? 0 : state.patchIdx
   // get the cc channel
-  const ch = noChannel ? 0 : state.channelIdx
+  const channelIdx = noChannel ? 0 : state.channelIdx
 
-  const patch = state.patches[patchIdx]
-  const ccs = patch[ch]
+  const ccValue = setting
+    ? state.settings[cc]
+    : state.patches[patchIdx][channelIdx][cc]
 
   const max = 127 >> (7 - bits)
   const className = `slider ${!unbounded && state.bindingKey ? 'learn' : ''}`
-  const value = ccs[cc] >> (7 - bits)
+  const value = ccValue >> (7 - bits)
 
   const onChange = (ev) => {
     ev.preventDefault()
@@ -33,7 +33,7 @@ function Slider({
     dispatch({
       type: 'update-param',
       patchIdx,
-      ch,
+      channelIdx,
       cc,
       val,
     })
@@ -42,7 +42,7 @@ function Slider({
   const onClick = (ev) => {
     ev.preventDefault()
     if (!unbounded) {
-      dispatch({ type: 'touch-param', patchIdx, cc })
+      dispatch({ patchIdx, type: 'touch-param', cc })
     }
   }
 

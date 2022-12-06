@@ -20,7 +20,13 @@ module.exports = {
     'no-plusplus': 'off',
     'jsx-a11y/label-has-associated-control': 'off',
     'jsx-a11y/label-has-associated-label': 'off',
+    'jsx-a11y/no-static-element-interactions': 'off',
+    'jsx-a11y/click-events-have-key-events': 'off',
     'no-param-reassign': 'off',
     '@typescript-eslint/no-shadow': 'off',
+    'react/function-component-definition': [
+      2,
+      { namedComponents: 'arrow-function' },
+    ],
   },
 }

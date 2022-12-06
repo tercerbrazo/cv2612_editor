@@ -86,9 +86,6 @@ button
     box-sizing: border-box
     display: flex
     align-items: stretch
-    &.clone
-      margin: 0 0 10px 33%
-      border-top: none
 
     span
       flex-grow: 0.5
@@ -103,9 +100,35 @@ button
       height: 1em
       cursor: pointer
       text-align: center
-      &.active,&:active, &:hover
+      &.active,&:hover
         background: #ddd
         color: $black
+    button
+      flex: 1
+      cursor: pointer
+      height: 2em
+      border: 0
+      padding: 0
+      margin: 0
+      font-size: inherit
+      background: $black
+      color: $white
+      &.active,&:hover
+        background: $white
+        color: $black
+      &.over
+        background: $primary
+      &.dragging
+        opacity: 0.8
+        filter: drop-shadow(6px -6px 5px black)
+    .droppable
+      flex: 0
+      height: 2em
+      &.dragging
+        background: #ccc
+        flex: 0.3
+      &.over
+        background: $primary
 
     a[title]:after
       content: attr(title)

@@ -4,7 +4,7 @@ import Operator from './operator'
 import Slider from './slider'
 import algorithmAscii from './utils/algorithmAscii'
 
-function Channel() {
+const Channel = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
   const patch = state.patches[state.patchIdx]

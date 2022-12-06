@@ -1,16 +1,11 @@
 import React, { useContext } from 'react'
 import { CV2612Context } from './context'
 
-function Dropdown({ title, label, cc, options }) {
+const Dropdown = ({ title, label, cc, options }) => {
   const { state, dispatch } = useContext(CV2612Context)
 
   // dropdowns are for global parameters
-  const patchIdx = 0
-  const ch = 0
-
-  const patch = state.patches[patchIdx]
-  const ccs = patch[ch]
-  const value = ccs[cc]
+  const value = state.settings[cc]
 
   const onChange = (ev) => {
     ev.preventDefault()
@@ -18,8 +13,8 @@ function Dropdown({ title, label, cc, options }) {
 
     dispatch({
       type: 'update-param',
-      patchIdx,
-      ch,
+      patchIdx: 0,
+      channelIdx: 0,
       cc,
       val,
     })

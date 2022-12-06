@@ -22,12 +22,12 @@ const bindingsMap: Record<BindingKey, number> = { x: 110, y: 111, z: 112 }
 type BindingKey = 'x' | 'y' | 'z'
 type Bindings = Record<BindingKey, number[]>
 type Ccs = Record<number, number>
-type Patch = Ccs[]
 type State = {
   bindingKey?: BindingKey
   bindings: Bindings
   envelopes: Record<number, string>
-  patches: Patch[]
+  patches: Ccs[][]
+  settings: Ccs
   patchIdx: number
   channelIdx: number
 }
@@ -44,7 +44,7 @@ type Action =
   | {
       type: 'update-param'
       patchIdx: number
-      ch: number
+      channelIdx: number
       cc: number
       val: number
     }
@@ -64,8 +64,28 @@ type Action =
       index: number
     }
   | {
+      type: 'move-patch'
+      index: number
+      before: number
+    }
+  | {
+      type: 'copy-patch'
+      source: number
+      target: number
+    }
+  | {
       type: 'change-channel'
       index: number
+    }
+  | {
+      type: 'move-channel'
+      index: number
+      before: number
+    }
+  | {
+      type: 'copy-channel'
+      source: number
+      target: number
     }
   | {
       type: 'sync-midi'
@@ -74,55 +94,60 @@ type Action =
       type: 'save-patch'
     }
 
-const emptyPatch = (): Patch => {
-  const ccsPerChannel = []
-
-  for (let i = 0; i < 6; i++) {
-    const ccs = {
-      20: 7 << (7 - 3), // al
-      21: 0, // fb
-      22: 0, // ams
-      23: 0, // fms
-      24: 3 << (7 - 2), // st
-    }
-    for (let op = 0; op < 4; op++) {
-      ccs[`${30 + op * 10 + 0}`] = 127 // ar
-      ccs[`${30 + op * 10 + 1}`] = 0 // d1
-      ccs[`${30 + op * 10 + 2}`] = 0 // sl
-      ccs[`${30 + op * 10 + 3}`] = 0 // d2
-      ccs[`${30 + op * 10 + 4}`] = 127 // rr
-      ccs[`${30 + op * 10 + 5}`] = 0 // tl
-      ccs[`${30 + op * 10 + 6}`] = 32 // mul
-      ccs[`${30 + op * 10 + 7}`] = 64 // det
-      ccs[`${30 + op * 10 + 8}`] = 0 // rs
-      ccs[`${30 + op * 10 + 9}`] = 0 // am
-    }
-    ccsPerChannel.push(ccs)
+const getInitialState = (): State => {
+  const state: State = {
+    bindings: { x: [], y: [], z: [] },
+    envelopes: {},
+    patchIdx: 0,
+    patches: [],
+    settings: {},
+    channelIdx: 0,
   }
-  ccsPerChannel[0][1] = 0 // lfo
 
-  return ccsPerChannel
-}
-
-const emptyPatches = (): Patch[] => {
-  const patches = []
   for (let i = 0; i < 4; i++) {
-    patches.push(emptyPatch())
+    const channels = []
+
+    for (let i = 0; i < 6; i++) {
+      const ccs = {
+        20: 7 << (7 - 3), // al
+        21: 0, // fb
+        22: 0, // ams
+        23: 0, // fms
+        24: 3 << (7 - 2), // st
+      }
+      for (let op = 0; op < 4; op++) {
+        ccs[`${30 + op * 10 + 0}`] = 127 // ar
+        ccs[`${30 + op * 10 + 1}`] = 0 // d1
+        ccs[`${30 + op * 10 + 2}`] = 0 // sl
+        ccs[`${30 + op * 10 + 3}`] = 0 // d2
+        ccs[`${30 + op * 10 + 4}`] = 127 // rr
+        ccs[`${30 + op * 10 + 5}`] = 0 // tl
+        ccs[`${30 + op * 10 + 6}`] = 32 // mul
+        ccs[`${30 + op * 10 + 7}`] = 64 // det
+        ccs[`${30 + op * 10 + 8}`] = 0 // rs
+        ccs[`${30 + op * 10 + 9}`] = 0 // am
+      }
+      channels.push(ccs)
+    }
+    channels[0][1] = 0 // lfo
+
+    state.patches.push(channels)
   }
-  // add globals to patch A
-  patches[0][0][94] = 64 // transpose
-  patches[0][0][95] = 64 // tuning
-  patches[0][0][119] = 0 // blend
-  return patches
+
+  // add globals settings
+  state.settings[90] = 0 /// play mode
+  state.settings[91] = 64 // led brigtness
+  state.settings[92] = 0 // Midi Receive Channel
+  state.settings[93] = 0 // Attenuverter mode
+  state.settings[94] = 64 // transpose
+  state.settings[95] = 64 // tuning
+  state.settings[118] = 0 // blend zone
+  state.settings[119] = 0 // blend
+
+  return state
 }
 
-const initialState: State = {
-  bindings: { x: [], y: [], z: [] },
-  envelopes: {},
-  patches: emptyPatches(),
-  patchIdx: 0,
-  channelIdx: 0,
-}
+const initialState = getInitialState()
 
 const updateEnvelope = (ccs: Ccs, op: number) => {
   const ar = ccs[30 + 10 * op + 0] / 127
@@ -163,16 +188,16 @@ const touchParam = (state: State, patchIdx: number, cc: number) => {
 const updateParam = (
   state: State,
   patchIdx: number,
-  ch: number,
+  channelIdx: number,
   cc: number,
   val: number
 ) => {
   const patch = state.patches[patchIdx]
 
   // update patch state
-  patch[ch][cc] = val
+  patch[channelIdx][cc] = val
 
-  MidiIO.sendCC(ch, cc, val)
+  MidiIO.sendCC(channelIdx, cc, val)
 
   const envelopes = { ...state.envelopes }
 
@@ -181,7 +206,7 @@ const updateParam = (
     // get operator index from cc
     const op = Math.floor((cc - 30) / 10)
 
-    envelopes[op] = updateEnvelope(patch[ch], op)
+    envelopes[op] = updateEnvelope(patch[channelIdx], op)
   }
 
   return { ...state, envelopes }
@@ -200,24 +225,54 @@ const updateEnvelopes = (state: State) => {
   return { ...state, envelopes }
 }
 
-const syncMidi = (state: State) => {
-  for (let i = 0; i < 4; i++) {
-    MidiIO.sendCC(0, 120, i)
-    const patch = state.patches[i]
-    patch.forEach((ccs, ch) => {
-      Object.entries(ccs).forEach(([key, val]) => {
-        const cc = parseInt(key, 10)
-        // sync midi cc
-        MidiIO.sendCC(ch, cc, val)
-        if (i === 0 && ch === 0) {
-          // sync bindings
-          MidiIO.sendCC(0, 110, state.bindings.x.includes(cc) ? 127 : 0)
-          MidiIO.sendCC(0, 111, state.bindings.y.includes(cc) ? 127 : 0)
-          MidiIO.sendCC(0, 112, state.bindings.z.includes(cc) ? 127 : 0)
-        }
-      })
-    })
+type SyncCcsArgs = {
+  channel: number
+  bindings?: Bindings
+  ccs: Ccs
+}
+
+const syncCcs = ({ channel, bindings, ccs }: SyncCcsArgs) => {
+  Object.entries(ccs).forEach(([key, val]) => {
+    const cc = parseInt(key, 10)
+    // sync midi cc
+    MidiIO.sendCC(channel, cc, val)
+    if (bindings) {
+      // sync bindings
+      MidiIO.sendCC(0, 110, bindings.x.includes(cc) ? 127 : 0)
+      MidiIO.sendCC(0, 111, bindings.y.includes(cc) ? 127 : 0)
+      MidiIO.sendCC(0, 112, bindings.z.includes(cc) ? 127 : 0)
+    }
+  })
+}
+
+type SyncPatchArgs = {
+  patch: Ccs[]
+  index: number
+  bindings?: Bindings
+}
+const syncPatch = ({ patch, index, bindings }: SyncPatchArgs) => {
+  MidiIO.sendCC(0, 120, index)
+  patch.forEach((ccs, channel) => {
+    syncCcs({ channel, bindings: channel === 0 ? bindings : undefined, ccs })
+  })
+}
+
+type SyncPatchesArgs = {
+  patches: Ccs[][]
+  bindings?: Bindings
+}
+const syncPatches = ({ patches, bindings }: SyncPatchesArgs) => {
+  // sync each patch
+  for (let index = 0; index < 4; index++) {
+    const patch = patches[index]
+    syncPatch({ patch, index, bindings: index === 0 ? bindings : undefined })
   }
+}
+
+const syncMidi = (state: State) => {
+  syncPatches({ patches: state.patches, bindings: state.bindings })
+  // sync settings
+  syncCcs({ channel: 0, bindings: state.bindings, ccs: state.settings })
 }
 
 const resetOperator = (state: State, op: number) => {
@@ -281,7 +336,7 @@ const reducer = (state: State, action: Action): State => {
       return updateParam(
         state,
         action.patchIdx,
-        action.ch,
+        action.channelIdx,
         action.cc,
         action.val
       )
@@ -302,9 +357,70 @@ const reducer = (state: State, action: Action): State => {
       MidiIO.sendCC(0, 120, patchIdx)
       return updateEnvelopes({ ...state, patchIdx })
     }
+    case 'move-patch': {
+      const { index, before } = action
+      const patches = [...state.patches]
+      if (index > before) {
+        // move backwards: remove and insert
+        patches.splice(index, 1)
+        patches.splice(before, 0, state.patches[index])
+      } else if (index < before - 1) {
+        // move forwards: insert and remove
+        patches.splice(before, 0, state.patches[index])
+        patches.splice(index, 1)
+      }
+      syncPatches({ patches })
+      return updateEnvelopes({ ...state, patches })
+    }
+    case 'copy-patch': {
+      const { source, target } = action
+      const patches = [...state.patches]
+      patches[target] = patches[source]
+      syncPatch({ patch: patches[target], index: target })
+      return updateEnvelopes({ ...state, patches })
+    }
     case 'change-channel': {
       const channelIdx = action.index
       return updateEnvelopes({ ...state, channelIdx })
+    }
+    case 'move-channel': {
+      const { index, before } = action
+      const patches = [...state.patches]
+      const patch = [...patches[state.patchIdx]]
+
+      const lfo = patch[0][1]
+      // remove LFO to avoid copying it
+      delete patch[0][1]
+
+      if (index > before) {
+        // move backwards: remove and insert
+        patch.splice(index, 1)
+        patch.splice(before, 0, patches[state.patchIdx][index])
+      } else if (index < before - 1) {
+        // move forwards: insert and remove
+        patch.splice(before, 0, patches[state.patchIdx][index])
+        patch.splice(index, 1)
+      }
+
+      // restore LFO
+      patch[0][1] = lfo
+
+      syncPatch({ patch, index: state.patchIdx })
+
+      patches[state.patchIdx] = patch
+      return updateEnvelopes({ ...state, patches })
+    }
+    case 'copy-channel': {
+      const { source, target } = action
+      const patches = [...state.patches]
+      const patch = [...patches[state.patchIdx]]
+      patch[target] = patch[source]
+
+      // remove LFO, just in case it got copied over
+      delete patch[target][1]
+      patches[state.patchIdx] = patch
+      syncCcs({ channel: target, ccs: patch[target] })
+      return updateEnvelopes({ ...state, patches })
     }
     case 'sync-midi':
       syncMidi(state)
@@ -345,7 +461,12 @@ const encodeState = (state: State) => {
     ''
   )
 
-  const output = compress(`${patches}${bindings}`, {
+  const settings = Object.values(state.settings).reduce(
+    (acc, val: number) => acc + val.toString(16).padStart(2, '0'),
+    ''
+  )
+
+  const output = compress(`${patches}${bindings}|${settings}`, {
     outputEncoding: 'Base64',
   })
 
@@ -364,27 +485,40 @@ const decodeState = (str: string) => {
       .map((s: string) => parseInt(s, 16))
   )
 
-  const { patches, bindings } = { ...initialState }
+  const { patches, bindings, settings } = { ...initialState }
 
   const patchValues = values.shift()
   patches.forEach((p) => {
     p.forEach((ch) => {
       Object.keys(ch).forEach((k) => {
-        ch[k] = patchValues.shift()
+        if (patchValues.length) {
+          ch[k] = patchValues.shift()
+        }
       })
     })
   })
 
   Object.keys(bindings).forEach((k) => {
     const bindingValues = values.shift()
-    bindings[k] = [...bindingValues]
+    if (bindingValues) {
+      bindings[k] = [...bindingValues]
+    }
   })
 
-  return { patches, bindings }
+  const settingsValues = values.shift()
+  if (settingsValues) {
+    Object.keys(settings).forEach((k) => {
+      if (settingsValues.length) {
+        settings[k] = settingsValues.shift()
+      }
+    })
+  }
+
+  return { patches, bindings, settings }
 }
 
 let saveId = null
-function CV2612Provider({ children }) {
+const CV2612Provider = ({ children }) => {
   const [state, dispatch] = useReducer<Reducer<State, Action>>(
     reducer,
     initialState
@@ -413,11 +547,14 @@ function CV2612Provider({ children }) {
       // const str = await reactLocalStorage.get("savedState")
       // const savedState = str ? JSON.parse(str) : null
       // dispatch({ type: "provider-ready", savedState })
-      const parts = window.location.hash.split('#')
-      if (parts.length === 2) {
+      try {
+        const parts = window.location.hash.split('#')
         const str = parts[1]
-        const savedState = { ...state, ...decodeState(str) }
+        const decodedState = decodeState(str)
+        const savedState = { ...state, ...decodedState }
         dispatch({ type: 'provider-ready', savedState })
+      } catch (e) {
+        dispatch({ type: 'provider-ready', savedState: state })
       }
     })()
 
