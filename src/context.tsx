@@ -42,6 +42,11 @@ type Action =
       cc: number
     }
   | {
+      type: 'update-setting'
+      cc: number
+      val: number
+    }
+  | {
       type: 'update-param'
       patchIdx: number
       channelIdx: number
@@ -183,6 +188,12 @@ const touchParam = (state: State, patchIdx: number, cc: number) => {
     return { ...state, bindings }
   }
   return state
+}
+
+const updateSetting = (state: State, cc: number, val: number) => {
+  state.settings[cc] = val
+  MidiIO.sendCC(0, cc, val)
+  return { ...state }
 }
 
 const updateParam = (
@@ -332,6 +343,8 @@ const reducer = (state: State, action: Action): State => {
       return updateEnvelopes(action.savedState ? action.savedState : state)
     case 'touch-param':
       return touchParam(state, action.patchIdx, action.cc)
+    case 'update-setting':
+      return updateSetting(state, action.cc, action.val)
     case 'update-param':
       return updateParam(
         state,

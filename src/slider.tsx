@@ -30,13 +30,21 @@ const Slider = ({
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10) << (7 - bits)
 
-    dispatch({
-      type: 'update-param',
-      patchIdx,
-      channelIdx,
-      cc,
-      val,
-    })
+    if (setting) {
+      dispatch({
+        type: 'update-setting',
+        cc,
+        val,
+      })
+    } else {
+      dispatch({
+        type: 'update-param',
+        patchIdx,
+        channelIdx,
+        cc,
+        val,
+      })
+    }
   }
 
   const onClick = (ev) => {

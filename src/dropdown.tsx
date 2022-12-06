@@ -12,9 +12,7 @@ const Dropdown = ({ title, label, cc, options }) => {
     const val = parseInt(ev.target.value, 10)
 
     dispatch({
-      type: 'update-param',
-      patchIdx: 0,
-      channelIdx: 0,
+      type: 'update-setting',
       cc,
       val,
     })
