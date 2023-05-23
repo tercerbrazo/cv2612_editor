@@ -1,19 +1,23 @@
 import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import { CtrlId, CV2612Context } from './context'
 
-const Dropdown = ({ title, label, cc, options }) => {
-  const { state, dispatch } = useContext(CV2612Context)
+type DropdownProps = {
+  id: CtrlId
+}
 
-  // dropdowns are for global parameters
-  const value = state.settings[cc]
+const Dropdown = ({ id }: DropdownProps) => {
+  const { dispatch, getParamData } = useContext(CV2612Context)
+
+  const { title, label, options, value, ch, cc } = getParamData(id, 0)
 
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
 
     dispatch({
-      type: 'update-setting',
-      cc,
+      type: 'update-ctrl',
+      id,
+      op: 0,
       val,
     })
   }
@@ -22,7 +26,7 @@ const Dropdown = ({ title, label, cc, options }) => {
     <div
       className="dropdown"
       aria-hidden="true"
-      data-title={`${title} - CC${cc}`}
+      data-title={`${title} - CC ${ch}:${cc}`}
     >
       <label>{label}</label>
       <select onChange={onChange} value={value}>

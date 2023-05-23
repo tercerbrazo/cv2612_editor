@@ -14,7 +14,7 @@ import {
 
 import React, { useCallback, useContext, useMemo } from 'react'
 import Channel from './channel'
-import { CV2612Context } from './context'
+import { ChannelId, CV2612Context, PatchId } from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
 
@@ -103,12 +103,12 @@ const Scene = () => {
 
   const sensors = useSensors(mouseSensor)
 
-  const handlePatchClick = (index: number) => (ev) => {
+  const handlePatchClick = (index: PatchId) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-patch', index })
   }
 
-  const handleChannelClick = (index: number) => (ev) => {
+  const handleChannelClick = (index: ChannelId) => (ev) => {
     ev.preventDefault()
     dispatch({ type: 'change-channel', index })
   }
@@ -154,97 +154,20 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
-          <Dropdown
-            label="pz"
-            title="Patch Zone"
-            cc={118}
-            options={['A- B', 'B - C', 'C - D']}
-          />
-          <Slider
-            label="bl"
-            title="Blend"
-            cc={119}
-            setting
-            noChannel
-            bits={7}
-          />
-          {/*
-          <Slider label="polyphony" cc={96} noChannel bits={2} />
-          <Slider label="quantize" cc={97} noChannel bits={1} />
-          <Slider label="legato" cc={98} noChannel bits={1} />
-          <Slider label="portamento" cc={99} noChannel bits={7} />
-          <Slider label="velocity" cc={100} noChannel bits={1} />
-          */}
+          <Dropdown id="pz" />
+          <Slider id="bl" />
         </div>
         <div className="col">
-          <Dropdown
-            label="pm"
-            title="Play Mode"
-            cc={90}
-            options={['MONO', 'DUO', 'TRIO', 'CHORD', 'CYCLE', 'RAND', 'POLY']}
-          />
-          <Slider
-            label="lb"
-            title="Led Brightness"
-            cc={91}
-            setting
-            noChannel
-            unbounded
-            bits={7}
-          />
+          <Dropdown id="pm" />
+          <Slider id="lb" />
         </div>
         <div className="col">
-          <Slider
-            label="tr"
-            title="Transpose"
-            cc={94}
-            noChannel
-            setting
-            unbounded
-            bits={7}
-          />
-          <Slider
-            label="tu"
-            title="Tunning"
-            cc={95}
-            noChannel
-            setting
-            unbounded
-            bits={7}
-          />
+          <Slider id="tr" />
+          <Slider id="tu" />
         </div>
         <div className="col">
-          <Dropdown
-            label="rc"
-            title="Midi Receive Channel"
-            cc={92}
-            options={[
-              'OMNI',
-              'RESPECT',
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              8,
-              9,
-              10,
-              11,
-              12,
-              13,
-              14,
-              15,
-              16,
-            ]}
-          />
-          <Dropdown
-            label="am"
-            title="Attenuverter Mode"
-            cc={93}
-            options={['AUTO', 'OFFSET', 'ATTENUVERTER']}
-          />
+          <Dropdown id="rc" />
+          <Dropdown id="atm" />
         </div>
       </div>
 
@@ -264,7 +187,7 @@ const Scene = () => {
                     index={i}
                     text={item}
                     active={state.patchIdx === i}
-                    onClick={handlePatchClick(i)}
+                    onClick={handlePatchClick(i as PatchId)}
                   />
                 </React.Fragment>
               ))}
@@ -287,7 +210,7 @@ const Scene = () => {
                     index={i}
                     text={item}
                     active={state.channelIdx === i}
-                    onClick={handleChannelClick(i)}
+                    onClick={handleChannelClick(i as ChannelId)}
                   />
                 </React.Fragment>
               ))}

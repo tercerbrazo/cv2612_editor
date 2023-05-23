@@ -24,6 +24,7 @@ module.exports = {
     'jsx-a11y/click-events-have-key-events': 'off',
     'no-param-reassign': 'off',
     '@typescript-eslint/no-shadow': 'off',
+    'react/require-default-props': 'off',
     'react/function-component-definition': [
       2,
       { namedComponents: 'arrow-function' },
