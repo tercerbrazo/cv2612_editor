@@ -198,12 +198,12 @@ button
     .tcol
       width: 75%
 
-  .slider, .dropdown
+  .slider, .dropdown, .midi-mapping
     position: relative
     padding: 0
     border: 2px solid transparent
     width: 230px
-    select, input
+    select, input, .cell
       text-align: center
       width: 190px
       height: 25px
@@ -247,6 +247,10 @@ button
     select
       font-size: 16px
       text-align: center
+      appearance: none
+      option
+        padding: 0
+        background: red
 
   .slider
     &.learn
@@ -299,6 +303,13 @@ button
         height: 25px
         background: $primary
         cursor: pointer
+
+  .midi-mapping
+    label
+      vertical-align: middle
+    .cell
+      display: inline-block
+      color: $black
 
 
   .seq

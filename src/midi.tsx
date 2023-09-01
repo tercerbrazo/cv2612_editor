@@ -33,7 +33,7 @@ const Midi = () => {
         setMidiOuts(outputs)
       }
     },
-    [midiOuts]
+    [midiOuts],
   )
 
   useEffect(() => {

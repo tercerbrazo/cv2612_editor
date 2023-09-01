@@ -1,4 +1,5 @@
 import {
+  DragEndEvent,
   DndContext,
   MouseSensor,
   pointerWithin,
@@ -12,9 +13,22 @@ import {
   restrictToParentElement,
 } from '@dnd-kit/modifiers'
 
-import React, { useCallback, useContext, useMemo } from 'react'
+import React, {
+  MouseEventHandler,
+  useCallback,
+  useContext,
+  useMemo,
+} from 'react'
 import Channel from './channel'
-import { ChannelId, CV2612Context, PatchId } from './context'
+import {
+  Param,
+  PlayModeEnum,
+  ChannelId,
+  CV2612Context,
+  PatchId,
+  OperatorId,
+  MidiChannelEnum,
+} from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
 
@@ -24,11 +38,18 @@ function useCombinedRefs<T>(...refs: ((node: T) => void)[]): (node: T) => void {
       refs.forEach((ref) => ref(node))
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    refs
+    refs,
   )
 }
 
-const Draggable = ({ index, text, active, onClick }) => {
+type DraggableProps = {
+  index: number
+  text: string
+  active: boolean
+  onClick: MouseEventHandler<HTMLButtonElement>
+}
+
+const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: `draggable-${index}`,
     data: { index, action: 'copy' },
@@ -94,52 +115,107 @@ const StepSeq = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
   const handleClick = useCallback(
-    (voice, step) => {
+    (voice: number, step: number) => {
       dispatch({ type: 'toggle-seq-step', voice, step })
     },
-    [dispatch]
+    [dispatch],
   )
 
   return (
-    state.moduleState['pm-0-0-0'] === 4 && (
-      <div className="four-cols">
-        <div className="col">
-          <Dropdown id="stp" />
-        </div>
-        <div className="tcol">
-          <div className="seq">
-            {state.sequence.map((voiceSteps, i) => (
-              <React.Fragment key={i}>
-                <div className="seq-row">
-                  {i === 0 && <div className="seq-header" />}
-                  {voiceSteps.map((step, j) => {
-                    return (
-                      i === 0 && (
-                        <div key={j} className="seq-header">
-                          {j + 1}
-                        </div>
-                      )
+    <div className="four-cols">
+      <div className="col">
+        <Dropdown id="stp" />
+      </div>
+      <div className="tcol">
+        <div className="seq">
+          {state.sequence.map((voiceSteps, i) => (
+            <React.Fragment key={i}>
+              <div className="seq-row">
+                {i === 0 && <div className="seq-header" />}
+                {voiceSteps.map((_step, j) => {
+                  return (
+                    i === 0 && (
+                      <div key={j} className="seq-header">
+                        {j + 1}
+                      </div>
                     )
-                  })}
-                </div>
-                <div className="seq-row" key={i}>
-                  <div className="seq-header">{i + 1}</div>
-                  {voiceSteps.map((step, j) => {
-                    return (
-                      <div
-                        className={`seq-cell ${step ? 'step-on' : ''}`}
-                        key={j}
-                        onClick={() => handleClick(i, j)}
-                      />
-                    )
-                  })}
-                </div>
-              </React.Fragment>
-            ))}
-          </div>
+                  )
+                })}
+              </div>
+              <div className="seq-row" key={i}>
+                <div className="seq-header">{i + 1}</div>
+                {voiceSteps.map((step, j) => {
+                  return (
+                    <div
+                      className={`seq-cell ${step ? 'step-on' : ''}`}
+                      key={j}
+                      onClick={() => handleClick(i, j)}
+                    />
+                  )
+                })}
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+type MidiMappingProps = {
+  id: Param
+  op: OperatorId
+}
+const MidiMapping = ({ id, op }: MidiMappingProps) => {
+  const { getParamData } = useContext(CV2612Context)
+
+  const { title, label, cc } = getParamData(id, 0)
+  return (
+    <div data-title={title} className="midi-mapping">
+      <label>{label}</label>
+      <span className="cell">CC {cc + op * 10}</span>
+    </div>
+  )
+}
+
+const MidiChannelDetails = () => {
+  const { state } = useContext(CV2612Context)
+
+  if (state.midiChannel === MidiChannelEnum.OMNI) {
+    return (
+      <>
+        Notes will be played as MONO using all voices simultaneously.
+        <br />
+        Control Change messages will affect all voices.
+      </>
     )
+  }
+  if (state.midiChannel === MidiChannelEnum.FORWARD) {
+    return (
+      <>
+        Notes on channel <b>N</b> will affect voice <b>N</b>, for <b>N</b> in
+        [1..6]
+        <br />
+        Control Change messages will affect all voices, no matter the channel.
+      </>
+    )
+  }
+  if (state.midiChannel === MidiChannelEnum.MULTITRACK) {
+    return (
+      <>
+        Notes and CC on channel <b>N</b> will affect voice <b>N</b>, for{' '}
+        <b>N</b> in [1..6]
+      </>
+    )
+  }
+  return (
+    <>
+      Same as <b>OMNI</b>, but only listening to channel {state.midiChannel + 1}
+      <br />
+      Notes will be played as MONO using all voices simultaneously.
+      <br />
+      Control Change messages will affect all voices.
+    </>
   )
 }
 
@@ -156,18 +232,22 @@ const Scene = () => {
 
   const sensors = useSensors(mouseSensor)
 
-  const handlePatchClick = (index: PatchId) => (ev) => {
-    ev.preventDefault()
-    dispatch({ type: 'change-patch', index })
-  }
+  const handlePatchClick =
+    (index: PatchId): MouseEventHandler =>
+    (ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'change-patch', index })
+    }
 
-  const handleChannelClick = (index: ChannelId) => (ev) => {
-    ev.preventDefault()
-    dispatch({ type: 'change-channel', index })
-  }
+  const handleChannelClick =
+    (index: ChannelId): MouseEventHandler =>
+    (ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'change-channel', index })
+    }
 
   const handlePatchDragEnd = useCallback(
-    (event) => {
+    (event: DragEndEvent) => {
       const drag = event.active?.data?.current
       const drop = event.over?.data?.current
 
@@ -177,11 +257,11 @@ const Scene = () => {
         dispatch({ type: 'copy-patch', source: drag.index, target: drop.index })
       }
     },
-    [dispatch]
+    [dispatch],
   )
 
   const handleChannelDragEnd = useCallback(
-    (event) => {
+    (event: DragEndEvent) => {
       const drag = event.active?.data?.current
       const drop = event.over?.data?.current
 
@@ -199,7 +279,7 @@ const Scene = () => {
         })
       }
     },
-    [dispatch]
+    [dispatch],
   )
 
   return (
@@ -219,65 +299,121 @@ const Scene = () => {
           <Slider id="tu" />
         </div>
         <div className="col">
-          <Dropdown id="rc" />
           <Dropdown id="atm" />
+          {state.playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
         </div>
       </div>
 
-      <StepSeq />
+      {state.playMode === PlayModeEnum.SEQ && <StepSeq />}
 
-      <div className="two-cols">
-        <div className="col">
-          <DndContext
-            onDragEnd={handlePatchDragEnd}
-            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-            collisionDetection={pointerWithin}
-            sensors={sensors}
-          >
-            <nav>
-              {['A', 'B', 'C', 'D'].map((item, i) => (
-                <React.Fragment key={item}>
-                  <Droppable index={i} />
-                  <Draggable
-                    index={i}
-                    text={item}
-                    active={state.patchIdx === i}
-                    onClick={handlePatchClick(i as PatchId)}
-                  />
-                </React.Fragment>
-              ))}
-              <Droppable index={4} />
-            </nav>
-          </DndContext>
-        </div>
-        <div className="col">
-          <DndContext
-            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-            collisionDetection={pointerWithin}
-            sensors={sensors}
-            onDragEnd={handleChannelDragEnd}
-          >
-            <nav>
-              {['1', '2', '3', '4', '5', '6'].map((item, i) => (
-                <React.Fragment key={item}>
-                  <Droppable index={i} />
-                  <Draggable
-                    index={i}
-                    text={item}
-                    active={state.channelIdx === i}
-                    onClick={handleChannelClick(i as ChannelId)}
-                  />
-                </React.Fragment>
-              ))}
-              <Droppable index={6} />
-            </nav>
-          </DndContext>
-        </div>
-      </div>
+      {state.playMode === PlayModeEnum.POLY ? (
+        <>
+          <p>
+            <b>POLY</b> is a special performance mode that is not compatible
+            with patch edition, due to midi message handling in this mode.
+            <br />
+            This is a MIDI only mode ( GATE/CV are disabled) and behaviour is
+            based on the Midi Receive Channel setting. For{' '}
+            <b>{MidiChannelEnum[state.midiChannel]}</b>:
+          </p>
+          <blockquote>
+            <MidiChannelDetails />
+          </blockquote>
+          <p>
+            Patches and modulations are respected, but CCs sent within this mode
+            will change the parameter in all four patches at once.
+            <br />
+            <br />
+            MIDI mappings reference:
+          </p>
+          <div className="four-cols">
+            <div className="col">
+              <MidiMapping id="lfo" op={0} />
+              <MidiMapping id="st" op={0} />
+            </div>
+            <div className="col">
+              <MidiMapping id="ams" op={0} />
+              <MidiMapping id="fms" op={0} />
+            </div>
+            <div className="col">
+              <MidiMapping id="al" op={0} />
+              <MidiMapping id="fb" op={0} />
+            </div>
+            <div className="col"></div>
+          </div>
+          <br />
+          <div className="four-cols">
+            {([0, 1, 2, 3] as OperatorId[]).map((op) => (
+              <div className="col" key={op}>
+                <MidiMapping id="ar" op={op} />
+                <MidiMapping id="d1" op={op} />
+                <MidiMapping id="sl" op={op} />
+                <MidiMapping id="d2" op={op} />
+                <MidiMapping id="rr" op={op} />
+                <MidiMapping id="tl" op={op} />
+                <MidiMapping id="mul" op={op} />
+                <MidiMapping id="det" op={op} />
+                <MidiMapping id="rs" op={op} />
+                <MidiMapping id="am" op={op} />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="two-cols">
+            <div className="col">
+              <DndContext
+                onDragEnd={handlePatchDragEnd}
+                modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+                collisionDetection={pointerWithin}
+                sensors={sensors}
+              >
+                <nav>
+                  {['A', 'B', 'C', 'D'].map((item, i) => (
+                    <React.Fragment key={item}>
+                      <Droppable index={i} />
+                      <Draggable
+                        index={i}
+                        text={item}
+                        active={state.patchIdx === i}
+                        onClick={handlePatchClick(i as PatchId)}
+                      />
+                    </React.Fragment>
+                  ))}
+                  <Droppable index={4} />
+                </nav>
+              </DndContext>
+            </div>
+            <div className="col">
+              <DndContext
+                modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+                collisionDetection={pointerWithin}
+                sensors={sensors}
+                onDragEnd={handleChannelDragEnd}
+              >
+                <nav>
+                  {['1', '2', '3', '4', '5', '6'].map((item, i) => (
+                    <React.Fragment key={item}>
+                      <Droppable index={i} />
+                      <Draggable
+                        index={i}
+                        text={item}
+                        active={state.channelIdx === i}
+                        onClick={handleChannelClick(i as ChannelId)}
+                      />
+                    </React.Fragment>
+                  ))}
+                  <Droppable index={6} />
+                </nav>
+              </DndContext>
+            </div>
+          </div>
+          <br />
 
-      <br />
-
-      <Channel />
+          <Channel />
+        </>
+      )}
     </>
   )
 }
