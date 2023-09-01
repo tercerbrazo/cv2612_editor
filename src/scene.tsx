@@ -90,6 +90,59 @@ const Droppable = ({ index }) => {
   )
 }
 
+const StepSeq = () => {
+  const { state, dispatch } = useContext(CV2612Context)
+
+  const handleClick = useCallback(
+    (voice, step) => {
+      dispatch({ type: 'toggle-seq-step', voice, step })
+    },
+    [dispatch]
+  )
+
+  return (
+    state.moduleState['pm-0-0-0'] === 4 && (
+      <div className="four-cols">
+        <div className="col">
+          <Dropdown id="stp" />
+        </div>
+        <div className="tcol">
+          <div className="seq">
+            {state.sequence.map((voiceSteps, i) => (
+              <React.Fragment key={i}>
+                <div className="seq-row">
+                  {i === 0 && <div className="seq-header" />}
+                  {voiceSteps.map((step, j) => {
+                    return (
+                      i === 0 && (
+                        <div key={j} className="seq-header">
+                          {j + 1}
+                        </div>
+                      )
+                    )
+                  })}
+                </div>
+                <div className="seq-row" key={i}>
+                  <div className="seq-header">{i + 1}</div>
+                  {voiceSteps.map((step, j) => {
+                    return (
+                      <div
+                        className={`seq-cell ${step ? 'step-on' : ''}`}
+                        key={j}
+                        onClick={() => handleClick(i, j)}
+                      />
+                    )
+                  })}
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  )
+}
+
 const Scene = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
@@ -170,6 +223,8 @@ const Scene = () => {
           <Dropdown id="atm" />
         </div>
       </div>
+
+      <StepSeq />
 
       <div className="two-cols">
         <div className="col">

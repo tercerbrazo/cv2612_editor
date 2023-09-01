@@ -195,6 +195,8 @@ button
     gap: 12px
     .col
       width: 25%
+    .tcol
+      width: 75%
 
   .slider, .dropdown
     position: relative
@@ -298,6 +300,23 @@ button
         background: $primary
         cursor: pointer
 
+
+  .seq
+    .seq-header
+      width: 20px
+      height: 20px
+      border: 1px solid transparent
+      font-size: 0.75em
+      text-align: center
+    .seq-row
+      display: flex
+      .seq-cell
+        width: 20px
+        height: 20px
+        border: 1px solid white
+        cursor: pointer
+        &.step-on
+          background: white
 
 @keyframes blinkLed
   from

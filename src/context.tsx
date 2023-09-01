@@ -18,26 +18,49 @@ type ParamMeta = {
   max: number
   bits: number
   options: string[]
-  unbounded: boolean
+  bi?: number
 }
 
-// type CtrlData = Omit<CtrlMeta, 'bits'> & { value: number }
-type ParamData = ParamMeta & { value: number }
+type ParamData = ParamMeta & {
+  value: number
+}
 
 type PatchId = 0 | 1 | 2 | 3
 type ChannelId = 0 | 1 | 2 | 3 | 4 | 5
 type OperatorId = 0 | 1 | 2 | 3
 
 type ContextValue = {
-  getParamData: (id: CtrlId, op: OperatorId) => ParamData
+  getParamData: (id: Param, op: OperatorId) => ParamData
+  envelopes: Record<OperatorId, string>
   state: State
   dispatch: React.Dispatch<Action>
 }
 const CV2612Context = React.createContext<ContextValue>(null)
 
-const bindingsMap: Record<BindingKey, number> = { x: 110, y: 111, z: 112 }
+enum MidiCommands {
+  BIND_X = 101,
+  BIND_Y = 102,
+  BIND_Z = 103,
+  COPY_PATCH = 104,
+  MOVE_PATCH = 105,
+  COPY_CHANNEL = 106,
+  MOVE_CHANNEL = 107,
+  SET_SEQ_STEP_ON = 108,
+  SET_SEQ_STEP_OFF = 109,
+  SAVE_STATE = 110,
+}
 
-enum SettingCtrlIdEnum {
+const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
+  MidiIO.sendCC(15, cmd, val)
+}
+
+const bindingsMap: Record<BindingKey, MidiCommands> = {
+  x: MidiCommands.BIND_X,
+  y: MidiCommands.BIND_Y,
+  z: MidiCommands.BIND_Z,
+}
+
+enum SettingParamEnum {
   PATCH_ZONE = 'pz',
   BLEND = 'bl',
   PLAY_MODE = 'pm',
@@ -46,13 +69,14 @@ enum SettingCtrlIdEnum {
   TUNNING = 'tu',
   MIDI_RECEIVE_CHANNEL = 'rc',
   ATTENUVERTER_MODE = 'atm',
+  SEQ_STEPS = 'stp',
 }
 
-enum PatchCtrlIdEnum {
+enum PatchParamEnum {
   LFO = 'lfo',
 }
 
-enum ChannelCtrlIdEnum {
+enum ChannelParamEnum {
   AL = 'al',
   FB = 'fb',
   AMS = 'ams',
@@ -60,7 +84,7 @@ enum ChannelCtrlIdEnum {
   ST = 'st',
 }
 
-enum OperatorCtrlIdEnum {
+enum OperatorParamEnum {
   AR = 'ar',
   D1 = 'd1',
   SL = 'sl',
@@ -72,35 +96,37 @@ enum OperatorCtrlIdEnum {
   RS = 'rs',
   AM = 'am',
 }
+const CH_PARAM_OFFSET = 10
+const OP_PARAM_OFFSET = 40
+const CH_BINDING_OFFSET = 10
+const OP_BINDING_OFFSET = 20
 
-type SettingCtrlId = `${SettingCtrlIdEnum}`
-type PatchCtrlId = `${PatchCtrlIdEnum}`
-type ChannelCtrlId = `${ChannelCtrlIdEnum}`
-type OperatorCtrlId = `${OperatorCtrlIdEnum}`
-type CtrlId = SettingCtrlId | PatchCtrlId | ChannelCtrlId | OperatorCtrlId
-
+type SettingParam = `${SettingParamEnum}`
+type PatchParam = `${PatchParamEnum}`
+type ChannelParam = `${ChannelParamEnum}`
+type OperatorParam = `${OperatorParamEnum}`
+type Param = SettingParam | PatchParam | ChannelParam | OperatorParam
 type BindingKey = 'x' | 'y' | 'z'
-type BindingValue = `${CtrlId}-${OperatorId}`
-type Bindings = Record<BindingKey, BindingValue[]>
 
-const isSettingCtrlId = (ctrlId: CtrlId): ctrlId is SettingCtrlId => {
-  const keys: string[] = Object.values(SettingCtrlIdEnum)
-  return keys.includes(ctrlId)
+const isSettingParam = (id: Param): id is SettingParam => {
+  const keys: string[] = Object.values(SettingParamEnum)
+  return keys.includes(id)
 }
 
-const isPatchCtrlId = (ctrlId: CtrlId): ctrlId is PatchCtrlId => {
-  const keys: string[] = Object.values(PatchCtrlIdEnum)
-  return keys.includes(ctrlId)
+const isPatchParam = (id: Param): id is PatchParam => {
+  const keys: string[] = Object.values(PatchParamEnum)
+  return keys.includes(id)
 }
 
-const isChannelCtrlId = (ctrlId: CtrlId): ctrlId is ChannelCtrlId => {
-  const keys: string[] = Object.values(ChannelCtrlIdEnum)
-  return keys.includes(ctrlId)
+const isChannelParam = (id: Param): id is ChannelParam => {
+  const keys: string[] = Object.values(ChannelParamEnum)
+  return keys.includes(id)
 }
 
-// const isOperatorCtrlId = (ctrlId: CtrlId): ctrlId is OperatorCtrlId => {
-//   return ctrlId in OperatorCtrlIdEnum
-// }
+const isOperatorParam = (id: Param): id is OperatorParam => {
+  const keys: string[] = Object.values(OperatorParamEnum)
+  return keys.includes(id)
+}
 
 /*
  * A ModuleState is the state of the YM2612 regarding sound design.
@@ -113,9 +139,9 @@ const isChannelCtrlId = (ctrlId: CtrlId): ctrlId is ChannelCtrlId => {
 type ModuleState = Record<string, number>
 
 type State = {
+  sequence: boolean[][]
   bindingKey?: BindingKey
-  bindings: Bindings
-  envelopes: Record<number, string>
+  bindings: Record<BindingKey, number[]>
   moduleState: ModuleState
   patchIdx: PatchId
   channelIdx: ChannelId
@@ -126,15 +152,20 @@ type Action =
       savedState: State
     }
   | {
-      type: 'touch-ctrl'
-      id: CtrlId
+      type: 'toggle-param-binding'
+      id: Param
       op: OperatorId
     }
   | {
-      type: 'update-ctrl'
-      id: CtrlId
+      type: 'change-param'
+      id: Param
       op: OperatorId
       val: number
+    }
+  | {
+      type: 'toggle-seq-step'
+      voice: number
+      step: number
     }
   | {
       type: 'toggle-binding'
@@ -179,10 +210,10 @@ type Action =
       type: 'sync-midi'
     }
   | {
-      type: 'save-patch'
+      type: 'save-state'
     }
 
-const ctrlTitles: Record<CtrlId, string> = {
+const paramTitles: Record<Param, string> = {
   pz: 'Patch Zone',
   bl: 'Blend',
   pm: 'Play Mode',
@@ -191,6 +222,7 @@ const ctrlTitles: Record<CtrlId, string> = {
   tu: 'Tunning',
   rc: 'Midi Receive Channel',
   atm: 'Attenuverter Mode',
+  stp: 'Seq Mode steps',
   lfo: 'Low Frequency Oscillator',
   st: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
@@ -209,10 +241,16 @@ const ctrlTitles: Record<CtrlId, string> = {
   am: 'Amplitude Modulation',
 }
 
-const ctrlBitness: Record<
-  PatchCtrlId | ChannelCtrlId | OperatorCtrlId,
-  number
-> = {
+const paramBitness: Record<Param, number> = {
+  pz: 7,
+  bl: 7,
+  pm: 7,
+  lb: 7,
+  tr: 7,
+  tu: 7,
+  rc: 7,
+  atm: 7,
+  stp: 7,
   lfo: 3,
   st: 2,
   ams: 2,
@@ -231,12 +269,12 @@ const ctrlBitness: Record<
   am: 1,
 }
 
-const getCtrlOptions = (id: CtrlId): string[] => {
+const getParamOptions = (id: Param): string[] => {
   switch (id) {
     case 'pz':
       return ['A- B', 'B - C', 'C - D']
     case 'pm':
-      return ['MONO', 'DUO', 'TRIO', 'CHORD', 'CYCLE', 'RAND', 'POLY']
+      return ['MONO', 'DUO', 'TRIO', 'CHORD', 'SEQ', 'RAND', 'POLY']
     case 'rc':
       return [
         'OMNI',
@@ -260,127 +298,120 @@ const getCtrlOptions = (id: CtrlId): string[] => {
       ]
     case 'atm':
       return ['AUTO', 'OFFSET', 'ATTENUVERTER']
+    case 'stp':
+      return [
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12',
+        '13',
+        '14',
+        '15',
+        '16',
+      ]
     default:
       return []
   }
 }
 
-const getCtrlCh = (id: CtrlId, pid: PatchId, op: OperatorId): number => {
-  switch (id) {
-    case 'pz':
-    case 'bl':
-    case 'pm':
-    case 'lb':
-    case 'tr':
-    case 'tu':
-    case 'rc':
-    case 'atm':
-      return 16
-    case 'lfo':
-    case 'st':
-    case 'ams':
-    case 'fms':
-    case 'al':
-    case 'fb':
-      return pid * 4
-    case 'ar':
-    case 'd1':
-    case 'sl':
-    case 'd2':
-    case 'rr':
-    case 'tl':
-    case 'mul':
-    case 'det':
-    case 'rs':
-    case 'am':
-      return pid * 4 + op
-    default:
-      // shouldn't happen
-      return 0
+/*
+ * This is how Module parameters are mapped to Midi channel/control_change
+ * for a particular id-patch-channel-operator combination.
+ * This needs to be mimicked in the module firmware.
+ *
+ * */
+const getParamMidiCc = (
+  id: Param,
+  pid: PatchId,
+  cid: ChannelId,
+  op: OperatorId
+): { ch: number; cc: number } => {
+  if (isSettingParam(id)) {
+    const values: SettingParam[] = Object.values(SettingParamEnum)
+    const index = values.indexOf(id)
+    return { ch: 15, cc: 0 + index }
   }
+  if (isPatchParam(id)) {
+    // LFO case
+    return { ch: pid * 4, cc: 9 }
+  }
+  if (isChannelParam(id)) {
+    const values: ChannelParam[] = Object.values(ChannelParamEnum)
+    const index = values.indexOf(id)
+    return {
+      ch: pid * 4,
+      cc: CH_PARAM_OFFSET + cid * values.length + index,
+    } // 10-39 range
+  }
+  // isOperatorParam
+  const values: OperatorParam[] = Object.values(OperatorParamEnum)
+  const index = values.indexOf(id)
+  return {
+    ch: pid * 4 + op,
+    cc: OP_PARAM_OFFSET + cid * values.length + index,
+  } // 40 - 99 range
 }
 
-const getCtrlCc = (id: CtrlId, cid: ChannelId): number => {
-  switch (id) {
-    case 'pz':
-    case 'bl':
-    case 'pm':
-    case 'lb':
-    case 'tr':
-    case 'tu':
-    case 'rc':
-    case 'atm':
-      return 0
-    case 'lfo':
-      return 9
-    case 'al':
-      return 10 + cid * 5
-    case 'fb':
-      return 11 + cid * 5
-    case 'ams':
-      return 12 + cid * 5
-    case 'fms':
-      return 13 + cid * 5
-    case 'st':
-      return 14 + cid * 5
-    case 'ar':
-      return 40 + cid * 10
-    case 'd1':
-      return 41 + cid * 10
-    case 'sl':
-      return 42 + cid * 10
-    case 'd2':
-      return 43 + cid * 10
-    case 'rr':
-      return 44 + cid * 10
-    case 'tl':
-      return 45 + cid * 10
-    case 'mul':
-      return 46 + cid * 10
-    case 'det':
-      return 47 + cid * 10
-    case 'rs':
-      return 48 + cid * 10
-    case 'am':
-      return 49 + cid * 10
-    default:
-      // shouldn't happen
-      return 0
+/*
+ * Binding index defines how a parameter can be bound to a modulator.
+ * There is a maximum of 64 parameters that can be bound (but actually only
+ * 47 are currently used) and depending on the action wanted (binding/unbinding)
+ * the corresponding CC value will be shifted by 64.
+ * Example:
+ *   if BLEND binding index is `1`, then:
+ *    * to unbind, send CC value 1
+ *    * to bind, send CC value 65 (64+1)
+ * This needs to be mimicked in the module firmware.
+ *
+ * */
+const getParamBindingIndex = (
+  id: Param,
+  op: OperatorId
+): number | undefined => {
+  if (id === SettingParamEnum.BLEND) {
+    return 1
   }
+  if (id === PatchParamEnum.LFO) {
+    return 2
+  }
+  if (isChannelParam(id)) {
+    const values: ChannelParam[] = Object.values(ChannelParamEnum)
+    const index = values.indexOf(id)
+    return CH_BINDING_OFFSET + index
+  }
+  if (isOperatorParam(id)) {
+    const values: OperatorParam[] = Object.values(OperatorParamEnum)
+    const index = values.indexOf(id)
+    return OP_BINDING_OFFSET + values.length * op + index
+  }
+  // for any other non-boundable parameter it'll be undefined
+  return undefined
 }
 
-const getCtrlUnbounded = (id: CtrlId): boolean => {
-  switch (id) {
-    case 'pz':
-    case 'pm':
-    case 'lb':
-    case 'tr':
-    case 'tu':
-    case 'rc':
-    case 'atm':
-      return true
-    // case 'bl':
-    default:
-      return false
-  }
-}
-
-const getKey = (
-  id: CtrlId,
+const encodeKey = (
+  id: Param,
   pid: PatchId,
   cid: ChannelId,
   op: OperatorId
 ): string => {
-  if (isSettingCtrlId(id)) {
+  if (isSettingParam(id)) {
     return `${id}-0-0-0`
   }
-  if (isPatchCtrlId(id)) {
+  if (isPatchParam(id)) {
     return `${id}-${pid}-0-0`
   }
-  if (isChannelCtrlId(id)) {
+  if (isChannelParam(id)) {
     return `${id}-${pid}-${cid}-0`
   }
-  // isOperatorCtrlId
+  // isOperatorParam
   return `${id}-${pid}-${cid}-${op}`
 }
 
@@ -388,7 +419,7 @@ const decodeKey = (key: string) => {
   const parts = key.split('-')
 
   return {
-    id: parts[0] as CtrlId,
+    id: parts[0] as Param,
     pid: parseInt(parts[1], 10) as PatchId,
     cid: parseInt(parts[2], 10) as ChannelId,
     op: parseInt(parts[3], 10) as OperatorId,
@@ -396,25 +427,24 @@ const decodeKey = (key: string) => {
 }
 
 const getParamMeta = (
-  id: CtrlId,
+  id: Param,
   pid: PatchId,
   cid: ChannelId,
   op: OperatorId
 ): ParamMeta => {
-  const key = getKey(id, pid, cid, op)
-  const ch = getCtrlCh(id, pid, op)
-  const cc = getCtrlCc(id, cid)
+  const key = encodeKey(id, pid, cid, op)
+  const { ch, cc } = getParamMidiCc(id, pid, cid, op)
   const label: string = id
-  const bits = isSettingCtrlId(id) ? 7 : ctrlBitness[id]
-  const title = ctrlTitles[id]
-  const options = getCtrlOptions(id)
-  const unbounded = getCtrlUnbounded(id)
+  const bits = paramBitness[id]
+  const title = paramTitles[id]
+  const options = getParamOptions(id)
+  const bi = getParamBindingIndex(id, op)
   const max = 127 >> (7 - bits)
 
   return {
     title,
     label,
-    unbounded,
+    bi,
     cc,
     ch,
     max,
@@ -427,14 +457,22 @@ const getParamMeta = (
 const getInitialState = (): State => {
   const state: State = {
     bindings: { x: [], y: [], z: [] },
-    envelopes: {},
     patchIdx: 0,
     channelIdx: 0,
     moduleState: {},
+    sequence: [],
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const steps = []
+    for (let j = 0; j < 16; j++) {
+      steps.push((j - i) % 6 === 0)
+    }
+    state.sequence.push(steps)
   }
 
   const setParamValue = (
-    id: CtrlId,
+    id: Param,
     patchIdx: PatchId,
     channelIdx: ChannelId,
     op: OperatorId,
@@ -474,21 +512,22 @@ const getInitialState = (): State => {
   }
 
   // add globals settings
-  setParamValue('pm', 0, 0, 0, 0) // play mode
-  setParamValue('lb', 0, 0, 0, 64) // led brigtness
-  setParamValue('rc', 0, 0, 0, 0) // Midi Receive Channel
-  setParamValue('atm', 0, 0, 0, 0) // Attenuverter mode
-  setParamValue('tr', 0, 0, 0, 32) // transpose
-  setParamValue('tu', 0, 0, 0, 64) // tuning
-  setParamValue('bl', 0, 0, 0, 0) // blend
+  setParamValue(SettingParamEnum.PLAY_MODE, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.LED_BRIGHTNESS, 0, 0, 0, 64)
+  setParamValue(SettingParamEnum.MIDI_RECEIVE_CHANNEL, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.ATTENUVERTER_MODE, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.TRANSPOSE, 0, 0, 0, 32)
+  setParamValue(SettingParamEnum.TUNNING, 0, 0, 0, 64)
+  setParamValue(SettingParamEnum.BLEND, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.SEQ_STEPS, 0, 0, 0, 7)
 
   return state
 }
 
 const initialState = getInitialState()
 
-const updateEnvelope = (state: State, op: OperatorId) => {
-  const getNormalizedValue = (id: CtrlId) => {
+const getEnvelope = (state: State, op: OperatorId) => {
+  const getNormalizedValue = (id: Param) => {
     const { bits, key } = getParamMeta(id, state.patchIdx, state.channelIdx, op)
     return (state.moduleState[key] << (7 - bits)) / 127
   }
@@ -503,39 +542,38 @@ const updateEnvelope = (state: State, op: OperatorId) => {
   return calculateEnvelopePoints({ ar, d1, sl, d2, rr, tl })
 }
 
-const touchCtrl = (state: State, id: CtrlId, op: OperatorId) => {
+const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
   if (state.bindingKey) {
-    const bindings = { ...state.bindings }
+    const { bi } = getParamMeta(id, state.patchIdx, state.channelIdx, op)
+    const binding = state.bindings[state.bindingKey]
 
-    const { ch, cc, key, bits } = getParamMeta(
-      id,
-      state.patchIdx,
-      state.channelIdx,
-      op
-    )
-    const bindingValue = `${id}-${op}` as BindingValue
-    const exists = bindings[state.bindingKey].includes(bindingValue)
-
-    if (exists) {
-      bindings[state.bindingKey] = bindings[state.bindingKey].filter(
-        (i) => i !== bindingValue
-      )
+    const index = binding.indexOf(bi)
+    if (index !== -1) {
+      binding.splice(index, 1)
+      sendMidiCmd(bindingsMap[state.bindingKey], bi)
     } else {
-      bindings[state.bindingKey].push(bindingValue)
+      binding.push(bi)
+      sendMidiCmd(bindingsMap[state.bindingKey], 64 + bi)
     }
-
-    // re-send cc value (of first channel) just to make it the lastParameter
-    const ccVal = state.moduleState[key] << (7 - bits)
-    MidiIO.sendCC(ch, cc, ccVal)
-    // bind parameter
-    MidiIO.sendCC(0, bindingsMap[state.bindingKey], exists ? 0 : 127)
-
-    return { ...state, bindings }
   }
-  return state
+  return { ...state }
 }
 
-const updateCtrl = (state: State, id: CtrlId, op: OperatorId, val: number) => {
+const toggleSeqStep = (state: State, voice: number, step: number) => {
+  const isOn = state.sequence[voice][step]
+  const val = voice * 16 + step
+
+  state.sequence[voice][step] = !isOn
+
+  sendMidiCmd(
+    isOn ? MidiCommands.SET_SEQ_STEP_OFF : MidiCommands.SET_SEQ_STEP_ON,
+    val
+  )
+
+  return { ...state }
+}
+
+const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
   const { key, ch, cc, bits } = getParamMeta(
     id,
     state.patchIdx,
@@ -548,45 +586,32 @@ const updateCtrl = (state: State, id: CtrlId, op: OperatorId, val: number) => {
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
 
-  const envelopes = { ...state.envelopes }
-
-  // does this parameter change an envelope?
-  // FIXME:  if (cc >= 30 && cc < 70 && cc % 10 <= 5) {
-  envelopes[op] = updateEnvelope(state, op)
-  // }
-
-  return { ...state, envelopes }
-}
-
-const updateEnvelopes = (state: State) => {
-  const envelopes = { ...state.envelopes }
-
-  // TODO: do not asume envelopes have changed
-  for (let op = 0; op < 4; op++) {
-    envelopes[op] = updateEnvelope(state, op as OperatorId)
-  }
-
-  return { ...state, envelopes }
+  return { ...state }
 }
 
 const syncMidi = (state: State) => {
+  const bindingIndexes = new Set<number>()
+
   Object.entries(state.moduleState).forEach(([key, val]) => {
     const { id, pid, cid, op } = decodeKey(key)
-    const { ch, cc, bits } = getParamMeta(id, pid, cid, op)
+    const { ch, cc, bits, bi } = getParamMeta(id, pid, cid, op)
     const ccVal = val << (7 - bits)
     // sync midi cc
     MidiIO.sendCC(ch, cc, ccVal)
-    // if (bindings) {
-    //   // sync bindings
-    //   MidiIO.sendCC(0, 110, bindings.x.includes(cc) ? 127 : 0)
-    //   MidiIO.sendCC(0, 111, bindings.y.includes(cc) ? 127 : 0)
-    //   MidiIO.sendCC(0, 112, bindings.z.includes(cc) ? 127 : 0)
-    // }
+    if (bi) {
+      bindingIndexes.add(bi)
+    }
+  })
+
+  bindingIndexes.forEach((bi) => {
+    sendMidiCmd(bindingsMap.x, (state.bindings.x.includes(bi) ? 64 : 0) + bi)
+    sendMidiCmd(bindingsMap.y, (state.bindings.y.includes(bi) ? 64 : 0) + bi)
+    sendMidiCmd(bindingsMap.z, (state.bindings.z.includes(bi) ? 64 : 0) + bi)
   })
 }
 
 const resetOperator = (state: State, op: OperatorId) => {
-  const updateAndSync = (id: CtrlId, val: number) => {
+  const updateAndSync = (id: Param, val: number) => {
     const { key, ch, cc, bits } = getParamMeta(
       id,
       state.patchIdx,
@@ -594,7 +619,6 @@ const resetOperator = (state: State, op: OperatorId) => {
       op
     )
     state.moduleState[key] = val
-    // sync midi cc
     // sync midi cc
     const ccVal = val << (7 - bits)
     MidiIO.sendCC(ch, cc, ccVal)
@@ -615,7 +639,7 @@ const resetOperator = (state: State, op: OperatorId) => {
 }
 
 const resetChannel = (state: State) => {
-  const updateAndSync = (id: CtrlId, val: number) => {
+  const updateAndSync = (id: Param, val: number) => {
     const { key, ch, cc, bits } = getParamMeta(
       id,
       state.patchIdx,
@@ -645,11 +669,11 @@ const resetChannel = (state: State) => {
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case 'provider-ready':
-      return updateEnvelopes(action.savedState ? action.savedState : state)
-    case 'touch-ctrl':
-      return touchCtrl(state, action.id, action.op)
-    case 'update-ctrl':
-      return updateCtrl(state, action.id, action.op, action.val)
+      return action.savedState ? action.savedState : state
+    case 'toggle-param-binding':
+      return toggleParamBinding(state, action.id, action.op)
+    case 'change-param':
+      return changeParam(state, action.id, action.op, action.val)
     case 'toggle-binding':
       return {
         ...state,
@@ -658,79 +682,131 @@ const reducer = (state: State, action: Action): State => {
             ? undefined
             : action.bindingKey,
       }
+    case 'toggle-seq-step':
+      return toggleSeqStep(state, action.voice, action.step)
     case 'reset-channel':
-      return updateEnvelopes(resetChannel(state))
+      return resetChannel(state)
     case 'reset-operator':
-      return updateEnvelopes(resetOperator(state, action.op))
+      return resetOperator(state, action.op)
     case 'change-patch': {
       const patchIdx = action.index
-      return updateEnvelopes({ ...state, patchIdx })
+      return { ...state, patchIdx }
     }
     case 'move-patch': {
-      // const { index, before } = action
-      // const patches = [...state.patches]
-      // if (index > before) {
-      //   // move backwards: remove and insert
-      //   patches.splice(index, 1)
-      //   patches.splice(before, 0, state.patches[index])
-      // } else if (index < before - 1) {
-      //   // move forwards: insert and remove
-      //   patches.splice(before, 0, state.patches[index])
-      //   patches.splice(index, 1)
-      // }
-      // syncPatches({ patches })
-      return updateEnvelopes({ ...state })
+      const { index, before } = action
+
+      const moduleState = Object.fromEntries(
+        Object.entries(state.moduleState).map(([key, val]) => {
+          const { id, pid, cid, op } = decodeKey(key)
+          let newPid: number = pid
+          if (pid === index && index !== before - 1 && index !== before) {
+            newPid = before
+          } else if (index > before && pid < index && pid >= before) {
+            newPid++
+          } else if (index < before - 1 && pid > index && pid <= before) {
+            newPid--
+          }
+          const newKey = encodeKey(id, newPid as PatchId, cid, op)
+          return [newKey, val]
+        })
+      )
+
+      // encode two 3-bit values together
+      const val = ((index & 0b111) << 3) | (before & 0b111)
+      sendMidiCmd(MidiCommands.MOVE_PATCH, val)
+
+      return { ...state, moduleState }
     }
     case 'copy-patch': {
-      // const { source, target } = action
-      // const patches = [...state.patches]
-      // patches[target] = patches[source]
-      // syncPatch({ patch: patches[target], index: target })
-      return updateEnvelopes({ ...state })
+      const { source, target } = action
+
+      const moduleState = { ...state.moduleState }
+      Object.keys(moduleState).forEach((key) => {
+        const { id, pid, cid, op } = decodeKey(key)
+        if (pid === target) {
+          const sourceKey = encodeKey(id, source, cid, op)
+          moduleState[key] = moduleState[sourceKey]
+        }
+      })
+
+      // encode two 3-bit values together
+      const val = ((source & 0b111) << 3) | (target & 0b111)
+      sendMidiCmd(MidiCommands.COPY_PATCH, val)
+
+      return { ...state, moduleState }
     }
     case 'change-channel': {
       const channelIdx = action.index
-      return updateEnvelopes({ ...state, channelIdx })
+      return { ...state, channelIdx }
     }
     case 'move-channel': {
-      // const { index, before } = action
-      // // const patches = [...state.patches]
-      // const patch = [...patches[state.patchIdx]]
+      const { index, before } = action
 
-      // if (index > before) {
-      //   // move backwards: remove and insert
-      //   patch.splice(index, 1)
-      //   patch.splice(before, 0, patches[state.patchIdx][index])
-      // } else if (index < before - 1) {
-      //   // move forwards: insert and remove
-      //   patch.splice(before, 0, patches[state.patchIdx][index])
-      //   patch.splice(index, 1)
-      // }
+      if (index === before - 1 || index === before) {
+        return state
+      }
 
-      // syncPatch({ patch, index: state.patchIdx })
+      const moduleState = Object.fromEntries(
+        Object.entries(state.moduleState).map(([key, val]) => {
+          const { id, pid, cid, op } = decodeKey(key)
+          let newCid: number = cid
+          if (pid === state.patchIdx) {
+            if (cid === index) {
+              newCid = before
+            } else if (index > before && cid < index && cid >= before) {
+              newCid++
+            } else if (index < before - 1 && cid > index && cid <= before) {
+              newCid--
+            }
+          }
+          const newKey = encodeKey(id, pid, newCid as ChannelId, op)
+          return [newKey, val]
+        })
+      )
 
-      // patches[state.patchIdx] = patch
-      return updateEnvelopes({ ...state })
+      // shrink before up to 5 values based on index value
+      // as index != before
+      // NOTE: it could be shrunk to 4 values, but 5 is enough
+      // and that way we keep the same logic as for COPY_CHANNEL
+      const encodedBefore = index < before ? before : before - 1
+      // encode values as a sum
+      const val = state.patchIdx * 30 + encodedBefore * 6 + index
+      sendMidiCmd(MidiCommands.MOVE_CHANNEL, val)
+
+      return { ...state, moduleState }
     }
     case 'copy-channel': {
-      // const { source, target } = action
-      // // const patches = [...state.patches]
-      // const patch = [...patches[state.patchIdx]]
-      // patch[target] = patch[source]
+      const { source, target } = action
 
-      // // remove LFO, just in case it got copied over
-      // delete patch[target][1]
-      // patches[state.patchIdx] = patch
-      // syncCcs({ channel: target, ccs: patch[target] })
-      return updateEnvelopes({ ...state })
+      if (source === target) {
+        return state
+      }
+
+      const moduleState = { ...state.moduleState }
+      Object.keys(moduleState).forEach((key) => {
+        const { id, pid, cid, op } = decodeKey(key)
+        if (pid === state.patchIdx && cid === target) {
+          const sourceKey = encodeKey(id, pid, source, op)
+          moduleState[key] = moduleState[sourceKey]
+        }
+      })
+
+      // shrink target up to 5 values based on source value
+      // as source != target
+      // NOTE: to decode it, target =  encodedTarget === source ? target + 1 : encodedTarget
+      const encodedTarget = target < source ? target : target - 1
+      // encode values as a sum
+      const val = state.patchIdx * 30 + encodedTarget * 6 + source
+      sendMidiCmd(MidiCommands.COPY_CHANNEL, val)
+
+      return { ...state, moduleState }
     }
     case 'sync-midi':
       syncMidi(state)
       return state
-    case 'save-patch': {
-      MidiIO.sendCC(0, 121, 127) // value is not read anyway
-      const savedState = { ...state, bindinKey: undefined }
-      // reactLocalStorage.set("savedState", JSON.stringify(savedState))
+    case 'save-state': {
+      sendMidiCmd(MidiCommands.SAVE_STATE)
+      const savedState: State = { ...state, bindingKey: undefined }
       return savedState
     }
     default:
@@ -778,22 +854,36 @@ const CV2612Provider = ({ children }) => {
   )
 
   const value = useMemo(() => {
-    const getParamData = (id: CtrlId, op: OperatorId) => {
+    const getParamData = (id: Param, op: OperatorId) => {
       const { patchIdx, channelIdx } = state
       const meta = getParamMeta(id, patchIdx, channelIdx, op)
 
       const { key } = meta
       const value = state.moduleState[key]
 
-      // if (value === undefined) console.log(key, value)
+      // TODO: calculate and return bindings as a BindingKey[]
+      const bindings: BindingKey[] = ['x']
 
       return {
         ...meta,
         value,
+        bindings,
       }
     }
 
-    return { state, getParamData, dispatch }
+    const envelopes: Record<OperatorId, string> = {
+      0: '',
+      1: '',
+      2: '',
+      3: '',
+    }
+
+    // TODO: do not asume envelopes have changed
+    for (let op = 0; op < 4; op++) {
+      envelopes[op] = getEnvelope(state, op as OperatorId)
+    }
+
+    return { state, envelopes, getParamData, dispatch }
   }, [state])
 
   const doSaveState = useCallback(() => {
@@ -815,15 +905,12 @@ const CV2612Provider = ({ children }) => {
   useEffect(() => {
     ;(async () => {
       await MidiIO.init()
-      // const str = await reactLocalStorage.get("savedState")
-      // const savedState = str ? JSON.parse(str) : null
-      // dispatch({ type: "provider-ready", savedState })
       try {
         const parts = window.location.hash.split('#')
         const str = parts[1]
         const decodedState = decodeState(str)
         const savedState = { ...initialState, ...decodedState }
-        dispatch({ type: 'provider-ready', savedState })
+        // dispatch({ type: 'provider-ready', savedState })
       } catch (e) {
         dispatch({ type: 'provider-ready', savedState: initialState })
       }
@@ -839,8 +926,7 @@ export {
   CV2612Context,
   CV2612Provider,
   BindingKey,
-  BindingValue,
-  CtrlId,
+  Param,
   OperatorId,
   PatchId,
   ChannelId,

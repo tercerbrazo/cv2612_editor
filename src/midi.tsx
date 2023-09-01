@@ -100,10 +100,10 @@ const Midi = () => {
         title="Save state to EEPROM"
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'save-patch' })
+          dispatch({ type: 'save-state' })
         }}
       >
-        UPLOAD
+        SAVE STATE
       </a>
     </nav>
   )

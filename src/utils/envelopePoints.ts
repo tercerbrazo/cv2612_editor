@@ -1,21 +1,21 @@
 export const calculateEnvelopePoints = ({ ar, tl, d1, sl, d2, rr }) => {
-  const x1 = Math.round((1 - ar) * 100)
-  const y1 = Math.round(tl * 100)
-  const x2 = Math.round(x1 + (1 - d1) * 100)
-  const y2 = Math.round(y1 + (100 - y1) * sl)
-  const x3 = Math.round(x2 + 100)
-  const y3 = Math.round(y2 + (100 - y2) * (0.5 * d2))
-  const x4 = Math.round(x3 + (1 - rr) * 100)
+  const x1 = 1 - ar
+  const y1 = 1 - tl
+  const x2 = x1 + (1 - d1)
+  const y2 = y1 * (1 - sl)
+  const x3 = x2 + 1
+  const y3 = y2 * (1 - d2)
+  const x4 = x3 + (1 - rr)
 
   const points = [
-    [0, 100],
+    [0, 0],
     [x1, y1],
     [x2, y2],
     [x3, y3],
-    [x4, 100],
+    [x4, 0],
   ]
+
   return points
-    .map((p) => p.join(','))
+    .map(([x, y]) => `${Math.round(x * 100)},${Math.round((1 - y) * 100)}`)
     .join(' ')
-    .replace(/NaN/g, '0')
 }

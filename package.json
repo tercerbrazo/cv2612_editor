@@ -12,8 +12,8 @@
     "start": "parcel",
     "build": "parcel build",
     "format": "prettier --write src/**/*.ts{,x}",
-    "lint": "tsc --noEmit && eslint src/**/*.ts{,x}",
-    "lint:fix": "eslint src/**/*.ts{,x} --fix",
+    "lint": "tsc && eslint .",
+    "lint:fix": "eslint . --fix",
     "pre-commit": "lint-staged -v"
   },
   "devDependencies": {

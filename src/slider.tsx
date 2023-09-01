@@ -1,26 +1,25 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useContext } from 'react'
-import { BindingValue, CtrlId, CV2612Context, OperatorId } from './context'
+import { CV2612Context, OperatorId, Param } from './context'
 
 type SliderProps = {
-  id: CtrlId
+  id: Param
   op?: OperatorId
 }
 
 const Slider = ({ id, op = 0 }: SliderProps) => {
   const { state, dispatch, getParamData } = useContext(CV2612Context)
 
-  const { title, label, max, value, ch, cc, unbounded } = getParamData(id, op)
+  const { title, label, max, value, ch, cc, bi } = getParamData(id, op)
 
-  const className = `slider ${!unbounded && state.bindingKey ? 'learn' : ''}`
-  const bindingValue = `${id}-${op}` as BindingValue
+  const className = `slider ${bi && state.bindingKey ? 'learn' : ''}`
 
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
 
     dispatch({
-      type: 'update-ctrl',
+      type: 'change-param',
       id,
       op,
       val,
@@ -29,8 +28,8 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
 
   const onClick = (ev) => {
     ev.preventDefault()
-    if (!unbounded) {
-      dispatch({ type: 'touch-ctrl', id, op })
+    if (bi) {
+      dispatch({ type: 'toggle-param-binding', id, op })
     }
   }
 
@@ -43,9 +42,9 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     >
       <label>
         {label}
-        <i className={state.bindings.x.includes(bindingValue) ? 'x' : ''} />
-        <i className={state.bindings.y.includes(bindingValue) ? 'y' : ''} />
-        <i className={state.bindings.z.includes(bindingValue) ? 'z' : ''} />
+        <i className={state.bindings.x.includes(bi) ? 'x' : ''} />
+        <i className={state.bindings.y.includes(bi) ? 'y' : ''} />
+        <i className={state.bindings.z.includes(bi) ? 'z' : ''} />
       </label>
       <input
         type="range"

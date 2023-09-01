@@ -1,8 +1,8 @@
 import React, { useContext } from 'react'
-import { CtrlId, CV2612Context } from './context'
+import { CV2612Context, Param } from './context'
 
 type DropdownProps = {
-  id: CtrlId
+  id: Param
 }
 
 const Dropdown = ({ id }: DropdownProps) => {
@@ -15,7 +15,7 @@ const Dropdown = ({ id }: DropdownProps) => {
     const val = parseInt(ev.target.value, 10)
 
     dispatch({
-      type: 'update-ctrl',
+      type: 'change-param',
       id,
       op: 0,
       val,
