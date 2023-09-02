@@ -41,8 +41,6 @@ const sub = <T extends keyof EventMap>(event: T, callback: Callback<T>) => {
   return unsubscribe
 }
 
-// Example usage:
-
 const setMidiOutId = (id: string) => {
   state.midiOutId = id
 }

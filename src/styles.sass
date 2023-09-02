@@ -155,7 +155,7 @@ button
       border: 0
       option
         text-align: center
-    &.midi
+    &.midi, &.patch
       span i
         line-height: 1em
         background-color: #ccc
@@ -184,6 +184,22 @@ button
           color: green
         &.z
           color: blue
+      input[type="text"]
+        padding: 0.5em
+        border: 0
+        font-family: inherit
+        font-size: 0.9em
+        font-weight: bold
+        cursor: pointer
+        background: $black
+        color: $white
+        &:hover
+          text-decoration: underline
+        &:focus
+          box-shadow: inset 0 0 0 3px $black
+          background: $white
+          color: $black
+          outline: 0
   .two-cols
     display: flex
     gap: 12px
@@ -247,10 +263,8 @@ button
     select
       font-size: 16px
       text-align: center
-      appearance: none
       option
         padding: 0
-        background: red
 
   .slider
     &.learn

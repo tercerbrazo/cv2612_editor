@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { BindingKey, CV2612Context } from './context'
 import MidiIO from './midi-io'
@@ -81,26 +81,6 @@ const Midi = () => {
       ))}
       <span> </span>
       <span> </span>
-      <a
-        href="/"
-        title="Upload a Patch"
-        onClick={(ev) => {
-          ev.preventDefault()
-          dispatch({ type: 'upload-patch' })
-        }}
-      >
-        UPLOAD
-      </a>
-      <a
-        href="/"
-        title="Download Patch"
-        onClick={(ev) => {
-          ev.preventDefault()
-          dispatch({ type: 'download-patch' })
-        }}
-      >
-        DOWNLOAD
-      </a>
       <a
         href="/"
         title="Sync Midi"

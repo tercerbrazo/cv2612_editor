@@ -34,6 +34,8 @@ type ContextValue = {
   envelopes: Record<OperatorId, string>
   state: State
   dispatch: React.Dispatch<Action>
+  playMode: PlayModeEnum
+  midiChannel: MidiChannelEnum
 }
 
 // @ts-ignore
@@ -173,14 +175,13 @@ const isOperatorParam = (id: Param): id is OperatorParam => {
 type ModuleState = Record<string, number>
 
 type State = {
+  name: string
   sequence: boolean[][]
   bindingKey?: BindingKey
   bindings: Record<BindingKey, number[]>
   moduleState: ModuleState
   patchIdx: PatchId
   channelIdx: ChannelId
-  playMode: PlayModeEnum
-  midiChannel: MidiChannelEnum
 }
 type Action =
   | {
@@ -215,6 +216,10 @@ type Action =
       op: OperatorId
     }
   | {
+      type: 'change-name'
+      name: string
+    }
+  | {
       type: 'change-patch'
       index: PatchId
     }
@@ -243,14 +248,8 @@ type Action =
       target: ChannelId
     }
   | {
-      type: 'upload-patch'
-    }
-  | {
-      type: 'patch-uploaded'
-      uploadedState: State
-    }
-  | {
-      type: 'download-patch'
+      type: 'update-state'
+      newState: State
     }
   | {
       type: 'sync-midi'
@@ -490,11 +489,10 @@ const getParamMeta = (
 
 const getInitialState = (): State => {
   const state: State = {
+    name: 'Unnamed',
     bindings: { x: [], y: [], z: [] },
     patchIdx: 0,
     channelIdx: 0,
-    playMode: PlayModeEnum.MONO,
-    midiChannel: MidiChannelEnum.OMNI,
     moduleState: {},
     sequence: [],
   }
@@ -618,12 +616,6 @@ const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
 
   state.moduleState[key] = val
 
-  if (id === 'pm') {
-    state.playMode = val
-  } else if (id === 'rc') {
-    state.midiChannel = val
-  }
-
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
 
@@ -699,6 +691,8 @@ const resetChannel = (state: State) => {
 // TODO: udpateParams without sending MIDI out
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
+    case 'change-name':
+      return { ...state, name: action.name }
     case 'provider-ready':
       return action.savedState ? action.savedState : state
     case 'toggle-param-binding':
@@ -716,9 +710,9 @@ const reducer = (state: State, action: Action): State => {
     case 'toggle-seq-step':
       return toggleSeqStep(state, action.voice, action.step)
     case 'reset-channel':
-      return resetChannel(state)
+      return resetChannel({ ...state })
     case 'reset-operator':
-      return resetOperator(state, action.op)
+      return resetOperator({ ...state }, action.op)
     case 'change-patch': {
       const patchIdx = action.index
       return { ...state, patchIdx }
@@ -766,62 +760,10 @@ const reducer = (state: State, action: Action): State => {
 
       return { ...state, moduleState }
     }
-    case 'upload-patch': {
-      const fileInput = document.createElement('input')
-      fileInput.type = 'file'
-      fileInput.accept = '.json'
 
-      fileInput.addEventListener('change', (event) => {
-        const target = event.target as HTMLInputElement
-
-        const file = target.files?.[0]
-
-        if (file) {
-          const reader = new FileReader()
-
-          reader.onload = (e) => {
-            try {
-              const parsedData = JSON.parse(e.target?.result as string)
-              console.log(parsedData) // You can do something with the parsed data here
-            } catch (error) {
-              console.error('Error parsing JSON:', error)
-            }
-          }
-
-          reader.readAsText(file)
-        }
-      })
-
-      fileInput.click()
-      // return state unchanged, as the reducer is always sync
-      // the updated state will be dispatched on file load
-      return state
-    }
-    case 'patch-uploaded': {
-      const { uploadedState } = action
-      return uploadedState
-    }
-    case 'download-patch': {
-      // Convert the object to a JSON string
-      var jsonData = JSON.stringify(state)
-
-      // Create a Blob from the JSON data
-      var blob = new Blob([jsonData], { type: 'application/json' })
-
-      // Create a URL for the Blob
-      var url = URL.createObjectURL(blob)
-
-      // Create a download link
-      var a = document.createElement('a')
-      a.href = url
-      a.download = 'patch.json'
-
-      // Trigger the download
-      a.click()
-
-      // Clean up by revoking the URL
-      URL.revokeObjectURL(url)
-      return state
+    case 'update-state': {
+      const { newState } = action
+      return newState
     }
     case 'change-channel': {
       const channelIdx = action.index
@@ -936,7 +878,11 @@ const CV2612Provider = ({ children }) => {
       envelopes[op] = getEnvelope(state, op as OperatorId)
     }
 
-    return { state, envelopes, getParamData, dispatch }
+    // HACK: conveniently re-exposing these properties
+    const playMode = state.moduleState['pm-0-0-0']
+    const midiChannel = state.moduleState['rc-0-0-0']
+
+    return { playMode, midiChannel, state, envelopes, getParamData, dispatch }
   }, [state])
 
   const doSaveState = useCallback(() => {
@@ -960,7 +906,6 @@ const CV2612Provider = ({ children }) => {
 
       if (lastStateStr) {
         const lastState = JSON.parse(lastStateStr)
-
         dispatch({ type: 'provider-ready', savedState: lastState })
       } else {
         dispatch({ type: 'provider-ready', savedState: initialState })

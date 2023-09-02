@@ -179,9 +179,9 @@ const MidiMapping = ({ id, op }: MidiMappingProps) => {
 }
 
 const MidiChannelDetails = () => {
-  const { state } = useContext(CV2612Context)
+  const { midiChannel } = useContext(CV2612Context)
 
-  if (state.midiChannel === MidiChannelEnum.OMNI) {
+  if (midiChannel === MidiChannelEnum.OMNI) {
     return (
       <>
         Notes will be played as MONO using all voices simultaneously.
@@ -190,7 +190,7 @@ const MidiChannelDetails = () => {
       </>
     )
   }
-  if (state.midiChannel === MidiChannelEnum.FORWARD) {
+  if (midiChannel === MidiChannelEnum.FORWARD) {
     return (
       <>
         Notes on channel <b>N</b> will affect voice <b>N</b>, for <b>N</b> in
@@ -200,7 +200,7 @@ const MidiChannelDetails = () => {
       </>
     )
   }
-  if (state.midiChannel === MidiChannelEnum.MULTITRACK) {
+  if (midiChannel === MidiChannelEnum.MULTITRACK) {
     return (
       <>
         Notes and CC on channel <b>N</b> will affect voice <b>N</b>, for{' '}
@@ -210,7 +210,7 @@ const MidiChannelDetails = () => {
   }
   return (
     <>
-      Same as <b>OMNI</b>, but only listening to channel {state.midiChannel + 1}
+      Same as <b>OMNI</b>, but only listening to channel {midiChannel + 1}
       <br />
       Notes will be played as MONO using all voices simultaneously.
       <br />
@@ -220,7 +220,7 @@ const MidiChannelDetails = () => {
 }
 
 const Scene = () => {
-  const { state, dispatch } = useContext(CV2612Context)
+  const { midiChannel, playMode, state, dispatch } = useContext(CV2612Context)
 
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
@@ -304,13 +304,13 @@ const Scene = () => {
         </div>
         <div className="col">
           <Dropdown id="atm" />
-          {state.playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
+          {playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
         </div>
       </div>
 
-      {state.playMode === PlayModeEnum.SEQ && <StepSeq />}
+      {playMode === PlayModeEnum.SEQ && <StepSeq />}
 
-      {state.playMode === PlayModeEnum.POLY ? (
+      {playMode === PlayModeEnum.POLY ? (
         <>
           <p>
             <b>POLY</b> is a special performance mode that is not compatible
@@ -318,7 +318,7 @@ const Scene = () => {
             <br />
             This is a MIDI only mode ( GATE/CV are disabled) and behaviour is
             based on the Midi Receive Channel setting. For{' '}
-            <b>{MidiChannelEnum[state.midiChannel]}</b>:
+            <b>{MidiChannelEnum[midiChannel]}</b>:
           </p>
           <blockquote>
             <MidiChannelDetails />
