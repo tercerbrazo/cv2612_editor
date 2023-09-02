@@ -4,7 +4,7 @@ import { CV2612Context } from './context'
 const Patch = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
-  const uploadPatch = useCallback(() => {
+  const loadPatch = useCallback(() => {
     const fileInput = document.createElement('input')
     fileInput.type = 'file'
     fileInput.accept = '.json'
@@ -97,7 +97,7 @@ const Patch = () => {
         title="Load a Patch"
         onClick={(ev) => {
           ev.preventDefault()
-          uploadPatch()
+          loadPatch()
         }}
       >
         LOAD

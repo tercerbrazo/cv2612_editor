@@ -7,11 +7,7 @@ const state: {
 }
 
 const INTERVAL = 20
-
-const sleep = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
+const MINIMUM_THROTTLE = 10
 
 type EventMap = {
   midiStateChanged: { outputs: WebMidi.MIDIOutput[] }
@@ -66,22 +62,41 @@ const init = async () => {
   }
 }
 
-let pendingCCs = 0
+let pendingCount = 0
+const messageQueue = new Map()
+
 const sendCC = async (channel: number, number: number, value: number) => {
   if (!state.ma) return
 
   const midiOut = state.ma.outputs.get(state.midiOutId)
   if (!midiOut) return
 
-  pendingCCs++
-  await sleep(INTERVAL * pendingCCs)
+  // Create a unique key for each channel-number combination
+  const key = `${channel}-${number}`
+
+  // If there's a pending message for the same channel-number, replace it
+  if (messageQueue.has(key)) {
+    clearTimeout(messageQueue.get(key))
+    pendingCount--
+  }
+
+  // Create a new message and add it to the queue
   const msg = [0xb0 + channel, number, value]
-  midiOut.send(msg)
-  pendingCCs--
-  // TODO: log inside an HTML element
-  // eslint-disable-next-line no-console
-  console.log(`CC ${channel}:${number} -> ${value}`, pendingCCs)
-  pub('midiOutProgress', { done: pendingCCs === 0 })
+  const timeoutId = setTimeout(
+    async () => {
+      midiOut.send(msg)
+      messageQueue.delete(key)
+      pendingCount--
+      pub('midiOutProgress', { done: pendingCount === 0 })
+      // TODO: log inside an HTML element
+      // eslint-disable-next-line no-console
+      console.log(`CC ${channel}:${number} -> ${value}`, pendingCount)
+    },
+    INTERVAL * pendingCount + MINIMUM_THROTTLE,
+  )
+
+  messageQueue.set(key, timeoutId)
+  pendingCount++
 }
 
 export default {
