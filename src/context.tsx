@@ -1,4 +1,3 @@
-import { compress, decompress } from 'lzutf8'
 import React, {
   Reducer,
   useCallback,
@@ -35,6 +34,8 @@ type ContextValue = {
   state: State
   dispatch: React.Dispatch<Action>
 }
+
+// @ts-ignore
 const CV2612Context = React.createContext<ContextValue>(null)
 
 enum MidiCommands {
@@ -239,6 +240,16 @@ type Action =
       type: 'copy-channel'
       source: ChannelId
       target: ChannelId
+    }
+  | {
+      type: 'upload-patch'
+    }
+  | {
+      type: 'patch-uploaded'
+      uploadedState: State
+    }
+  | {
+      type: 'download-patch'
     }
   | {
       type: 'sync-midi'
@@ -488,7 +499,7 @@ const getInitialState = (): State => {
   }
 
   for (let i = 0; i < 6; i++) {
-    const steps = []
+    const steps: boolean[] = []
     for (let j = 0; j < 16; j++) {
       steps.push((j - i) % 6 === 0)
     }
@@ -569,6 +580,10 @@ const getEnvelope = (state: State, op: OperatorId) => {
 const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
   if (state.bindingKey) {
     const { bi } = getParamMeta(id, state, op)
+
+    // return unchanged state if not boundable
+    if (!bi) return state
+
     const binding = state.bindings[state.bindingKey]
 
     const index = binding.indexOf(bi)
@@ -750,6 +765,63 @@ const reducer = (state: State, action: Action): State => {
 
       return { ...state, moduleState }
     }
+    case 'upload-patch': {
+      const fileInput = document.createElement('input')
+      fileInput.type = 'file'
+      fileInput.accept = '.json'
+
+      fileInput.addEventListener('change', (event) => {
+        const target = event.target as HTMLInputElement
+
+        const file = target.files?.[0]
+
+        if (file) {
+          const reader = new FileReader()
+
+          reader.onload = (e) => {
+            try {
+              const parsedData = JSON.parse(e.target?.result as string)
+              console.log(parsedData) // You can do something with the parsed data here
+            } catch (error) {
+              console.error('Error parsing JSON:', error)
+            }
+          }
+
+          reader.readAsText(file)
+        }
+      })
+
+      fileInput.click()
+      // return state unchanged, as the reducer is always sync
+      // the updated state will be dispatched on file load
+      return state
+    }
+    case 'patch-uploaded': {
+      const { uploadedState } = action
+      return uploadedState
+    }
+    case 'download-patch': {
+      // Convert the object to a JSON string
+      var jsonData = JSON.stringify(state)
+
+      // Create a Blob from the JSON data
+      var blob = new Blob([jsonData], { type: 'application/json' })
+
+      // Create a URL for the Blob
+      var url = URL.createObjectURL(blob)
+
+      // Create a download link
+      var a = document.createElement('a')
+      a.href = url
+      a.download = 'patch.json'
+
+      // Trigger the download
+      a.click()
+
+      // Clean up by revoking the URL
+      URL.revokeObjectURL(url)
+      return state
+    }
     case 'change-channel': {
       const channelIdx = action.index
       return { ...state, channelIdx }
@@ -824,44 +896,10 @@ const reducer = (state: State, action: Action): State => {
       const savedState: State = { ...state, bindingKey: undefined }
       return savedState
     }
-    default:
-      throw new Error('Invalid action type')
   }
 }
 
-const encodeState = (state: State) => {
-  const str = Object.values(state.moduleState).reduce(
-    (acc, val: number) => acc + val.toString(16).padStart(2, '0'),
-    '',
-  )
-
-  const output = compress(str, {
-    outputEncoding: 'Base64',
-  })
-
-  return output
-}
-
-const decodeState = (output: string) => {
-  const str = decompress(output, {
-    inputEncoding: 'Base64',
-  })
-
-  const values = str
-    .split(/(.{2})/)
-    .filter((s: string) => s !== '')
-    .map((s: string) => parseInt(s, 16))
-
-  const { moduleState, bindings } = { ...initialState }
-
-  Object.keys(moduleState).forEach((k) => {
-    moduleState[k] = values.shift()
-  })
-
-  return { moduleState, bindings }
-}
-
-let saveId = null
+let saveId = 0
 const CV2612Provider = ({ children }) => {
   const [state, dispatch] = useReducer<Reducer<State, Action>>(
     reducer,
@@ -901,10 +939,7 @@ const CV2612Provider = ({ children }) => {
   }, [state])
 
   const doSaveState = useCallback(() => {
-    const str = encodeState(state)
-
-    // push the state
-    window.history.pushState(null, null, `#${str}`)
+    // TODO: save to local storage
   }, [state])
 
   const saveStateDelayed = useCallback(() => {
@@ -919,15 +954,7 @@ const CV2612Provider = ({ children }) => {
   useEffect(() => {
     ;(async () => {
       await MidiIO.init()
-      try {
-        const parts = window.location.hash.split('#')
-        const str = parts[1]
-        const decodedState = decodeState(str)
-        const savedState = { ...initialState, ...decodedState }
-        // dispatch({ type: 'provider-ready', savedState })
-      } catch (e) {
-        dispatch({ type: 'provider-ready', savedState: initialState })
-      }
+      dispatch({ type: 'provider-ready', savedState: initialState })
     })()
   }, [])
 

@@ -43,7 +43,6 @@
     "@dnd-kit/modifiers": "^6.0.0",
     "@dnd-kit/sortable": "^7.0.1",
     "@dnd-kit/utilities": "^3.2.0",
-    "lzutf8": "^0.6.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactjs-localstorage": "^1.0.1"

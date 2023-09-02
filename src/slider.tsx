@@ -1,5 +1,5 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useContext } from 'react'
+import React, { ChangeEvent, MouseEventHandler, useContext } from 'react'
 import { CV2612Context, OperatorId, Param } from './context'
 
 type SliderProps = {
@@ -14,7 +14,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
 
   const className = `slider ${bi && state.bindingKey ? 'learn' : ''}`
 
-  const onChange = (ev) => {
+  const onChange = (ev: ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
 
@@ -26,7 +26,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     })
   }
 
-  const onClick = (ev) => {
+  const onClick: MouseEventHandler<HTMLDivElement> = (ev) => {
     ev.preventDefault()
     if (bi) {
       dispatch({ type: 'toggle-param-binding', id, op })
@@ -42,9 +42,13 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     >
       <label>
         {label}
-        <i className={state.bindings.x.includes(bi) ? 'x' : ''} />
-        <i className={state.bindings.y.includes(bi) ? 'y' : ''} />
-        <i className={state.bindings.z.includes(bi) ? 'z' : ''} />
+        {bi === undefined ? null : (
+          <>
+            <i className={state.bindings.x.includes(bi) ? 'x' : ''} />
+            <i className={state.bindings.y.includes(bi) ? 'y' : ''} />
+            <i className={state.bindings.z.includes(bi) ? 'z' : ''} />
+          </>
+        )}
       </label>
       <input
         type="range"

@@ -251,9 +251,11 @@ const Scene = () => {
       const drag = event.active?.data?.current
       const drop = event.over?.data?.current
 
-      if (drop?.action === 'move') {
+      if (!drag || !drop) return
+
+      if (drop.action === 'move') {
         dispatch({ type: 'move-patch', index: drag.index, before: drop.index })
-      } else if (drop?.action === 'copy') {
+      } else if (drop.action === 'copy') {
         dispatch({ type: 'copy-patch', source: drag.index, target: drop.index })
       }
     },
@@ -265,13 +267,15 @@ const Scene = () => {
       const drag = event.active?.data?.current
       const drop = event.over?.data?.current
 
-      if (drop?.action === 'move') {
+      if (!drag || !drop) return
+
+      if (drop.action === 'move') {
         dispatch({
           type: 'move-channel',
           index: drag.index,
           before: drop.index,
         })
-      } else if (drop?.action === 'copy') {
+      } else if (drop.action === 'copy') {
         dispatch({
           type: 'copy-channel',
           source: drag.index,

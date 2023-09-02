@@ -2,10 +2,14 @@
   "compilerOptions": {
     "jsx": "react",
     "target": "esnext",
-    "strict": false,
     "allowJs": true,
     "outDir": "./.tsbuild/",
     "moduleResolution": "node",
+    "strictNullChecks": true,
+    "noImplicitReturns": true,
+    "strict": true,
+    "useUnknownInCatchVariables": true,
+    "noImplicitAny": false,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true

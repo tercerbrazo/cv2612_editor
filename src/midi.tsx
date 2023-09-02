@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { BindingKey, CV2612Context } from './context'
 import MidiIO from './midi-io'
@@ -9,8 +9,29 @@ const Midi = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
   const [midiOutId, setMidiOutId] = useState('-')
-  const [midiOuts, setMidiOuts] = useState([])
+  const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
   const [midiOutActivity, setMidiOutActivity] = useState(false)
+  const [jsonData, setJsonData] = useState(null)
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0]
+
+    if (file) {
+      const reader = new FileReader()
+
+      reader.onload = (e) => {
+        try {
+          const parsedData = JSON.parse(e.target!.result as string)
+          setJsonData(parsedData)
+          console.log(parsedData) // You can do something with the parsed data here
+        } catch (error) {
+          console.error('Error parsing JSON:', error)
+        }
+      }
+
+      reader.readAsText(file)
+    }
+  }
 
   useEffect(() => {
     if (midiOutId !== '-') {
@@ -19,32 +40,28 @@ const Midi = () => {
     }
   }, [midiOutId])
 
-  const onMidiOutProgress = useCallback(({ done }) => {
-    setMidiOutActivity(true)
-    if (done) setTimeout(() => setMidiOutActivity(false), activityDuration)
-  }, [])
-
-  const onStateChange = useCallback(
-    ({ outputs }) => {
-      if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
-        const mOut = reactLocalStorage.get('midiOutId', '')
-        // is last id still available??
-        setMidiOutId(outputs.map((a) => a.id).includes(mOut) ? mOut : '')
-        setMidiOuts(outputs)
-      }
-    },
-    [midiOuts],
-  )
-
   useEffect(() => {
-    MidiIO.sub('midiStateChanged', onStateChange)
-    MidiIO.sub('midiOutProgress', onMidiOutProgress)
+    const unsubMidiStateChanged = MidiIO.sub(
+      'midiStateChanged',
+      ({ outputs }) => {
+        if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
+          const mOut = reactLocalStorage.get('midiOutId', '')
+          // is last id still available??
+          setMidiOutId(outputs.map((a) => a.id).includes(mOut) ? mOut : '')
+          setMidiOuts(outputs)
+        }
+      },
+    )
+    const unsubMidiOutProgress = MidiIO.sub('midiOutProgress', ({ done }) => {
+      setMidiOutActivity(true)
+      if (done) setTimeout(() => setMidiOutActivity(false), activityDuration)
+    })
 
     return () => {
-      MidiIO.unsub('midiStateChanged', onStateChange)
-      MidiIO.unsub('midiOutProgress', onMidiOutProgress)
+      unsubMidiStateChanged()
+      unsubMidiOutProgress()
     }
-  }, [onStateChange, onMidiOutProgress])
+  }, [])
 
   return (
     <nav className="midi">
@@ -85,6 +102,32 @@ const Midi = () => {
       ))}
       <span> </span>
       <span> </span>
+      {jsonData && (
+        <div>
+          <h2>Parsed JSON Data</h2>
+          <pre>{JSON.stringify(jsonData, null, 2)}</pre>
+        </div>
+      )}
+      <a
+        href="/"
+        title="Load Patch"
+        onClick={(ev) => {
+          ev.preventDefault()
+          dispatch({ type: 'upload-patch' })
+        }}
+      >
+        UPLOAD
+      </a>
+      <a
+        href="/"
+        title="Save Patch"
+        onClick={(ev) => {
+          ev.preventDefault()
+          dispatch({ type: 'download-patch' })
+        }}
+      >
+        DOWNLOAD
+      </a>
       <a
         href="/"
         title="Sync Midi"

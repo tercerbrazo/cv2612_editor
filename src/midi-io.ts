@@ -1,6 +1,9 @@
-const state = {
-  ma: null,
-  midiOutId: null,
+const state: {
+  ma?: WebMidi.MIDIAccess
+  midiOutId: string
+} = {
+  ma: undefined,
+  midiOutId: '',
 }
 
 const INTERVAL = 20
@@ -10,30 +13,43 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms)
   })
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Callback = (data: any) => void
-const events: Record<string, Callback[]> = {}
+type EventMap = {
+  midiStateChanged: { outputs: WebMidi.MIDIOutput[] }
+  midiOutProgress: { done: boolean }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pub = (event: string, data: any) => {
+type Callback<T extends keyof EventMap> = (data: EventMap[T]) => void
+
+const events: Record<string, Callback<any>[]> = {}
+
+const pub = <T extends keyof EventMap>(event: T, data: EventMap[T]) => {
   if (!events[event]) return
   events[event].forEach((callback) => callback(data))
 }
 
-const sub = (event: string, callback: Callback) => {
+const sub = <T extends keyof EventMap>(event: T, callback: Callback<T>) => {
   if (!events[event]) events[event] = []
   events[event].push(callback)
+
+  // Return an unsubscribe function
+  const unsubscribe = () => {
+    if (events[event]) {
+      events[event] = events[event].filter((e) => e !== callback)
+    }
+  }
+
+  return unsubscribe
 }
 
-const unsub = (event: string, callback: Callback) => {
-  if (events[event]) events[event] = events[event].filter((e) => e !== callback)
-}
+// Example usage:
 
 const setMidiOutId = (id: string) => {
   state.midiOutId = id
 }
 
 const refresh = () => {
+  if (!state.ma) return
+
   const outputs = Array.from(state.ma.outputs.values())
 
   pub('midiStateChanged', {
@@ -73,7 +89,6 @@ const sendCC = async (channel: number, number: number, value: number) => {
 export default {
   pub,
   sub,
-  unsub,
   setMidiOutId,
   sendCC,
   init,
