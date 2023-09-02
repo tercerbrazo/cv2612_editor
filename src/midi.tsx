@@ -11,27 +11,6 @@ const Midi = () => {
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
   const [midiOutActivity, setMidiOutActivity] = useState(false)
-  const [jsonData, setJsonData] = useState(null)
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0]
-
-    if (file) {
-      const reader = new FileReader()
-
-      reader.onload = (e) => {
-        try {
-          const parsedData = JSON.parse(e.target!.result as string)
-          setJsonData(parsedData)
-          console.log(parsedData) // You can do something with the parsed data here
-        } catch (error) {
-          console.error('Error parsing JSON:', error)
-        }
-      }
-
-      reader.readAsText(file)
-    }
-  }
 
   useEffect(() => {
     if (midiOutId !== '-') {
@@ -102,15 +81,9 @@ const Midi = () => {
       ))}
       <span> </span>
       <span> </span>
-      {jsonData && (
-        <div>
-          <h2>Parsed JSON Data</h2>
-          <pre>{JSON.stringify(jsonData, null, 2)}</pre>
-        </div>
-      )}
       <a
         href="/"
-        title="Load Patch"
+        title="Upload a Patch"
         onClick={(ev) => {
           ev.preventDefault()
           dispatch({ type: 'upload-patch' })
@@ -120,7 +93,7 @@ const Midi = () => {
       </a>
       <a
         href="/"
-        title="Save Patch"
+        title="Download Patch"
         onClick={(ev) => {
           ev.preventDefault()
           dispatch({ type: 'download-patch' })

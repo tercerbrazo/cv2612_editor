@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useReducer,
 } from 'react'
+import { reactLocalStorage } from 'reactjs-localstorage'
 import MidiIO from './midi-io'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
 
@@ -940,6 +941,7 @@ const CV2612Provider = ({ children }) => {
 
   const doSaveState = useCallback(() => {
     // TODO: save to local storage
+    reactLocalStorage.set('lastState', JSON.stringify(state))
   }, [state])
 
   const saveStateDelayed = useCallback(() => {
@@ -954,7 +956,15 @@ const CV2612Provider = ({ children }) => {
   useEffect(() => {
     ;(async () => {
       await MidiIO.init()
-      dispatch({ type: 'provider-ready', savedState: initialState })
+      const lastStateStr = reactLocalStorage.get('lastState', '')
+
+      if (lastStateStr) {
+        const lastState = JSON.parse(lastStateStr)
+
+        dispatch({ type: 'provider-ready', savedState: lastState })
+      } else {
+        dispatch({ type: 'provider-ready', savedState: initialState })
+      }
     })()
   }, [])
 
