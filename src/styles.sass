@@ -332,21 +332,26 @@ button
 
 
   .seq
-    .seq-header
-      width: 20px
-      height: 20px
-      border: 1px solid transparent
-      font-size: 0.75em
-      text-align: center
     .seq-row
       display: flex
       .seq-cell
-        width: 20px
-        height: 20px
+        width: 30px
+        height: 30px
         border: 1px solid white
         cursor: pointer
+        opacity: 0.8
         &.step-on
           background: white
+        &.inactive
+          opacity: 0.3
+        &.seq-header
+          border: 1px solid transparent
+          font-size: 0.75em
+          line-height: 30px
+          text-align: center
+        &:hover
+          opacity: 1
+          // filter: drop-shadow(0 0 5px $white)
 
 @keyframes blinkLed
   from

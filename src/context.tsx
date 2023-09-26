@@ -36,10 +36,8 @@ type ContextValue = {
   dispatch: React.Dispatch<Action>
   playMode: PlayModeEnum
   midiChannel: MidiChannelEnum
+  sequenceSteps: number
 }
-
-// @ts-ignore
-const CV2612Context = React.createContext<ContextValue>(null)
 
 enum MidiCommands {
   BIND_X = 101,
@@ -179,7 +177,7 @@ type ModuleState = Record<string, number>
 
 type State = {
   name: string
-  sequence: boolean[][]
+  sequence: number[][]
   bindingKey?: BindingKey
   bindings: Record<BindingKey, number[]>
   moduleState: ModuleState
@@ -496,6 +494,10 @@ const getParamMeta = (
   }
 }
 
+const initialSequence = Array.from({ length: 6 }).map((_) =>
+  Array.from({ length: 16 }).map((_) => 0),
+)
+
 const getInitialState = (): State => {
   const state: State = {
     name: 'Unnamed',
@@ -503,7 +505,7 @@ const getInitialState = (): State => {
     patchIdx: 0,
     channelIdx: 0,
     moduleState: {},
-    sequence: Array(6).fill(Array(16).fill(false)),
+    sequence: initialSequence,
   }
 
   const setParamValue = (
@@ -601,13 +603,14 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
 }
 
 const toggleSeqStep = (state: State, voice: number, step: number) => {
-  const isOn = state.sequence[voice][step]
+  const prev = state.sequence[voice][step]
   const val = voice * 16 + step
 
-  state.sequence[voice][step] = !isOn
+  state.sequence[voice][step] = prev === 0 ? 1 : 0
+  console.log(state.sequence, voice, step, prev)
 
   sendMidiCmd(
-    isOn ? MidiCommands.SET_SEQ_STEP_OFF : MidiCommands.SET_SEQ_STEP_ON,
+    prev === 0 ? MidiCommands.SET_SEQ_STEP_ON : MidiCommands.SET_SEQ_STEP_OFF,
     val,
   )
 
@@ -853,10 +856,61 @@ const reducer = (state: State, action: Action): State => {
     case 'clear-sequence': {
       sendMidiCmd(MidiCommands.CLEAR_SEQ)
 
-      return { ...state, sequence: Array(6).fill(Array(16).fill(false)) }
+      return { ...state, sequence: initialSequence }
     }
   }
 }
+
+const getContextValue = (
+  state: State,
+  dispatch: React.Dispatch<Action>,
+): ContextValue => {
+  const getParamData = (id: Param, op: OperatorId) => {
+    const meta = getParamMeta(id, state, op)
+
+    const { key } = meta
+    const value = state.moduleState[key]
+
+    // TODO: calculate and return bindings as a BindingKey[]
+    const bindings: BindingKey[] = ['x']
+
+    return {
+      ...meta,
+      value,
+      bindings,
+    }
+  }
+
+  const envelopes: Record<OperatorId, string> = {
+    0: '',
+    1: '',
+    2: '',
+    3: '',
+  }
+
+  // TODO: do not asume envelopes have changed
+  for (let op = 0; op < 4; op++) {
+    envelopes[op] = getEnvelope(state, op as OperatorId)
+  }
+
+  // HACK: conveniently re-exposing these properties
+  const playMode = state.moduleState['pm-0-0-0']
+  const midiChannel = state.moduleState['rc-0-0-0']
+  const sequenceSteps = state.moduleState['stp-0-0-0']
+
+  return {
+    playMode,
+    midiChannel,
+    sequenceSteps,
+    state,
+    envelopes,
+    getParamData,
+    dispatch,
+  }
+}
+
+const initialContextValue = getContextValue(initialState, () => {})
+const CV2612Context = React.createContext<ContextValue>(initialContextValue)
 
 let saveId = 0
 const CV2612Provider = ({ children }) => {
@@ -866,39 +920,7 @@ const CV2612Provider = ({ children }) => {
   )
 
   const value = useMemo(() => {
-    const getParamData = (id: Param, op: OperatorId) => {
-      const meta = getParamMeta(id, state, op)
-
-      const { key } = meta
-      const value = state.moduleState[key]
-
-      // TODO: calculate and return bindings as a BindingKey[]
-      const bindings: BindingKey[] = ['x']
-
-      return {
-        ...meta,
-        value,
-        bindings,
-      }
-    }
-
-    const envelopes: Record<OperatorId, string> = {
-      0: '',
-      1: '',
-      2: '',
-      3: '',
-    }
-
-    // TODO: do not asume envelopes have changed
-    for (let op = 0; op < 4; op++) {
-      envelopes[op] = getEnvelope(state, op as OperatorId)
-    }
-
-    // HACK: conveniently re-exposing these properties
-    const playMode = state.moduleState['pm-0-0-0']
-    const midiChannel = state.moduleState['rc-0-0-0']
-
-    return { playMode, midiChannel, state, envelopes, getParamData, dispatch }
+    return getContextValue(state, dispatch)
   }, [state])
 
   const doSaveState = useCallback(() => {
