@@ -114,17 +114,24 @@ const Droppable = ({ index }) => {
 const StepSeq = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
-  const handleClick = useCallback(
+  const handleCellClick = useCallback(
     (voice: number, step: number) => {
       dispatch({ type: 'toggle-seq-step', voice, step })
     },
     [dispatch],
   )
 
+  const handleClearClick = useCallback(() => {
+    dispatch({ type: 'clear-sequence' })
+  }, [dispatch])
+
   return (
     <div className="four-cols">
       <div className="col">
         <Dropdown id="stp" />
+        <button className={`btn`} onClick={() => handleClearClick()}>
+          CLEAR SEQ
+        </button>
       </div>
       <div className="tcol">
         <div className="seq">
@@ -149,7 +156,7 @@ const StepSeq = () => {
                     <div
                       className={`seq-cell ${step ? 'step-on' : ''}`}
                       key={j}
-                      onClick={() => handleClick(i, j)}
+                      onClick={() => handleCellClick(i, j)}
                     />
                   )
                 })}

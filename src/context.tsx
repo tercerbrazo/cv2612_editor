@@ -52,6 +52,9 @@ enum MidiCommands {
   SET_SEQ_STEP_ON = 108,
   SET_SEQ_STEP_OFF = 109,
   SAVE_STATE = 110,
+  CLEAR_SEQ = 111,
+  CLEAR_BINDINGS = 112,
+  TOGGLE_DEBUG = 113,
 }
 
 const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
@@ -205,6 +208,9 @@ type Action =
       step: number
     }
   | {
+      type: 'clear-sequence'
+    }
+  | {
       type: 'toggle-binding'
       bindingKey: BindingKey
     }
@@ -256,6 +262,9 @@ type Action =
     }
   | {
       type: 'save-state'
+    }
+  | {
+      type: 'toggle-debug'
     }
 
 const paramTitles: Record<Param, string> = {
@@ -494,15 +503,7 @@ const getInitialState = (): State => {
     patchIdx: 0,
     channelIdx: 0,
     moduleState: {},
-    sequence: [],
-  }
-
-  for (let i = 0; i < 6; i++) {
-    const steps: boolean[] = []
-    for (let j = 0; j < 16; j++) {
-      steps.push((j - i) % 6 === 0)
-    }
-    state.sequence.push(steps)
+    sequence: Array(6).fill(Array(16).fill(false)),
   }
 
   const setParamValue = (
@@ -587,9 +588,11 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
 
     const index = binding.indexOf(bi)
     if (index !== -1) {
+      // remove the binding
       binding.splice(index, 1)
       sendMidiCmd(bindingsMap[state.bindingKey], bi)
     } else {
+      // add the binding
       binding.push(bi)
       sendMidiCmd(bindingsMap[state.bindingKey], 64 + bi)
     }
@@ -623,7 +626,8 @@ const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
 }
 
 const syncMidi = (state: State) => {
-  const bindingIndexes = new Set<number>()
+  // clear all bindings first
+  sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
 
   Object.entries(state.moduleState).forEach(([key, val]) => {
     const { id, pid, cid, op } = decodeKey(key)
@@ -631,15 +635,18 @@ const syncMidi = (state: State) => {
     const ccVal = val << (7 - bits)
     // sync midi cc
     MidiIO.sendCC(ch, cc, ccVal)
-    if (bi) {
-      bindingIndexes.add(bi)
+    if (bi === undefined) {
+      return
     }
-  })
-
-  bindingIndexes.forEach((bi) => {
-    sendMidiCmd(bindingsMap.x, (state.bindings.x.includes(bi) ? 64 : 0) + bi)
-    sendMidiCmd(bindingsMap.y, (state.bindings.y.includes(bi) ? 64 : 0) + bi)
-    sendMidiCmd(bindingsMap.z, (state.bindings.z.includes(bi) ? 64 : 0) + bi)
+    if (state.bindings.x.includes(bi)) {
+      sendMidiCmd(bindingsMap.x, 64 + bi)
+    }
+    if (state.bindings.y.includes(bi)) {
+      sendMidiCmd(bindingsMap.y, 64 + bi)
+    }
+    if (state.bindings.z.includes(bi)) {
+      sendMidiCmd(bindingsMap.z, 64 + bi)
+    }
   })
 }
 
@@ -838,6 +845,15 @@ const reducer = (state: State, action: Action): State => {
       sendMidiCmd(MidiCommands.SAVE_STATE)
       const savedState: State = { ...state, bindingKey: undefined }
       return savedState
+    }
+    case 'toggle-debug': {
+      sendMidiCmd(MidiCommands.TOGGLE_DEBUG)
+      return state
+    }
+    case 'clear-sequence': {
+      sendMidiCmd(MidiCommands.CLEAR_SEQ)
+
+      return { ...state, sequence: Array(6).fill(Array(16).fill(false)) }
     }
   }
 }

@@ -101,6 +101,15 @@ const Midi = () => {
       >
         SAVE STATE
       </a>
+      <a
+        href="/"
+        onClick={(ev) => {
+          ev.preventDefault()
+          dispatch({ type: 'toggle-debug' })
+        }}
+      >
+        TOGGLE DEBUG
+      </a>
     </nav>
   )
 }
