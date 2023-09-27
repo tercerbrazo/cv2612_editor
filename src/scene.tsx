@@ -310,7 +310,6 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
-          <Dropdown id="pz" />
           <Slider id="bl" />
         </div>
         <div className="col">

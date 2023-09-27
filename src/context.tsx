@@ -394,9 +394,16 @@ const getParamMidiCc = (
   // isOperatorParam
   const values: OperatorParam[] = Object.values(OperatorParamEnum)
   const index = values.indexOf(id)
-  return {
-    ch: pid * 4 + op,
-    cc: OP_PARAM_OFFSET + cid * values.length + index, // 40 - 99 range
+  if ((state.moduleState['pm-0-0-0'] as PlayModeEnum) === PlayModeEnum.POLY) {
+    return {
+      ch: 0,
+      cc: OP_PARAM_OFFSET + op * values.length + index, // 40 - 79 range
+    }
+  } else {
+    return {
+      ch: pid * 4 + op,
+      cc: OP_PARAM_OFFSET + cid * values.length + index, // 40 - 99 range
+    }
   }
 }
 
@@ -645,11 +652,9 @@ const syncMidi = (state: State) => {
     }
     if (state.bindings.x.includes(bi)) {
       sendMidiCmd(bindingsMap.x, 64 + bi)
-    }
-    if (state.bindings.y.includes(bi)) {
+    } else if (state.bindings.y.includes(bi)) {
       sendMidiCmd(bindingsMap.y, 64 + bi)
-    }
-    if (state.bindings.z.includes(bi)) {
+    } else if (state.bindings.z.includes(bi)) {
       sendMidiCmd(bindingsMap.z, 64 + bi)
     }
   })
@@ -932,7 +937,6 @@ const CV2612Provider = ({ children }) => {
   }, [state])
 
   const doSaveState = useCallback(() => {
-    // TODO: save to local storage
     reactLocalStorage.set('lastState', JSON.stringify(state))
   }, [state])
 

@@ -84,6 +84,7 @@ const Patch = () => {
         value={state.name}
         size={30}
         onChange={handleNameChange}
+        onFocus={(e) => e.target.select()}
       />
       <span> </span>
       <span> </span>

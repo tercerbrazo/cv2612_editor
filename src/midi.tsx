@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { BindingKey, CV2612Context } from './context'
 import MidiIO from './midi-io'
@@ -100,15 +100,6 @@ const Midi = () => {
         }}
       >
         SAVE STATE
-      </a>
-      <a
-        href="/"
-        onClick={(ev) => {
-          ev.preventDefault()
-          dispatch({ type: 'toggle-debug' })
-        }}
-      >
-        TOGGLE DEBUG
       </a>
     </nav>
   )
