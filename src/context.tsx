@@ -23,6 +23,7 @@ type ParamMeta = {
 
 type ParamData = ParamMeta & {
   value: number
+  bindings: BindingKey[]
 }
 
 type PatchId = 0 | 1 | 2 | 3
@@ -579,25 +580,27 @@ const getEnvelope = (state: State, op: OperatorId) => {
 }
 
 const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
-  if (state.bindingKey) {
-    const { bi } = getParamMeta(id, state, op)
+  // return unchanged state if not binding
+  if (!state.bindingKey) return state
 
-    // return unchanged state if not boundable
-    if (!bi) return state
+  const { bi } = getParamMeta(id, state, op)
 
-    const binding = state.bindings[state.bindingKey]
+  // return unchanged state if not boundable
+  if (!bi) return state
 
-    const index = binding.indexOf(bi)
-    if (index !== -1) {
-      // remove the binding
-      binding.splice(index, 1)
-      sendMidiCmd(bindingsMap[state.bindingKey], bi)
-    } else {
-      // add the binding
-      binding.push(bi)
-      sendMidiCmd(bindingsMap[state.bindingKey], 64 + bi)
-    }
+  const binding = state.bindings[state.bindingKey]
+
+  const index = binding.indexOf(bi)
+  if (index !== -1) {
+    // remove the binding
+    binding.splice(index, 1)
+    sendMidiCmd(bindingsMap[state.bindingKey], bi)
+  } else {
+    // add the binding
+    binding.push(bi)
+    sendMidiCmd(bindingsMap[state.bindingKey], 64 + bi)
   }
+
   return { ...state }
 }
 
@@ -867,11 +870,17 @@ const getContextValue = (
   const getParamData = (id: Param, op: OperatorId) => {
     const meta = getParamMeta(id, state, op)
 
-    const { key } = meta
+    const { key, bi } = meta
     const value = state.moduleState[key]
 
-    // TODO: calculate and return bindings as a BindingKey[]
-    const bindings: BindingKey[] = ['x']
+    const bindings: BindingKey[] = []
+    if (bi) {
+      ;(['x', 'y', 'z'] as const).forEach((mod) => {
+        if (state.bindings[mod].includes(bi)) {
+          bindings.push(mod)
+        }
+      })
+    }
 
     return {
       ...meta,
