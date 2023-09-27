@@ -494,9 +494,8 @@ const getParamMeta = (
   }
 }
 
-const initialSequence = Array.from({ length: 6 }).map((_) =>
-  Array.from({ length: 16 }).map((_) => 0),
-)
+const createSequence = () =>
+  Array.from({ length: 6 }).map((_) => Array.from({ length: 16 }).map((_) => 0))
 
 const getInitialState = (): State => {
   const state: State = {
@@ -505,7 +504,7 @@ const getInitialState = (): State => {
     patchIdx: 0,
     channelIdx: 0,
     moduleState: {},
-    sequence: initialSequence,
+    sequence: createSequence(),
   }
 
   const setParamValue = (
@@ -856,7 +855,7 @@ const reducer = (state: State, action: Action): State => {
     case 'clear-sequence': {
       sendMidiCmd(MidiCommands.CLEAR_SEQ)
 
-      return { ...state, sequence: initialSequence }
+      return { ...state, sequence: createSequence() }
     }
   }
 }
