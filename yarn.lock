@@ -527,6 +527,14 @@
     globals "^13.2.0"
     nullthrows "^1.1.1"
 
+"@parcel/packager-raw-url@2.9.3":
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/@parcel/packager-raw-url/-/packager-raw-url-2.9.3.tgz#317ea74fe090b71614bc97c4e37906514501179c"
+  integrity sha512-4kYOwYsnkfjIj4gew0xLNUcxfV+7tyCvp3FO0XIxo31JJMHCJpEL5BZjoUWHsmfSBNX27iOAG1iu5hu6j4W8TQ==
+  dependencies:
+    "@parcel/plugin" "2.9.3"
+    "@parcel/utils" "2.9.3"
+
 "@parcel/packager-raw@2.9.3":
   version "2.9.3"
   resolved "https://registry.yarnpkg.com/@parcel/packager-raw/-/packager-raw-2.9.3.tgz#288335d1d1a928796dd07f13911acd2c3aefab8a"
@@ -782,6 +790,16 @@
     posthtml-parser "^0.10.1"
     posthtml-render "^3.0.0"
     semver "^7.5.2"
+
+"@parcel/transformer-webmanifest@2.9.3":
+  version "2.9.3"
+  resolved "https://registry.yarnpkg.com/@parcel/transformer-webmanifest/-/transformer-webmanifest-2.9.3.tgz#cdd385a3b7e489c942f7ff9b5bbdda665207dac1"
+  integrity sha512-xkerfb+5OnCJFwOjN8PJQcitCvNuZxg+NIWjG2hMjKfeyqWT00C8uXTSTu8gYTrg0fdQd2c+URdoT/iv/Y7tPQ==
+  dependencies:
+    "@mischnic/json-sourcemap" "^0.1.0"
+    "@parcel/diagnostic" "2.9.3"
+    "@parcel/plugin" "2.9.3"
+    "@parcel/utils" "2.9.3"
 
 "@parcel/types@2.9.3":
   version "2.9.3"
@@ -3683,6 +3701,7 @@ string-argv@0.3.2:
   integrity sha512-aqD2Q0144Z+/RqG52NeHEkZauTAUWJO8c6yTftGJKO3Tja5tUgIfmIl6kExvhtxSDP7fXB6DvzkfMpCd/F3G+Q==
 
 "string-width-cjs@npm:string-width@^4.2.0", string-width@^4.1.0:
+  name string-width-cjs
   version "4.2.3"
   resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
   integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==

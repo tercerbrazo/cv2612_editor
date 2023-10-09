@@ -1,0 +1,22 @@
+{
+  "name": "CV2612 Editor",
+  "short_name": "CV2612",
+  "theme_color": "#3ed107",
+  "background_color": "#222",
+  "start_url": "./",
+  "id": "cv2612",
+  "display": "standalone",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
