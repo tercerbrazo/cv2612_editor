@@ -36,6 +36,7 @@ type ContextValue = {
   state: State
   dispatch: React.Dispatch<Action>
   playMode: PlayModeEnum
+  blendMode: BlendModeEnum
   midiChannel: MidiChannelEnum
   sequenceSteps: number
 }
@@ -69,6 +70,7 @@ const bindingsMap: Record<BindingKey, MidiCommands> = {
 enum SettingParamEnum {
   PATCH_ZONE = 'pz',
   BLEND = 'bl',
+  BLEND_MODE = 'bm',
   PLAY_MODE = 'pm',
   LED_BRIGHTNESS = 'lb',
   TRANSPOSE = 'tr',
@@ -122,6 +124,12 @@ enum PlayModeEnum {
   SEQ = 4,
   RAND = 5,
   POLY = 6,
+}
+
+enum BlendModeEnum {
+  KNOB = 0,
+  KNOB_MOD_X = 1,
+  MOD_X = 2,
 }
 
 enum MidiChannelEnum {
@@ -269,6 +277,7 @@ type Action =
 const paramTitles: Record<Param, string> = {
   pz: 'Patch Zone',
   bl: 'Blend',
+  bm: 'Blend Mode',
   pm: 'Play Mode',
   lb: 'Led Brightness',
   tr: 'Transpose',
@@ -297,6 +306,7 @@ const paramTitles: Record<Param, string> = {
 const paramBitness: Record<Param, number> = {
   pz: 7,
   bl: 7,
+  bm: 7,
   pm: 7,
   lb: 7,
   tr: 7,
@@ -326,6 +336,8 @@ const getParamOptions = (id: Param): string[] => {
   switch (id) {
     case 'pz':
       return ['A- B', 'B - C', 'C - D']
+    case 'bm':
+      return ['KNOB ONLY', 'KNOB + X MOD', 'X MOD']
     case 'pm':
       return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
     case 'rc':
@@ -908,11 +920,13 @@ const getContextValue = (
 
   // HACK: conveniently re-exposing these properties
   const playMode = state.moduleState['pm-0-0-0']
+  const blendMode = state.moduleState['bm-0-0-0']
   const midiChannel = state.moduleState['rc-0-0-0']
   const sequenceSteps = state.moduleState['stp-0-0-0']
 
   return {
     playMode,
+    blendMode,
     midiChannel,
     sequenceSteps,
     state,
@@ -977,5 +991,6 @@ export {
   PatchId,
   ChannelId,
   PlayModeEnum,
+  BlendModeEnum,
   MidiChannelEnum,
 }

@@ -310,19 +310,19 @@ const Scene = () => {
       <br />
       <div className="four-cols">
         <div className="col">
-          <Slider id="bl" />
+          {playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
         </div>
         <div className="col">
           <Dropdown id="pm" />
-          <Slider id="lb" />
+          <Slider id="tr" />
         </div>
         <div className="col">
-          <Slider id="tr" />
+          <Dropdown id="bm" />
           <Slider id="tu" />
         </div>
         <div className="col">
           <Dropdown id="atm" />
-          {playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
+          <Slider id="lb" />
         </div>
       </div>
 
