@@ -305,6 +305,8 @@ const Scene = () => {
     [dispatch],
   )
 
+  if (state.calibrationStep > 0) return null
+
   return (
     <>
       <br />

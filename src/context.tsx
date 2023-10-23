@@ -54,7 +54,8 @@ enum MidiCommands {
   SAVE_STATE = 110,
   CLEAR_SEQ = 111,
   CLEAR_BINDINGS = 112,
-  TOGGLE_DEBUG = 113,
+  SET_CALIBRATION_STEP = 113,
+  TOGGLE_DEBUG = 114,
 }
 
 const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
@@ -192,6 +193,7 @@ type State = {
   moduleState: ModuleState
   patchIdx: PatchId
   channelIdx: ChannelId
+  calibrationStep: number
 }
 type Action =
   | {
@@ -272,6 +274,10 @@ type Action =
     }
   | {
       type: 'toggle-debug'
+    }
+  | {
+      type: 'calibration-step'
+      step: number
     }
 
 const paramTitles: Record<Param, string> = {
@@ -525,6 +531,7 @@ const getInitialState = (): State => {
     channelIdx: 0,
     moduleState: {},
     sequence: createSequence(),
+    calibrationStep: 0,
   }
 
   const setParamValue = (
@@ -720,6 +727,9 @@ const resetChannel = (state: State) => {
 // TODO: udpateParams without sending MIDI out
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
+    case 'calibration-step':
+      sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, action.step)
+      return { ...state, calibrationStep: action.step }
     case 'change-name':
       return { ...state, name: action.name }
     case 'provider-ready':

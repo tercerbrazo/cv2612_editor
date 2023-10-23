@@ -4,6 +4,7 @@ import logo from './logo.png'
 import Patch from './patch'
 import Midi from './midi'
 import Scene from './scene'
+import Calibration from './calibration'
 import './styles.sass'
 
 const App = () => {
@@ -22,6 +23,7 @@ const App = () => {
           <h3 style={{ textAlign: 'right' }}>CV-2612 Editor</h3>
         </div>
       </div>
+      <Calibration />
       <Patch />
       <Midi />
       <Scene />

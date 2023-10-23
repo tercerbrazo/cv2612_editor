@@ -42,6 +42,8 @@ const Midi = () => {
     }
   }, [])
 
+  if (state.calibrationStep > 0) return null
+
   return (
     <nav className="midi">
       <span>

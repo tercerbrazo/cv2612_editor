@@ -1,63 +1,79 @@
-import React, { ChangeEventHandler, useCallback, useContext } from 'react'
+import React, {
+  ChangeEventHandler,
+  MouseEventHandler,
+  useCallback,
+  useContext,
+} from 'react'
 import { CV2612Context } from './context'
 
 const Patch = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
-  const loadPatch = useCallback(() => {
-    const fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.accept = '.json'
+  const handleCalibrationClick: MouseEventHandler<HTMLAnchorElement> =
+    useCallback((ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'calibration-step', step: 1 })
+    }, [])
 
-    fileInput.addEventListener('change', (event) => {
-      const target = event.target as HTMLInputElement
+  const handleLoadClick: MouseEventHandler<HTMLAnchorElement> = useCallback(
+    (ev) => {
+      ev.preventDefault()
 
-      const file = target.files?.[0]
+      const fileInput = document.createElement('input')
+      fileInput.type = 'file'
+      fileInput.accept = '.json'
 
-      if (file) {
-        const reader = new FileReader()
+      fileInput.addEventListener('change', (event) => {
+        const target = event.target as HTMLInputElement
 
-        reader.onload = (e) => {
-          try {
-            const newState = JSON.parse(e.target?.result as string)
-            dispatch({ type: 'update-state', newState })
-          } catch (error) {
-            console.error('Error parsing JSON:', error)
+        const file = target.files?.[0]
+
+        if (file) {
+          const reader = new FileReader()
+
+          reader.onload = (e) => {
+            try {
+              const newState = JSON.parse(e.target?.result as string)
+              dispatch({ type: 'update-state', newState })
+            } catch (error) {
+              console.error('Error parsing JSON:', error)
+            }
           }
+
+          reader.readAsText(file)
         }
+      })
 
-        reader.readAsText(file)
-      }
-    })
+      fileInput.click()
+    },
+    [],
+  )
 
-    fileInput.click()
-    // return state unchanged, as the reducer is always sync
-    // the updated state will be dispatched on file load
-    return state
-  }, [])
+  const handleDownloadClick: MouseEventHandler<HTMLAnchorElement> = useCallback(
+    (ev) => {
+      ev.preventDefault()
+      // Convert the object to a JSON string
+      var jsonData = JSON.stringify(state)
 
-  const downloadPatch = useCallback(() => {
-    // Convert the object to a JSON string
-    var jsonData = JSON.stringify(state)
+      // Create a Blob from the JSON data
+      var blob = new Blob([jsonData], { type: 'application/json' })
 
-    // Create a Blob from the JSON data
-    var blob = new Blob([jsonData], { type: 'application/json' })
+      // Create a URL for the Blob
+      var url = URL.createObjectURL(blob)
 
-    // Create a URL for the Blob
-    var url = URL.createObjectURL(blob)
+      // Create a download link
+      var a = document.createElement('a')
+      a.href = url
+      a.download = `${state.name}.json`
 
-    // Create a download link
-    var a = document.createElement('a')
-    a.href = url
-    a.download = `${state.name}.json`
+      // Trigger the download
+      a.click()
 
-    // Trigger the download
-    a.click()
-
-    // Clean up by revoking the URL
-    URL.revokeObjectURL(url)
-    return state
-  }, [state.name])
+      // Clean up by revoking the URL
+      URL.revokeObjectURL(url)
+    },
+    [state.name],
+  )
 
   const handleNameChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     (e) => {
@@ -75,6 +91,8 @@ const Patch = () => {
     [],
   )
 
+  if (state.calibrationStep > 0) return null
+
   return (
     <nav className="patch">
       <span>Patch: </span>
@@ -90,27 +108,13 @@ const Patch = () => {
       <span> </span>
       <span> </span>
       <span> </span>
-      <span> </span>
-      <span> </span>
-      <span> </span>
-      <a
-        href="/"
-        title="Load a Patch"
-        onClick={(ev) => {
-          ev.preventDefault()
-          loadPatch()
-        }}
-      >
+      <a href="/" title="Calibrate Module" onClick={handleCalibrationClick}>
+        CALIBRATE
+      </a>
+      <a href="/" title="Load a Patch" onClick={handleLoadClick}>
         LOAD
       </a>
-      <a
-        href="/"
-        title="Download Patch"
-        onClick={(ev) => {
-          ev.preventDefault()
-          downloadPatch()
-        }}
-      >
+      <a href="/" title="Download Patch" onClick={handleDownloadClick}>
         DOWNLOAD
       </a>
     </nav>
