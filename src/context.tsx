@@ -646,12 +646,24 @@ const toggleSeqStep = (state: State, voice: number, step: number) => {
 }
 
 const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
-  const { key, ch, cc, bits } = getParamMeta(id, state, op)
+  const doChangeParam = (pid = state.patchIdx) => {
+    const { key, ch, cc, bits } = getParamMeta(id, state, op, pid)
 
-  state.moduleState[key] = val
+    state.moduleState[key] = val
 
-  const ccVal = val << (7 - bits)
-  MidiIO.sendCC(ch, cc, ccVal)
+    const ccVal = val << (7 - bits)
+    MidiIO.sendCC(ch, cc, ccVal)
+  }
+
+  // HACK: change for all patches at once for these list of parameters
+  const ALL_PATCHES_PARAMS: Param[] = ['st']
+  if (ALL_PATCHES_PARAMS.includes(id)) {
+    for (let pid = 0; pid < 4; pid++) {
+      doChangeParam(pid as PatchId)
+    }
+  } else {
+    doChangeParam()
+  }
 
   return { ...state }
 }

@@ -7,7 +7,6 @@
   "repository": "git@github.com:tercerbrazo/cv2612_editor.git",
   "author": "Diego Dorado <diegodorado@gmail.com>",
   "license": "MIT",
-  "private": false,
   "scripts": {
     "start": "parcel",
     "build": "rimraf dist/* && parcel build --no-cache && npx workbox-cli generateSW",
