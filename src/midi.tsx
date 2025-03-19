@@ -99,6 +99,16 @@ const Midi = () => {
       </a>
       <a
         href="/"
+        title="Verify State Checksum"
+        onClick={(ev) => {
+          ev.preventDefault()
+          dispatch({ type: 'verify-checksum' })
+        }}
+      >
+        VERIFY
+      </a>
+      <a
+        href="/"
         title="Save state to EEPROM"
         onClick={(ev) => {
           ev.preventDefault()

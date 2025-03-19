@@ -56,10 +56,16 @@ enum MidiCommands {
   CLEAR_BINDINGS = 112,
   SET_CALIBRATION_STEP = 113,
   TOGGLE_DEBUG = 114,
+  VERIFY_CHECKSUM = 115,
 }
 
 const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
+}
+
+const calculateChecksum = (state: State) => {
+  const key = encodeKey('lfo', 0, 0, 0)
+  return state.moduleState[key]
 }
 
 const bindingsMap: Record<BindingKey, MidiCommands> = {
@@ -278,6 +284,9 @@ type Action =
   | {
       type: 'calibration-step'
       step: number
+    }
+  | {
+      type: 'verify-checksum'
     }
 
 const paramTitles: Record<Param, string> = {
@@ -892,6 +901,12 @@ const reducer = (state: State, action: Action): State => {
     }
     case 'toggle-debug': {
       sendMidiCmd(MidiCommands.TOGGLE_DEBUG)
+      return state
+    }
+    case 'verify-checksum': {
+      const checksum = calculateChecksum(state)
+      console.log('CHECKSUM', checksum)
+      sendMidiCmd(MidiCommands.VERIFY_CHECKSUM, checksum)
       return state
     }
     case 'clear-sequence': {
