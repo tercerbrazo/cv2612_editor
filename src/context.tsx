@@ -64,8 +64,12 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 }
 
 const calculateChecksum = (state: State) => {
-  const key = encodeKey('lfo', 0, 0, 0)
-  return state.moduleState[key]
+  const lfo0 = state.moduleState[encodeKey('lfo', 0, 0, 0)]
+  const lfo1 = state.moduleState[encodeKey('lfo', 1, 0, 0)]
+  const lfo2 = state.moduleState[encodeKey('lfo', 2, 0, 0)]
+  const lfo3 = state.moduleState[encodeKey('lfo', 3, 0, 0)]
+  console.log(lfo0, lfo1, lfo2, lfo3)
+  return lfo0 ^ lfo1 ^ lfo2 ^ lfo3
 }
 
 const bindingsMap: Record<BindingKey, MidiCommands> = {
