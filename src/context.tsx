@@ -70,30 +70,30 @@ const calculateChecksum = (state: State) => {
     ]
 
   let checksum = 0
-  for (let i = 0; i < 4; i++) {
+  for (let pid = 0; pid < 4; pid++) {
     // for each patch
     checksum += getValue('lfo', 0, 0, 0)
 
-    for (let j = 0; j < 6; j++) {
+    for (let cid = 0; cid < 6; cid++) {
       // for each channel
-      checksum += getValue('st', i, j, 0)
-      checksum += getValue('ams', i, j, 0)
-      checksum += getValue('fms', i, j, 0)
-      checksum += getValue('al', i, j, 0)
-      checksum += getValue('fb', i, j, 0)
+      checksum += getValue('st', pid, cid, 0)
+      checksum += getValue('ams', pid, cid, 0)
+      checksum += getValue('fms', pid, cid, 0)
+      checksum += getValue('al', pid, cid, 0)
+      checksum += getValue('fb', pid, cid, 0)
 
-      for (let k = 0; k < 4; k++) {
+      for (let op = 0; op < 4; op++) {
         // for each operator
-        checksum += getValue('ar', i, j, k)
-        checksum += getValue('d1', i, j, k)
-        checksum += getValue('sl', i, j, k)
-        checksum += getValue('d2', i, j, k)
-        checksum += getValue('rr', i, j, k)
-        checksum += getValue('tl', i, j, k)
-        checksum += getValue('mul', i, j, k)
-        checksum += getValue('det', i, j, k)
-        checksum += getValue('rs', i, j, k)
-        checksum += getValue('am', i, j, k)
+        checksum += getValue('ar', pid, cid, op)
+        checksum += getValue('d1', pid, cid, op)
+        checksum += getValue('sl', pid, cid, op)
+        checksum += getValue('d2', pid, cid, op)
+        checksum += getValue('rr', pid, cid, op)
+        checksum += getValue('tl', pid, cid, op)
+        checksum += getValue('mul', pid, cid, op)
+        checksum += getValue('det', pid, cid, op)
+        checksum += getValue('rs', pid, cid, op)
+        checksum += getValue('am', pid, cid, op)
       }
     }
   }
@@ -698,15 +698,7 @@ const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
     MidiIO.sendCC(ch, cc, ccVal)
   }
 
-  // HACK: change for all patches at once for these list of parameters
-  const ALL_PATCHES_PARAMS: Param[] = ['st']
-  if (ALL_PATCHES_PARAMS.includes(id)) {
-    for (let pid = 0; pid < 4; pid++) {
-      doChangeParam(pid as PatchId)
-    }
-  } else {
-    doChangeParam()
-  }
+  doChangeParam()
 
   return { ...state }
 }
