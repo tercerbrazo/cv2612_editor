@@ -64,12 +64,42 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 }
 
 const calculateChecksum = (state: State) => {
-  const lfo0 = state.moduleState[encodeKey('lfo', 0, 0, 0)]
-  const lfo1 = state.moduleState[encodeKey('lfo', 1, 0, 0)]
-  const lfo2 = state.moduleState[encodeKey('lfo', 2, 0, 0)]
-  const lfo3 = state.moduleState[encodeKey('lfo', 3, 0, 0)]
-  console.log(lfo0, lfo1, lfo2, lfo3)
-  return lfo0 ^ lfo1 ^ lfo2 ^ lfo3
+  const getValue = (id: Param, pid: number, cid: number, op: number) =>
+    state.moduleState[
+      encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
+    ]
+
+  let checksum = 0
+  for (let i = 0; i < 4; i++) {
+    // for each patch
+    checksum += getValue('lfo', 0, 0, 0)
+
+    for (let j = 0; j < 6; j++) {
+      // for each channel
+      checksum += getValue('st', i, j, 0)
+      checksum += getValue('ams', i, j, 0)
+      checksum += getValue('fms', i, j, 0)
+      checksum += getValue('al', i, j, 0)
+      checksum += getValue('fb', i, j, 0)
+
+      for (let k = 0; k < 4; k++) {
+        // for each operator
+        checksum += getValue('ar', i, j, k)
+        checksum += getValue('d1', i, j, k)
+        checksum += getValue('sl', i, j, k)
+        checksum += getValue('d2', i, j, k)
+        checksum += getValue('rr', i, j, k)
+        checksum += getValue('tl', i, j, k)
+        checksum += getValue('mul', i, j, k)
+        checksum += getValue('det', i, j, k)
+        checksum += getValue('rs', i, j, k)
+        checksum += getValue('am', i, j, k)
+      }
+    }
+  }
+
+  checksum %= 128
+  return checksum
 }
 
 const bindingsMap: Record<BindingKey, MidiCommands> = {
