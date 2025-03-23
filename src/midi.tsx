@@ -1,12 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { BindingKey, BlendModeEnum, CV2612Context } from './context'
+import { CV2612Context } from './context'
 import MidiIO from './midi-io'
 
 const activityDuration = 80
 
 const Midi = () => {
-  const { blendMode, state, dispatch } = useContext(CV2612Context)
+  const { state, dispatch } = useContext(CV2612Context)
 
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
@@ -67,11 +67,7 @@ const Midi = () => {
       </select>
       <span> </span>
       <span> </span>
-      {(
-        (blendMode === BlendModeEnum.KNOB
-          ? ['x', 'y', 'z']
-          : ['y', 'z']) as BindingKey[]
-      ).map((i) => (
+      {(['x', 'y', 'z'] as const).map((i) => (
         <a
           href="/"
           title={`Bind parameters to ${i.toUpperCase()}`}

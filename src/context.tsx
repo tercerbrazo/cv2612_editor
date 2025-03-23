@@ -36,7 +36,6 @@ type ContextValue = {
   state: State
   dispatch: React.Dispatch<Action>
   playMode: PlayModeEnum
-  blendMode: BlendModeEnum
   midiChannel: MidiChannelEnum
   sequenceSteps: number
 }
@@ -110,14 +109,11 @@ const bindingsMap: Record<BindingKey, MidiCommands> = {
 
 enum SettingParamEnum {
   PATCH_ZONE = 'pz',
-  BLEND = 'bl',
-  BLEND_MODE = 'bm',
   PLAY_MODE = 'pm',
   LED_BRIGHTNESS = 'lb',
   TRANSPOSE = 'tr',
   TUNNING = 'tu',
   MIDI_RECEIVE_CHANNEL = 'rc',
-  ATTENUVERTER_MODE = 'atm',
   SEQ_STEPS = 'stp',
 }
 
@@ -165,12 +161,6 @@ enum PlayModeEnum {
   SEQ = 4,
   RAND = 5,
   POLY = 6,
-}
-
-enum BlendModeEnum {
-  KNOB = 0,
-  KNOB_MOD_X = 1,
-  MOD_X = 2,
 }
 
 enum MidiChannelEnum {
@@ -325,14 +315,11 @@ type Action =
 
 const paramTitles: Record<Param, string> = {
   pz: 'Patch Zone',
-  bl: 'Blend',
-  bm: 'Blend Mode',
   pm: 'Play Mode',
   lb: 'Led Brightness',
   tr: 'Transpose',
   tu: 'Tunning',
   rc: 'Midi Receive Channel',
-  atm: 'Attenuverter Mode',
   stp: 'Seq Mode steps',
   lfo: 'Low Frequency Oscillator',
   st: 'Stereo Mode',
@@ -354,14 +341,11 @@ const paramTitles: Record<Param, string> = {
 
 const paramBitness: Record<Param, number> = {
   pz: 7,
-  bl: 7,
-  bm: 7,
   pm: 7,
   lb: 7,
   tr: 7,
   tu: 7,
   rc: 7,
-  atm: 7,
   stp: 7,
   lfo: 3,
   st: 2,
@@ -385,14 +369,10 @@ const getParamOptions = (id: Param): string[] => {
   switch (id) {
     case 'pz':
       return ['A- B', 'B - C', 'C - D']
-    case 'bm':
-      return ['KNOB ONLY', 'KNOB + X MOD', 'X MOD']
     case 'pm':
       return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
     case 'rc':
       return Object.keys(MidiChannelEnum).filter((k) => isNaN(Number(k)))
-    case 'atm':
-      return ['AUTO', 'OFFSET', 'ATTENUVERTER']
     case 'stp':
       return [
         '1',
@@ -474,9 +454,9 @@ const getParamMidiCc = (
  * 47 are currently used) and depending on the action wanted (binding/unbinding)
  * the corresponding CC value will be shifted by 64.
  * Example:
- *   if BLEND binding index is `1`, then:
- *    * to unbind, send CC value 1
- *    * to bind, send CC value 65 (64+1)
+ *   if LFO binding index is `2`, then:
+ *    * to unbind, send CC value 2
+ *    * to bind, send CC value 66 (64+2)
  * This needs to be mimicked in the module firmware.
  *
  * */
@@ -484,9 +464,6 @@ const getParamBindingIndex = (
   id: Param,
   op: OperatorId,
 ): number | undefined => {
-  if (id === SettingParamEnum.BLEND) {
-    return 1
-  }
   if (id === PatchParamEnum.LFO) {
     return 2
   }
@@ -621,10 +598,8 @@ const getInitialState = (): State => {
   setParamValue(SettingParamEnum.PLAY_MODE, 0, 0, 0, 0)
   setParamValue(SettingParamEnum.LED_BRIGHTNESS, 0, 0, 0, 64)
   setParamValue(SettingParamEnum.MIDI_RECEIVE_CHANNEL, 0, 0, 0, 0)
-  setParamValue(SettingParamEnum.ATTENUVERTER_MODE, 0, 0, 0, 0)
   setParamValue(SettingParamEnum.TRANSPOSE, 0, 0, 0, 32)
   setParamValue(SettingParamEnum.TUNNING, 0, 0, 0, 64)
-  setParamValue(SettingParamEnum.BLEND, 0, 0, 0, 0)
   setParamValue(SettingParamEnum.SEQ_STEPS, 0, 0, 0, 7)
 
   return state
@@ -983,13 +958,11 @@ const getContextValue = (
 
   // HACK: conveniently re-exposing these properties
   const playMode = state.moduleState['pm-0-0-0']
-  const blendMode = state.moduleState['bm-0-0-0']
   const midiChannel = state.moduleState['rc-0-0-0']
   const sequenceSteps = state.moduleState['stp-0-0-0']
 
   return {
     playMode,
-    blendMode,
     midiChannel,
     sequenceSteps,
     state,
@@ -1048,12 +1021,10 @@ const CV2612Provider = ({ children }) => {
 export {
   CV2612Context,
   CV2612Provider,
-  BindingKey,
   Param,
   OperatorId,
   PatchId,
   ChannelId,
   PlayModeEnum,
-  BlendModeEnum,
   MidiChannelEnum,
 }

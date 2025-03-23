@@ -176,9 +176,6 @@ button
         margin-left: 15px
         &.active
           animation: blinkLed 0.1s infinite
-      .learning
-        background: #ddd
-        color: black
       select
         max-width: 25%
         font-size: 0.8em
@@ -278,9 +275,6 @@ button
   .slider
     &.learn
       background: rgba(0,255,255,0.12)
-      &.mapped
-        background: rgba(0,255,255,0.35)
-        border-color: transparent
       &:hover
         cursor: pointer
         border: 2px dashed $primary
@@ -288,12 +282,11 @@ button
       i
         &.x, &.y, &.z
           position: absolute
-          bottom: -12px
-          height: 6px
-          width: 6px
-          border-radius: 50%
-          box-shadow: 0 0 2px $white
-          left: 10px
+          bottom: -8px
+          height: 4px
+          box-shadow: 1px 1px 1px $white
+          left: 0px
+          right: 8px
         &.x
           background: red
         &.y
