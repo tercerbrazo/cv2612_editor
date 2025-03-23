@@ -10,10 +10,7 @@ type SliderProps = {
 const Slider = ({ id, op = 0 }: SliderProps) => {
   const { state, dispatch, getParamData } = useContext(CV2612Context)
 
-  const { title, label, max, value, ch, cc, bi, bindings } = getParamData(
-    id,
-    op,
-  )
+  const { title, label, max, value, ch, cc, bi, binding } = getParamData(id, op)
 
   const className = `slider ${bi && state.bindingKey ? 'learn' : ''}`
 
@@ -45,9 +42,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     >
       <label>
         {label}
-        {bindings.map((mod) => (
-          <i key={mod} className={mod} />
-        ))}
+        <i className={binding ?? ''} />
       </label>
       <input
         type="range"

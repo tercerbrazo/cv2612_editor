@@ -23,7 +23,7 @@ type ParamMeta = {
 
 type ParamData = ParamMeta & {
   value: number
-  bindings: BindingKey[]
+  binding?: BindingKey
 }
 
 type PatchId = 0 | 1 | 2 | 3
@@ -99,12 +99,6 @@ const calculateChecksum = (state: State) => {
 
   checksum %= 128
   return checksum
-}
-
-const bindingsMap: Record<BindingKey, MidiCommands> = {
-  x: MidiCommands.BIND_X,
-  y: MidiCommands.BIND_Y,
-  z: MidiCommands.BIND_Z,
 }
 
 enum SettingParamEnum {
@@ -630,20 +624,32 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
   const { bi } = getParamMeta(id, state, op)
 
   // return unchanged state if not boundable
-  if (!bi) return state
+  if (bi === undefined) return state
 
-  const binding = state.bindings[state.bindingKey]
-
-  const index = binding.indexOf(bi)
-  if (index !== -1) {
-    // remove the binding
-    binding.splice(index, 1)
-    sendMidiCmd(bindingsMap[state.bindingKey], bi)
-  } else {
-    // add the binding
-    binding.push(bi)
-    sendMidiCmd(bindingsMap[state.bindingKey], 64 + bi)
+  // TODO: simplify binding commands in the firm and update this logic
+  const cmdsMap = {
+    x: MidiCommands.BIND_X,
+    y: MidiCommands.BIND_Y,
+    z: MidiCommands.BIND_Z,
   }
+
+  // update bindings state
+  ;(['x', 'y', 'z'] as const).forEach((mod) => {
+    const binding = state.bindings[mod]
+    const index = binding.indexOf(bi)
+    if (index !== -1) {
+      // remove the binding
+      binding.splice(index, 1)
+      // unbind cmd
+      sendMidiCmd(cmdsMap[mod], bi)
+    } else if (mod === state.bindingKey) {
+      // add the binding
+      binding.push(bi)
+      sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
+      // bind cmd
+      sendMidiCmd(cmdsMap[mod], 64 + bi)
+    }
+  })
 
   return { ...state }
 }
@@ -692,11 +698,11 @@ const syncMidi = (state: State) => {
       return
     }
     if (state.bindings.x.includes(bi)) {
-      sendMidiCmd(bindingsMap.x, 64 + bi)
+      sendMidiCmd(MidiCommands.BIND_X, 64 + bi)
     } else if (state.bindings.y.includes(bi)) {
-      sendMidiCmd(bindingsMap.y, 64 + bi)
+      sendMidiCmd(MidiCommands.BIND_Y, 64 + bi)
     } else if (state.bindings.z.includes(bi)) {
-      sendMidiCmd(bindingsMap.z, 64 + bi)
+      sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
     }
   })
 }
@@ -928,11 +934,11 @@ const getContextValue = (
     const { key, bi } = meta
     const value = state.moduleState[key]
 
-    const bindings: BindingKey[] = []
+    let binding: BindingKey | undefined = undefined
     if (bi) {
       ;(['x', 'y', 'z'] as const).forEach((mod) => {
         if (state.bindings[mod].includes(bi)) {
-          bindings.push(mod)
+          binding = mod
         }
       })
     }
@@ -940,7 +946,7 @@ const getContextValue = (
     return {
       ...meta,
       value,
-      bindings,
+      binding,
     }
   }
 
