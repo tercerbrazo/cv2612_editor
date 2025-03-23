@@ -694,15 +694,16 @@ const syncMidi = (state: State) => {
     const ccVal = val << (7 - bits)
     // sync midi cc
     MidiIO.sendCC(ch, cc, ccVal)
-    if (bi === undefined) {
-      return
-    }
-    if (state.bindings.x.includes(bi)) {
-      sendMidiCmd(MidiCommands.BIND_X, 64 + bi)
-    } else if (state.bindings.y.includes(bi)) {
-      sendMidiCmd(MidiCommands.BIND_Y, 64 + bi)
-    } else if (state.bindings.z.includes(bi)) {
-      sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
+
+    // send bindings for first patch/channel as they are repeated
+    if (bi !== undefined && pid === 0 && cid === 0) {
+      if (state.bindings.x.includes(bi)) {
+        sendMidiCmd(MidiCommands.BIND_X, 64 + bi)
+      } else if (state.bindings.y.includes(bi)) {
+        sendMidiCmd(MidiCommands.BIND_Y, 64 + bi)
+      } else if (state.bindings.z.includes(bi)) {
+        sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
+      }
     }
   })
 }
