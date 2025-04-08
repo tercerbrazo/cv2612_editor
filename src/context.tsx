@@ -9,6 +9,63 @@ import { reactLocalStorage } from 'reactjs-localstorage'
 import MidiIO from './midi-io'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
 
+// NOTE: needs to be in sync with firmware
+const SETTINGS_PARAM_INDEXES: Record<SettingParam, number> = {
+  pm: 3,
+  lb: 4,
+  tr: 5,
+  tu: 6,
+  rc: 7,
+  stp: 9,
+}
+
+const CHANNEL_PARAM_INDEXES = {
+  al: 0,
+  fb: 1,
+  ams: 2,
+  fms: 3,
+  st: 4,
+}
+
+const OPERATOR_PARAM_INDEXES = {
+  ar: 0,
+  d1: 1,
+  sl: 2,
+  d2: 3,
+  rr: 4,
+  tl: 5,
+  mul: 6,
+  det: 7,
+  rs: 8,
+  am: 9,
+}
+
+const LFO_CC = 9
+const CH_PARAM_OFFSET = 10
+const CH_PARAM_COUNT = 5
+const OP_PARAM_OFFSET = 40
+const OP_PARAM_COUNT = 10
+const CH_BINDING_OFFSET = 10
+const OP_BINDING_OFFSET = 20
+
+enum MidiCommands {
+  BIND_X = 101,
+  BIND_Y = 102,
+  BIND_Z = 103,
+  COPY_PATCH = 104,
+  MOVE_PATCH = 105,
+  COPY_CHANNEL = 106,
+  MOVE_CHANNEL = 107,
+  SET_SEQ_STEP_ON = 108,
+  SET_SEQ_STEP_OFF = 109,
+  SAVE_STATE = 110,
+  CLEAR_SEQ = 111,
+  CLEAR_BINDINGS = 112,
+  SET_CALIBRATION_STEP = 113,
+  TOGGLE_DEBUG = 114,
+  VERIFY_CHECKSUM = 115,
+}
+
 type ParamMeta = {
   key: string
   title: string
@@ -38,24 +95,6 @@ type ContextValue = {
   playMode: PlayModeEnum
   midiChannel: MidiChannelEnum
   sequenceSteps: number
-}
-
-enum MidiCommands {
-  BIND_X = 101,
-  BIND_Y = 102,
-  BIND_Z = 103,
-  COPY_PATCH = 104,
-  MOVE_PATCH = 105,
-  COPY_CHANNEL = 106,
-  MOVE_CHANNEL = 107,
-  SET_SEQ_STEP_ON = 108,
-  SET_SEQ_STEP_OFF = 109,
-  SAVE_STATE = 110,
-  CLEAR_SEQ = 111,
-  CLEAR_BINDINGS = 112,
-  SET_CALIBRATION_STEP = 113,
-  TOGGLE_DEBUG = 114,
-  VERIFY_CHECKSUM = 115,
 }
 
 const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
@@ -102,7 +141,6 @@ const calculateChecksum = (state: State) => {
 }
 
 enum SettingParamEnum {
-  PATCH_ZONE = 'pz',
   PLAY_MODE = 'pm',
   LED_BRIGHTNESS = 'lb',
   TRANSPOSE = 'tr',
@@ -135,10 +173,6 @@ enum OperatorParamEnum {
   RS = 'rs',
   AM = 'am',
 }
-const CH_PARAM_OFFSET = 10
-const OP_PARAM_OFFSET = 40
-const CH_BINDING_OFFSET = 10
-const OP_BINDING_OFFSET = 20
 
 type SettingParam = `${SettingParamEnum}`
 type PatchParam = `${PatchParamEnum}`
@@ -308,7 +342,6 @@ type Action =
     }
 
 const paramTitles: Record<Param, string> = {
-  pz: 'Patch Zone',
   pm: 'Play Mode',
   lb: 'Led Brightness',
   tr: 'Transpose',
@@ -334,7 +367,6 @@ const paramTitles: Record<Param, string> = {
 }
 
 const paramBitness: Record<Param, number> = {
-  pz: 7,
   pm: 7,
   lb: 7,
   tr: 7,
@@ -361,8 +393,6 @@ const paramBitness: Record<Param, number> = {
 
 const getParamOptions = (id: Param): string[] => {
   switch (id) {
-    case 'pz':
-      return ['A- B', 'B - C', 'C - D']
     case 'pm':
       return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
     case 'rc':
@@ -405,8 +435,7 @@ const getParamMidiCc = (
   cid = state.channelIdx,
 ): { ch: number; cc: number } => {
   if (isSettingParam(id)) {
-    const values: SettingParam[] = Object.values(SettingParamEnum)
-    const index = values.indexOf(id)
+    const index = SETTINGS_PARAM_INDEXES[id]
     return { ch: 15, cc: 0 + index }
   }
 
@@ -414,30 +443,28 @@ const getParamMidiCc = (
     // LFO case
     return {
       ch: pid * 4,
-      cc: 9,
+      cc: LFO_CC,
     }
   }
 
   if (isChannelParam(id)) {
-    const values: ChannelParam[] = Object.values(ChannelParamEnum)
-    const index = values.indexOf(id)
+    const index = CHANNEL_PARAM_INDEXES[id]
     return {
       ch: pid * 4,
-      cc: CH_PARAM_OFFSET + cid * values.length + index, // 10-39 range
+      cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index, // 10-39 range
     }
   }
   // isOperatorParam
-  const values: OperatorParam[] = Object.values(OperatorParamEnum)
-  const index = values.indexOf(id)
+  const index = OPERATOR_PARAM_INDEXES[id]
   if ((state.moduleState['pm-0-0-0'] as PlayModeEnum) === PlayModeEnum.POLY) {
     return {
       ch: 0,
-      cc: OP_PARAM_OFFSET + op * values.length + index, // 40 - 79 range
+      cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
     }
   } else {
     return {
       ch: pid * 4 + op,
-      cc: OP_PARAM_OFFSET + cid * values.length + index, // 40 - 99 range
+      cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
     }
   }
 }

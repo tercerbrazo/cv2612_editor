@@ -1,4 +1,4 @@
-export default function algorithmAscii(algorithm) {
+function _algorithmAscii(algorithm) {
   switch (algorithm) {
     case 0:
       return `
@@ -70,8 +70,7 @@ export default function algorithmAscii(algorithm) {
 ╚═╝ ║ ╚═╝  ║
     ║ ╔═╗  ║
     ╚═╣4╠══╝
-      ╚═╝
-`
+      ╚═╝`
     case 6:
       return `
  ╔═╗  ╔═╗
@@ -82,8 +81,7 @@ export default function algorithmAscii(algorithm) {
       ╚═╝  ║
       ╔═╗  ║
       ║4╠══╝
-      ╚═╝
-`
+      ╚═╝`
     case 7:
       return `
 
@@ -100,3 +98,11 @@ export default function algorithmAscii(algorithm) {
       return 'no algorithm'
   }
 }
+
+const algorithmAscii = (algorithm) => {
+  const str = _algorithmAscii(algorithm)
+  const [firstLine, ...rest] = str.split('\n')
+  return rest.join('\n')
+}
+
+export default algorithmAscii
