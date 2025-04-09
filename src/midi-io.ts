@@ -72,7 +72,11 @@ const sendCC = async (channel: number, number: number, value: number) => {
   if (!midiOut) return
 
   // Create a unique key for each channel-number combination
-  const key = `${channel}-${number}`
+  let key = `${channel}-${number}`
+  if (channel === 15) {
+    // but, on channel 15 we send commands, and different values arent just overridables
+    key += `-${value}`
+  }
 
   // If there's a pending message for the same channel-number, replace it
   if (messageQueue.has(key)) {

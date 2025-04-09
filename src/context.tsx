@@ -65,6 +65,12 @@ enum MidiCommands {
   TOGGLE_DEBUG = 114,
   VERIFY_CHECKSUM = 115,
 }
+// TODO: simplify binding commands in the firm and update this logic
+const BINDING_CMD_MAP = {
+  x: MidiCommands.BIND_X,
+  y: MidiCommands.BIND_Y,
+  z: MidiCommands.BIND_Z,
+} as const
 
 type ParamMeta = {
   key: string
@@ -262,6 +268,10 @@ type Action =
       type: 'toggle-param-binding'
       id: Param
       op: OperatorId
+    }
+  | {
+      type: 'bind-all'
+      modulator?: keyof typeof BINDING_CMD_MAP
     }
   | {
       type: 'change-param'
@@ -651,16 +661,10 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
   const { bi } = getParamMeta(id, state, op)
 
   // return unchanged state if not boundable
-  if (bi === undefined) return state
+  if (bi === undefined)
+    return state
 
-  // TODO: simplify binding commands in the firm and update this logic
-  const cmdsMap = {
-    x: MidiCommands.BIND_X,
-    y: MidiCommands.BIND_Y,
-    z: MidiCommands.BIND_Z,
-  }
-
-  // update bindings state
+    // update bindings state
   ;(['x', 'y', 'z'] as const).forEach((mod) => {
     const binding = state.bindings[mod]
     const index = binding.indexOf(bi)
@@ -668,13 +672,12 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
       // remove the binding
       binding.splice(index, 1)
       // unbind cmd
-      sendMidiCmd(cmdsMap[mod], bi)
+      sendMidiCmd(BINDING_CMD_MAP[mod], bi)
     } else if (mod === state.bindingKey) {
       // add the binding
       binding.push(bi)
-      sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
       // bind cmd
-      sendMidiCmd(cmdsMap[mod], 64 + bi)
+      sendMidiCmd(BINDING_CMD_MAP[mod], 64 + bi)
     }
   })
 
@@ -707,6 +710,32 @@ const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
   }
 
   doChangeParam()
+
+  return { ...state }
+}
+
+const bindAll = (state: State, modulator?: keyof typeof BINDING_CMD_MAP) => {
+  // clear all bindings first
+  sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
+  // clear bindings state
+  state.bindings = { x: [], y: [], z: [] }
+
+  // if this was a "clear bindings" only cmd, then return
+  if (modulator === undefined) return { ...state }
+
+  Object.keys(state.moduleState).forEach((key) => {
+    const { id, pid, cid, op } = decodeKey(key)
+    const { bi } = getParamMeta(id, state, op, pid, cid)
+
+    // send bindings for first patch/channel as they are repeated
+    if (bi !== undefined && pid === 0 && cid === 0) {
+      console.log(key, bi, pid, cid)
+      // push binding state
+      state.bindings[modulator].push(bi)
+      // send binding via midi
+      sendMidiCmd(BINDING_CMD_MAP[modulator], 64 + bi)
+    }
+  })
 
   return { ...state }
 }
@@ -802,6 +831,8 @@ const reducer = (state: State, action: Action): State => {
             ? undefined
             : action.bindingKey,
       }
+    case 'bind-all':
+      return bindAll(state, action.modulator)
     case 'toggle-seq-step':
       return toggleSeqStep(state, action.voice, action.step)
     case 'reset-channel':

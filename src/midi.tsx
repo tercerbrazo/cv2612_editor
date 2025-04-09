@@ -2,8 +2,16 @@ import React, { useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { CV2612Context } from './context'
 import MidiIO from './midi-io'
+import { MenuDropdown } from './menu-dropdown'
 
 const activityDuration = 80
+
+const options = [
+  { label: 'Unbind All', value: 0 },
+  { label: 'Bind All to X', value: 1 },
+  { label: 'Bind All to Y', value: 2 },
+  { label: 'Bind All to Z', value: 3 },
+]
 
 const Midi = () => {
   const { state, dispatch } = useContext(CV2612Context)
@@ -81,6 +89,27 @@ const Midi = () => {
           {i.toUpperCase()}
         </a>
       ))}
+      <MenuDropdown
+        title="Bind all to..."
+        text="⋯"
+        options={options}
+        onSelect={(option) => {
+          switch (option.value) {
+            case 0:
+              dispatch({ type: 'bind-all' })
+              break
+            case 1:
+              dispatch({ type: 'bind-all', modulator: 'x' })
+              break
+            case 2:
+              dispatch({ type: 'bind-all', modulator: 'y' })
+              break
+            case 3:
+              dispatch({ type: 'bind-all', modulator: 'z' })
+              break
+          }
+        }}
+      />
       <span> </span>
       <span> </span>
       <a
