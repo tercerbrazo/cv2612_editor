@@ -15,8 +15,8 @@ const options = [
 
 const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
   { value: 'fast', label: '🐇 Fast' },
-  { value: 'normal', label: '🐢 Normal' },
-  { value: 'slow', label: '🐌 Slow' },
+  { value: 'normal', label: '🐕 Normal' },
+  { value: 'slow', label: '🐢 Slow' },
   { value: 'shitty', label: '💩 Shitty' },
 ]
 
