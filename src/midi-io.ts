@@ -1,13 +1,28 @@
+type SpeedPreset = 'fast' | 'normal' | 'slow' | 'shitty'
 const state: {
   ma?: WebMidi.MIDIAccess
   midiOutId: string
+  speedPreset: SpeedPreset
 } = {
   ma: undefined,
   midiOutId: '',
+  speedPreset: 'normal',
 }
 
-const INTERVAL = 20
 const MINIMUM_THROTTLE = 10
+
+const getInterval = () => {
+  switch (state.speedPreset) {
+    case 'fast':
+      return 3
+    case 'normal':
+      return 8
+    case 'slow':
+      return 20
+    case 'shitty':
+      return 40
+  }
+}
 
 type EventMap = {
   midiStateChanged: { outputs: WebMidi.MIDIOutput[] }
@@ -37,8 +52,12 @@ const sub = <T extends keyof EventMap>(event: T, callback: Callback<T>) => {
   return unsubscribe
 }
 
-const setMidiOutId = (id: string) => {
-  state.midiOutId = id
+const setMidiOutId = (midiOutId: string) => {
+  state.midiOutId = midiOutId
+}
+
+const setSpeedPreset = (speedPreset: SpeedPreset) => {
+  state.speedPreset = speedPreset
 }
 
 const refresh = () => {
@@ -96,17 +115,19 @@ const sendCC = async (channel: number, number: number, value: number) => {
       // eslint-disable-next-line no-console
       console.log(`CC ${channel}:${number} -> ${value}`, pendingCount)
     },
-    INTERVAL * pendingCount + MINIMUM_THROTTLE,
+    getInterval() * pendingCount + MINIMUM_THROTTLE,
   )
 
   messageQueue.set(key, timeoutId)
   pendingCount++
 }
 
+export { SpeedPreset }
 export default {
   pub,
   sub,
   setMidiOutId,
+  setSpeedPreset,
   sendCC,
   init,
 }

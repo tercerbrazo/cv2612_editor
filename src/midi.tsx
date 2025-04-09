@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { CV2612Context } from './context'
-import MidiIO from './midi-io'
+import MidiIO, { SpeedPreset } from './midi-io'
 import { MenuDropdown } from './menu-dropdown'
 
 const activityDuration = 80
@@ -13,9 +13,17 @@ const options = [
   { label: 'Bind All to Z', value: 3 },
 ]
 
+const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
+  { value: 'fast', label: '🐇 Fast' },
+  { value: 'normal', label: '🐢 Normal' },
+  { value: 'slow', label: '🐌 Slow' },
+  { value: 'shitty', label: '💩 Shitty' },
+]
+
 const Midi = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
+  const [speed, setSpeed] = useState('normal')
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
   const [midiOutActivity, setMidiOutActivity] = useState(false)
@@ -26,6 +34,18 @@ const Midi = () => {
       MidiIO.setMidiOutId(midiOutId)
     }
   }, [midiOutId])
+
+  useEffect(() => {
+    const speed = reactLocalStorage.get('speedPreset', 'normal')
+    MidiIO.setSpeedPreset(speed)
+    setSpeed(speed)
+  }, [])
+
+  const handleSpeedChange = useCallback((speed: SpeedPreset) => {
+    setSpeed(speed)
+    MidiIO.setSpeedPreset(speed)
+    reactLocalStorage.set('speedPreset', speed)
+  }, [])
 
   useEffect(() => {
     const unsubMidiStateChanged = MidiIO.sub(
@@ -70,6 +90,17 @@ const Midi = () => {
         {midiOuts.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
+          </option>
+        ))}
+      </select>
+      <select
+        className="speed"
+        value={speed}
+        onChange={(ev) => handleSpeedChange(ev.target.value as SpeedPreset)}
+      >
+        {speedPresetOptions.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
           </option>
         ))}
       </select>
