@@ -1,8 +1,8 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { CV2612Context } from './context'
-import MidiIO, { SpeedPreset } from './midi-io'
 import { MenuDropdown } from './menu-dropdown'
+import MidiIO, { SpeedPreset } from './midi-io'
 
 const activityDuration = 80
 

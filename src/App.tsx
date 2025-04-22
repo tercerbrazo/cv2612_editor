@@ -1,10 +1,10 @@
 import React from 'react'
+import Calibration from './calibration'
 import { CV2612Provider } from './context'
 import logo from './logo.png'
-import Patch from './patch'
 import Midi from './midi'
+import Patch from './patch'
 import Scene from './scene'
-import Calibration from './calibration'
 import './styles.sass'
 
 const App = () => {

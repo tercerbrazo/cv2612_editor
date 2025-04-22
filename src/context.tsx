@@ -6,92 +6,22 @@ import React, {
   useReducer,
 } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
+import {
+  MidiChannelEnum,
+  MidiCommands as MidiCommands,
+  SettingParamEnum,
+} from './enums'
 import MidiIO from './midi-io'
+import { calculate_crc32 } from './utils/checksum'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
+import { decodeKey, encodeKey, getParamMeta } from './utils/paramsHelpers'
 
-// NOTE: needs to be in sync with firmware
-const SETTINGS_PARAM_INDEXES: Record<SettingParam, number> = {
-  pm: 3,
-  lb: 4,
-  tr: 5,
-  tu: 6,
-  rc: 7,
-  stp: 9,
-}
-
-const CHANNEL_PARAM_INDEXES = {
-  al: 0,
-  fb: 1,
-  ams: 2,
-  fms: 3,
-  st: 4,
-}
-
-const OPERATOR_PARAM_INDEXES = {
-  ar: 0,
-  d1: 1,
-  sl: 2,
-  d2: 3,
-  rr: 4,
-  tl: 5,
-  mul: 6,
-  det: 7,
-  rs: 8,
-  am: 9,
-}
-
-const LFO_CC = 9
-const CH_PARAM_OFFSET = 10
-const CH_PARAM_COUNT = 5
-const OP_PARAM_OFFSET = 40
-const OP_PARAM_COUNT = 10
-const CH_BINDING_OFFSET = 10
-const OP_BINDING_OFFSET = 20
-
-enum MidiCommands {
-  BIND_X = 101,
-  BIND_Y = 102,
-  BIND_Z = 103,
-  COPY_PATCH = 104,
-  MOVE_PATCH = 105,
-  COPY_CHANNEL = 106,
-  MOVE_CHANNEL = 107,
-  SET_SEQ_STEP_ON = 108,
-  SET_SEQ_STEP_OFF = 109,
-  SAVE_STATE = 110,
-  CLEAR_SEQ = 111,
-  CLEAR_BINDINGS = 112,
-  SET_CALIBRATION_STEP = 113,
-  TOGGLE_DEBUG = 114,
-  VERIFY_CHECKSUM = 115,
-}
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMD_MAP = {
   x: MidiCommands.BIND_X,
   y: MidiCommands.BIND_Y,
   z: MidiCommands.BIND_Z,
 } as const
-
-type ParamMeta = {
-  key: string
-  title: string
-  label: string
-  cc: number
-  ch: number
-  max: number
-  bits: number
-  options: string[]
-  bi?: number
-}
-
-type ParamData = ParamMeta & {
-  value: number
-  binding?: BindingKey
-}
-
-type PatchId = 0 | 1 | 2 | 3
-type ChannelId = 0 | 1 | 2 | 3 | 4 | 5
-type OperatorId = 0 | 1 | 2 | 3
 
 type ContextValue = {
   getParamData: (id: Param, op: OperatorId) => ParamData
@@ -107,158 +37,6 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
 }
 
-const calculateChecksum = (state: State) => {
-  const getValue = (id: Param, pid: number, cid: number, op: number) =>
-    state.moduleState[
-      encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
-    ]
-
-  let checksum = 0
-  for (let pid = 0; pid < 4; pid++) {
-    // for each patch
-    checksum += getValue('lfo', 0, 0, 0)
-
-    for (let cid = 0; cid < 6; cid++) {
-      // for each channel
-      checksum += getValue('st', pid, cid, 0)
-      checksum += getValue('ams', pid, cid, 0)
-      checksum += getValue('fms', pid, cid, 0)
-      checksum += getValue('al', pid, cid, 0)
-      checksum += getValue('fb', pid, cid, 0)
-
-      for (let op = 0; op < 4; op++) {
-        // for each operator
-        checksum += getValue('ar', pid, cid, op)
-        checksum += getValue('d1', pid, cid, op)
-        checksum += getValue('sl', pid, cid, op)
-        checksum += getValue('d2', pid, cid, op)
-        checksum += getValue('rr', pid, cid, op)
-        checksum += getValue('tl', pid, cid, op)
-        checksum += getValue('mul', pid, cid, op)
-        checksum += getValue('det', pid, cid, op)
-        checksum += getValue('rs', pid, cid, op)
-        checksum += getValue('am', pid, cid, op)
-      }
-    }
-  }
-
-  checksum %= 128
-  return checksum
-}
-
-enum SettingParamEnum {
-  PLAY_MODE = 'pm',
-  LED_BRIGHTNESS = 'lb',
-  TRANSPOSE = 'tr',
-  TUNNING = 'tu',
-  MIDI_RECEIVE_CHANNEL = 'rc',
-  SEQ_STEPS = 'stp',
-}
-
-enum PatchParamEnum {
-  LFO = 'lfo',
-}
-
-enum ChannelParamEnum {
-  AL = 'al',
-  FB = 'fb',
-  AMS = 'ams',
-  FMS = 'fms',
-  ST = 'st',
-}
-
-enum OperatorParamEnum {
-  AR = 'ar',
-  D1 = 'd1',
-  SL = 'sl',
-  D2 = 'd2',
-  RR = 'rr',
-  TL = 'tl',
-  MUL = 'mul',
-  DET = 'det',
-  RS = 'rs',
-  AM = 'am',
-}
-
-type SettingParam = `${SettingParamEnum}`
-type PatchParam = `${PatchParamEnum}`
-type ChannelParam = `${ChannelParamEnum}`
-type OperatorParam = `${OperatorParamEnum}`
-type Param = SettingParam | PatchParam | ChannelParam | OperatorParam
-type BindingKey = 'x' | 'y' | 'z'
-
-enum PlayModeEnum {
-  MONO = 0,
-  DUO = 1,
-  TRIO = 2,
-  CHORD = 3,
-  SEQ = 4,
-  RAND = 5,
-  POLY = 6,
-}
-
-enum MidiChannelEnum {
-  CH1 = 0,
-  CH2 = 1,
-  CH3 = 2,
-  CH4 = 3,
-  CH5 = 4,
-  CH6 = 5,
-  CH7 = 6,
-  CH8 = 7,
-  CH9 = 8,
-  CH10 = 9,
-  CH11 = 10,
-  CH12 = 11,
-  CH13 = 12,
-  CH14 = 13,
-  CH15 = 14,
-  CH16 = 15,
-  OMNI = 16,
-  FORWARD = 17,
-  MULTITRACK = 18,
-}
-
-const isSettingParam = (id: Param): id is SettingParam => {
-  const keys: string[] = Object.values(SettingParamEnum)
-  return keys.includes(id)
-}
-
-const isPatchParam = (id: Param): id is PatchParam => {
-  const keys: string[] = Object.values(PatchParamEnum)
-  return keys.includes(id)
-}
-
-const isChannelParam = (id: Param): id is ChannelParam => {
-  const keys: string[] = Object.values(ChannelParamEnum)
-  return keys.includes(id)
-}
-
-const isOperatorParam = (id: Param): id is OperatorParam => {
-  const keys: string[] = Object.values(OperatorParamEnum)
-  return keys.includes(id)
-}
-
-/*
- * A ModuleState is the state of the YM2612 regarding sound design.
- * What defines it is the value of the whole parameters set,
- * which can be defined by a set of values.
- * The key is defined as `ctrlId-patchId-channelId-operatorId`
- * but to ensure keys are properly built, we should encode/decode them
- * with the provided helpers
- */
-type ModuleState = Record<string, number>
-
-type State = {
-  name: string
-  sequence: number[][]
-  bindingKey?: BindingKey
-  bindings: Record<BindingKey, number[]>
-  moduleState: ModuleState
-  patchIdx: PatchId
-  channelIdx: ChannelId
-  calibrationStep: number
-}
 type Action =
   | {
       type: 'provider-ready'
@@ -351,226 +129,6 @@ type Action =
       type: 'verify-checksum'
     }
 
-const paramTitles: Record<Param, string> = {
-  pm: 'Play Mode',
-  lb: 'Led Brightness',
-  tr: 'Transpose',
-  tu: 'Tunning',
-  rc: 'Midi Receive Channel',
-  stp: 'Seq Mode steps',
-  lfo: 'Low Frequency Oscillator',
-  st: 'Stereo Mode',
-  ams: 'Amplitude Modulation Sensitivity',
-  fms: 'Frequency Modulation Sensitivity',
-  al: 'Algorithm',
-  fb: 'Feedback (op1)',
-  ar: 'Attack Rate (angle)',
-  d1: 'Decay1 Rate (angle)',
-  sl: 'Sustain Level (attenuation)',
-  d2: 'Decay2 Rate (angle)',
-  rr: 'Release Rate (angle)',
-  tl: 'Total Level (attenuation)',
-  mul: 'Multiplier',
-  det: 'Detune',
-  rs: 'Rate Scaling',
-  am: 'Amplitude Modulation',
-}
-
-const paramBitness: Record<Param, number> = {
-  pm: 7,
-  lb: 7,
-  tr: 7,
-  tu: 7,
-  rc: 7,
-  stp: 7,
-  lfo: 3,
-  st: 2,
-  ams: 2,
-  fms: 3,
-  al: 3,
-  fb: 3,
-  ar: 5,
-  d1: 5,
-  sl: 4,
-  d2: 5,
-  rr: 4,
-  tl: 7,
-  mul: 4,
-  det: 3,
-  rs: 2,
-  am: 1,
-}
-
-const getParamOptions = (id: Param): string[] => {
-  switch (id) {
-    case 'pm':
-      return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
-    case 'rc':
-      return Object.keys(MidiChannelEnum).filter((k) => isNaN(Number(k)))
-    case 'stp':
-      return [
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-        '10',
-        '11',
-        '12',
-        '13',
-        '14',
-        '15',
-        '16',
-      ]
-    default:
-      return []
-  }
-}
-
-/*
- * This is how Module parameters are mapped to Midi channel/control_change
- * for a particular id-patch-channel-operator combination.
- * This needs to be mimicked in the module firmware.
- *
- * */
-const getParamMidiCc = (
-  id: Param,
-  state: State,
-  op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
-): { ch: number; cc: number } => {
-  if (isSettingParam(id)) {
-    const index = SETTINGS_PARAM_INDEXES[id]
-    return { ch: 15, cc: 0 + index }
-  }
-
-  if (isPatchParam(id)) {
-    // LFO case
-    return {
-      ch: pid * 4,
-      cc: LFO_CC,
-    }
-  }
-
-  if (isChannelParam(id)) {
-    const index = CHANNEL_PARAM_INDEXES[id]
-    return {
-      ch: pid * 4,
-      cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index, // 10-39 range
-    }
-  }
-  // isOperatorParam
-  const index = OPERATOR_PARAM_INDEXES[id]
-  if ((state.moduleState['pm-0-0-0'] as PlayModeEnum) === PlayModeEnum.POLY) {
-    return {
-      ch: 0,
-      cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
-    }
-  } else {
-    return {
-      ch: pid * 4 + op,
-      cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
-    }
-  }
-}
-
-/*
- * Binding index defines how a parameter can be bound to a modulator.
- * There is a maximum of 64 parameters that can be bound (but actually only
- * 47 are currently used) and depending on the action wanted (binding/unbinding)
- * the corresponding CC value will be shifted by 64.
- * Example:
- *   if LFO binding index is `2`, then:
- *    * to unbind, send CC value 2
- *    * to bind, send CC value 66 (64+2)
- * This needs to be mimicked in the module firmware.
- *
- * */
-const getParamBindingIndex = (
-  id: Param,
-  op: OperatorId,
-): number | undefined => {
-  if (id === PatchParamEnum.LFO) {
-    return 2
-  }
-  if (isChannelParam(id)) {
-    const values: ChannelParam[] = Object.values(ChannelParamEnum)
-    const index = values.indexOf(id)
-    return CH_BINDING_OFFSET + index
-  }
-  if (isOperatorParam(id)) {
-    const values: OperatorParam[] = Object.values(OperatorParamEnum)
-    const index = values.indexOf(id)
-    return OP_BINDING_OFFSET + values.length * op + index
-  }
-  // for any other non-boundable parameter it'll be undefined
-  return undefined
-}
-
-const encodeKey = (
-  id: Param,
-  pid: PatchId,
-  cid: ChannelId,
-  op: OperatorId,
-): string => {
-  if (isSettingParam(id)) {
-    return `${id}-0-0-0`
-  }
-  if (isPatchParam(id)) {
-    return `${id}-${pid}-0-0`
-  }
-  if (isChannelParam(id)) {
-    return `${id}-${pid}-${cid}-0`
-  }
-  // isOperatorParam
-  return `${id}-${pid}-${cid}-${op}`
-}
-
-const decodeKey = (key: string) => {
-  const parts = key.split('-')
-
-  return {
-    id: parts[0] as Param,
-    pid: parseInt(parts[1], 10) as PatchId,
-    cid: parseInt(parts[2], 10) as ChannelId,
-    op: parseInt(parts[3], 10) as OperatorId,
-  }
-}
-
-const getParamMeta = (
-  id: Param,
-  state: State,
-  op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
-): ParamMeta => {
-  const key = encodeKey(id, pid, cid, op)
-  const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
-  const label: string = id
-  const bits = paramBitness[id]
-  const title = paramTitles[id]
-  const options = getParamOptions(id)
-  const bi = getParamBindingIndex(id, op)
-  const max = 127 >> (7 - bits)
-
-  return {
-    title,
-    label,
-    bi,
-    cc,
-    ch,
-    max,
-    bits,
-    options,
-    key,
-  }
-}
-
 const createSequence = () =>
   Array.from({ length: 6 }).map((_) => Array.from({ length: 16 }).map((_) => 0))
 
@@ -633,6 +191,13 @@ const getInitialState = (): State => {
   setParamValue(SettingParamEnum.TUNNING, 0, 0, 0, 64)
   setParamValue(SettingParamEnum.SEQ_STEPS, 0, 0, 0, 7)
 
+  // zero out unused settings
+  setParamValue(SettingParamEnum.LEGATO, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.VELOCITY, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.PORTAMENTO, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.POLYPHONY, 0, 0, 0, 0)
+  setParamValue(SettingParamEnum.QUANTIZE, 0, 0, 0, 0)
+
   return state
 }
 
@@ -689,7 +254,6 @@ const toggleSeqStep = (state: State, voice: number, step: number) => {
   const val = voice * 16 + step
 
   state.sequence[voice][step] = prev === 0 ? 1 : 0
-  console.log(state.sequence, voice, step, prev)
 
   sendMidiCmd(
     prev === 0 ? MidiCommands.SET_SEQ_STEP_ON : MidiCommands.SET_SEQ_STEP_OFF,
@@ -729,7 +293,6 @@ const bindAll = (state: State, modulator?: keyof typeof BINDING_CMD_MAP) => {
 
     // send bindings for first patch/channel as they are repeated
     if (bi !== undefined && pid === 0 && cid === 0) {
-      console.log(key, bi, pid, cid)
       // push binding state
       state.bindings[modulator].push(bi)
       // send binding via midi
@@ -807,6 +370,17 @@ const resetChannel = (state: State) => {
     resetOperator(resetOperator(resetOperator(state, 0), 1), 2),
     3,
   )
+}
+
+// TODO: send crc32 checks periodically or after certain actions
+const sendCrc32 = (state: State) => {
+  const crc32 = calculate_crc32(state)
+
+  for (let index = 0; index < 8; index++) {
+    const chunk = (crc32 >> (index * 4)) & 0x0f
+    const data = (index << 4) | chunk
+    sendMidiCmd(MidiCommands.SEND_CRC32_CHUNK, data)
+  }
 }
 
 // TODO: udpateParams without sending MIDI out
@@ -957,12 +531,15 @@ const reducer = (state: State, action: Action): State => {
 
       return { ...state, moduleState }
     }
-    case 'sync-midi':
+    case 'sync-midi': {
       syncMidi(state)
+      sendCrc32(state)
       return state
+    }
     case 'save-state': {
       sendMidiCmd(MidiCommands.SAVE_STATE)
       const savedState: State = { ...state, bindingKey: undefined }
+      sendCrc32(state)
       return savedState
     }
     case 'toggle-debug': {
@@ -970,9 +547,7 @@ const reducer = (state: State, action: Action): State => {
       return state
     }
     case 'verify-checksum': {
-      const checksum = calculateChecksum(state)
-      console.log('CHECKSUM', checksum)
-      sendMidiCmd(MidiCommands.VERIFY_CHECKSUM, checksum)
+      sendCrc32(state)
       return state
     }
     case 'clear-sequence': {
@@ -1037,6 +612,29 @@ const getContextValue = (
   }
 }
 
+function normalize(value: unknown) {
+  if (typeof value === 'number') return 0
+  if (typeof value === 'boolean') return false
+  if (typeof value === 'string') return ''
+  if (Array.isArray(value)) {
+    return value.map(normalize) // Recursively normalize array elements
+  }
+  if (value !== null && typeof value === 'object') {
+    const normalizedObject = {}
+    for (let key in value) {
+      normalizedObject[key] = normalize(value[key]) // Recursively normalize object properties
+    }
+    return normalizedObject
+  }
+  return value // For other types (null, undefined, etc.), return as is
+}
+
+function hasSameShape(a: unknown, b: unknown) {
+  const normalizedA = JSON.stringify(normalize(a))
+  const normalizedB = JSON.stringify(normalize(b))
+  return normalizedA === normalizedB
+}
+
 const initialContextValue = getContextValue(initialState, () => {})
 const CV2612Context = React.createContext<ContextValue>(initialContextValue)
 
@@ -1071,7 +669,12 @@ const CV2612Provider = ({ children }) => {
 
       if (lastStateStr) {
         const lastState = JSON.parse(lastStateStr)
-        dispatch({ type: 'provider-ready', savedState: lastState })
+        // validate lastState shape
+        if (hasSameShape(lastState, initialState)) {
+          dispatch({ type: 'provider-ready', savedState: lastState })
+        } else {
+          dispatch({ type: 'provider-ready', savedState: initialState })
+        }
       } else {
         dispatch({ type: 'provider-ready', savedState: initialState })
       }
@@ -1083,13 +686,4 @@ const CV2612Provider = ({ children }) => {
   )
 }
 
-export {
-  CV2612Context,
-  CV2612Provider,
-  Param,
-  OperatorId,
-  PatchId,
-  ChannelId,
-  PlayModeEnum,
-  MidiChannelEnum,
-}
+export { CV2612Context, CV2612Provider }

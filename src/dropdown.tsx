@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { CV2612Context, Param } from './context'
+import { CV2612Context } from './context'
 
 type DropdownProps = {
   id: Param

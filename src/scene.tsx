@@ -1,6 +1,6 @@
 import {
-  DragEndEvent,
   DndContext,
+  DragEndEvent,
   MouseSensor,
   pointerWithin,
   useDraggable,
@@ -12,6 +12,7 @@ import {
   restrictToHorizontalAxis,
   restrictToParentElement,
 } from '@dnd-kit/modifiers'
+import { MidiChannelEnum, PlayModeEnum } from './enums'
 
 import React, {
   MouseEventHandler,
@@ -20,15 +21,7 @@ import React, {
   useMemo,
 } from 'react'
 import Channel from './channel'
-import {
-  Param,
-  PlayModeEnum,
-  ChannelId,
-  CV2612Context,
-  PatchId,
-  OperatorId,
-  MidiChannelEnum,
-} from './context'
+import { CV2612Context } from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
 

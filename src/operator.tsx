@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { CV2612Context, OperatorId } from './context'
+import { CV2612Context } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
 

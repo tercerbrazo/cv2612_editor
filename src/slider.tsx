@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { ChangeEvent, MouseEventHandler, useContext } from 'react'
-import { CV2612Context, OperatorId, Param } from './context'
+import { CV2612Context } from './context'
 
 type SliderProps = {
   id: Param

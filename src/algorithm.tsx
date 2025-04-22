@@ -8,7 +8,7 @@ const Algorithm = () => {
   const { value } = getParamData('al', 0)
 
   const onAlgorithmClick = (
-    ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+    ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
   ) => {
     ev.preventDefault()
     dispatch({ type: 'reset-channel' })
