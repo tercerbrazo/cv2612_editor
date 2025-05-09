@@ -386,6 +386,31 @@ button
           opacity: 1
           // filter: drop-shadow(0 0 5px $white)
 
+.instruments
+  padding-top: 20px
+  table
+    border-collapse: collapse
+    table-layout: fixed
+    width: 100%
+    th, td
+      border: 1px solid $white
+      height: 32px
+      &:first-child
+        width: 40px
+        text-align: center
+    select
+      width: 100%
+      line-height: 2em
+      border: 0
+      padding: 0 10px
+      margin: 0
+      font-size: 1em
+      background: $black
+      color: $white
+      &:focus
+        outline: none
+        box-shadow: none
+
 @keyframes blinkLed
   from
     background-color: $primary

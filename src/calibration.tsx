@@ -94,8 +94,6 @@ const Calibration = () => {
   const { state } = useContext(CV2612Context)
 
   switch (state.calibrationStep) {
-    case 0:
-      return null
     case 1:
       return <CalibrationStart />
     case 2:
@@ -136,10 +134,10 @@ const Calibration = () => {
       return <Input name="Input Z" signal="low voltage" />
     case 20:
       return <Input name="Input Z" signal="high voltage" />
-
     case 21:
-    default:
       return <CalibrationDone />
+    default:
+      return null
   }
 }
 

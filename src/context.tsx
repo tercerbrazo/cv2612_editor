@@ -14,7 +14,12 @@ import {
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
-import { decodeKey, encodeKey, getParamMeta } from './utils/paramsHelpers'
+import {
+  decodeKey,
+  encodeKey,
+  getParamMeta,
+  getParamMidiCc,
+} from './utils/paramsHelpers'
 
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMD_MAP = {
@@ -39,95 +44,98 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 
 type Action =
   | {
-      type: 'provider-ready'
-      savedState: State
-    }
+    type: 'provider-ready'
+    savedState: State
+  }
   | {
-      type: 'toggle-param-binding'
-      id: Param
-      op: OperatorId
-    }
+    type: 'toggle-instruments-loader'
+  }
   | {
-      type: 'bind-all'
-      modulator?: keyof typeof BINDING_CMD_MAP
-    }
+    type: 'toggle-param-binding'
+    id: Param
+    op: OperatorId
+  }
   | {
-      type: 'change-param'
-      id: Param
-      op: OperatorId
-      val: number
-    }
+    type: 'bind-all'
+    modulator?: keyof typeof BINDING_CMD_MAP
+  }
   | {
-      type: 'toggle-seq-step'
-      voice: number
-      step: number
-    }
+    type: 'change-param'
+    id: Param
+    op: OperatorId
+    val: number
+  }
   | {
-      type: 'clear-sequence'
-    }
+    type: 'toggle-seq-step'
+    voice: number
+    step: number
+  }
   | {
-      type: 'toggle-binding'
-      bindingKey: BindingKey
-    }
+    type: 'clear-sequence'
+  }
   | {
-      type: 'reset-channel'
-    }
+    type: 'toggle-binding'
+    bindingKey: BindingKey
+  }
   | {
-      type: 'reset-operator'
-      op: OperatorId
-    }
+    type: 'reset-channel'
+  }
   | {
-      type: 'change-name'
-      name: string
-    }
+    type: 'reset-operator'
+    op: OperatorId
+  }
   | {
-      type: 'change-patch'
-      index: PatchId
-    }
+    type: 'change-name'
+    name: string
+  }
   | {
-      type: 'move-patch'
-      index: PatchId
-      before: PatchId
-    }
+    type: 'change-patch'
+    index: PatchId
+  }
   | {
-      type: 'copy-patch'
-      source: PatchId
-      target: PatchId
-    }
+    type: 'move-patch'
+    index: PatchId
+    before: PatchId
+  }
   | {
-      type: 'change-channel'
-      index: ChannelId
-    }
+    type: 'copy-patch'
+    source: PatchId
+    target: PatchId
+  }
   | {
-      type: 'move-channel'
-      index: ChannelId
-      before: ChannelId
-    }
+    type: 'change-channel'
+    index: ChannelId
+  }
   | {
-      type: 'copy-channel'
-      source: ChannelId
-      target: ChannelId
-    }
+    type: 'move-channel'
+    index: ChannelId
+    before: ChannelId
+  }
   | {
-      type: 'update-state'
-      newState: State
-    }
+    type: 'copy-channel'
+    source: ChannelId
+    target: ChannelId
+  }
   | {
-      type: 'sync-midi'
-    }
+    type: 'update-state'
+    newState: State
+  }
   | {
-      type: 'save-state'
-    }
+    type: 'sync-midi'
+  }
   | {
-      type: 'toggle-debug'
-    }
+    type: 'save-state'
+  }
   | {
-      type: 'calibration-step'
-      step: number
-    }
+    type: 'toggle-debug'
+  }
   | {
-      type: 'verify-checksum'
-    }
+    type: 'calibration-step'
+    step: number
+  }
+  | {
+    type: 'verify-checksum'
+  }
 
 const createSequence = () =>
   Array.from({ length: 6 }).map((_) => Array.from({ length: 16 }).map((_) => 0))
@@ -141,6 +149,7 @@ const getInitialState = (): State => {
     moduleState: {},
     sequence: createSequence(),
     calibrationStep: 0,
+    instrumentsLoader: false,
   }
 
   const setParamValue = (
@@ -150,7 +159,7 @@ const getInitialState = (): State => {
     op: OperatorId,
     val: number,
   ) => {
-    const { key } = getParamMeta(id, state, op, patchIdx, channelIdx)
+    const key = encodeKey(id, patchIdx, channelIdx, op)
     state.moduleState[key] = val
   }
 
@@ -205,7 +214,8 @@ const initialState = getInitialState()
 
 const getEnvelope = (state: State, op: OperatorId) => {
   const getNormalizedValue = (id: Param) => {
-    const { bits, key } = getParamMeta(id, state, op)
+    const key = encodeKey(id, state.patchIdx, state.channelIdx, op)
+    const { bits } = getParamMeta(id, op)
     return (state.moduleState[key] << (7 - bits)) / 127
   }
 
@@ -223,14 +233,14 @@ const toggleParamBinding = (state: State, id: Param, op: OperatorId) => {
   // return unchanged state if not binding
   if (!state.bindingKey) return state
 
-  const { bi } = getParamMeta(id, state, op)
+  const { bi } = getParamMeta(id, op)
 
   // return unchanged state if not boundable
-  if (bi === undefined)
+  if (bi === undefined) {
     return state
-
-    // update bindings state
-  ;(['x', 'y', 'z'] as const).forEach((mod) => {
+  }
+  // update bindings state
+  ; (['x', 'y', 'z'] as const).forEach((mod) => {
     const binding = state.bindings[mod]
     const index = binding.indexOf(bi)
     if (index !== -1) {
@@ -264,8 +274,12 @@ const toggleSeqStep = (state: State, voice: number, step: number) => {
 }
 
 const changeParam = (state: State, id: Param, op: OperatorId, val: number) => {
-  const doChangeParam = (pid = state.patchIdx) => {
-    const { key, ch, cc, bits } = getParamMeta(id, state, op, pid)
+  const doChangeParam = () => {
+    const pid = state.patchIdx
+    const cid = state.channelIdx
+    const key = encodeKey(id, pid, cid, op)
+    const { bits } = getParamMeta(id, op)
+    const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
 
     state.moduleState[key] = val
 
@@ -289,7 +303,7 @@ const bindAll = (state: State, modulator?: keyof typeof BINDING_CMD_MAP) => {
 
   Object.keys(state.moduleState).forEach((key) => {
     const { id, pid, cid, op } = decodeKey(key)
-    const { bi } = getParamMeta(id, state, op, pid, cid)
+    const { bi } = getParamMeta(id, op)
 
     // send bindings for first patch/channel as they are repeated
     if (bi !== undefined && pid === 0 && cid === 0) {
@@ -309,7 +323,8 @@ const syncMidi = (state: State) => {
 
   Object.entries(state.moduleState).forEach(([key, val]) => {
     const { id, pid, cid, op } = decodeKey(key)
-    const { ch, cc, bits, bi } = getParamMeta(id, state, op, pid, cid)
+    const { bits, bi } = getParamMeta(id, op)
+    const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
     const ccVal = val << (7 - bits)
     // sync midi cc
     MidiIO.sendCC(ch, cc, ccVal)
@@ -329,7 +344,15 @@ const syncMidi = (state: State) => {
 
 const resetOperator = (state: State, op: OperatorId) => {
   const updateAndSync = (id: Param, val: number) => {
-    const { key, ch, cc, bits } = getParamMeta(id, state, op)
+    const key = encodeKey(id, state.patchIdx, state.channelIdx, op)
+    const { bits } = getParamMeta(id, op)
+    const { ch, cc } = getParamMidiCc(
+      id,
+      state,
+      op,
+      state.patchIdx,
+      state.channelIdx,
+    )
     state.moduleState[key] = val
     // sync midi cc
     const ccVal = val << (7 - bits)
@@ -352,7 +375,15 @@ const resetOperator = (state: State, op: OperatorId) => {
 
 const resetChannel = (state: State) => {
   const updateAndSync = (id: Param, val: number) => {
-    const { key, ch, cc, bits } = getParamMeta(id, state, 0)
+    const key = encodeKey(id, state.patchIdx, state.channelIdx, 0)
+    const { bits } = getParamMeta(id, 0)
+    const { ch, cc } = getParamMidiCc(
+      id,
+      state,
+      0,
+      state.patchIdx,
+      state.channelIdx,
+    )
     state.moduleState[key] = val
     // sync midi cc
     const ccVal = val << (7 - bits)
@@ -386,6 +417,8 @@ const sendCrc32 = (state: State) => {
 // TODO: udpateParams without sending MIDI out
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
+    case 'toggle-instruments-loader':
+      return { ...state, instrumentsLoader: !state.instrumentsLoader }
     case 'calibration-step':
       sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, action.step)
       return { ...state, calibrationStep: action.step }
@@ -562,16 +595,19 @@ const getContextValue = (
   state: State,
   dispatch: React.Dispatch<Action>,
 ): ContextValue => {
-  const getParamData = (id: Param, op: OperatorId) => {
-    const meta = getParamMeta(id, state, op)
+  const getParamData = (id: Param, op: OperatorId): ParamData => {
+    const pid = state.patchIdx
+    const cid = state.channelIdx
+    const key = encodeKey(id, pid, cid, op)
+    const meta = getParamMeta(id, op)
+    const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
 
-    const { key, bi } = meta
     const value = state.moduleState[key]
 
     let binding: BindingKey | undefined = undefined
-    if (bi) {
-      ;(['x', 'y', 'z'] as const).forEach((mod) => {
-        if (state.bindings[mod].includes(bi)) {
+    if (meta.bi !== undefined) {
+      ; (['x', 'y', 'z'] as const).forEach((mod) => {
+        if (state.bindings[mod].includes(meta.bi as number)) {
           binding = mod
         }
       })
@@ -579,6 +615,8 @@ const getContextValue = (
 
     return {
       ...meta,
+      cc,
+      ch,
       value,
       binding,
     }
@@ -635,7 +673,7 @@ function hasSameShape(a: unknown, b: unknown) {
   return normalizedA === normalizedB
 }
 
-const initialContextValue = getContextValue(initialState, () => {})
+const initialContextValue = getContextValue(initialState, () => { })
 const CV2612Context = React.createContext<ContextValue>(initialContextValue)
 
 let saveId = 0
@@ -663,12 +701,14 @@ const CV2612Provider = ({ children }) => {
   useEffect(saveStateDelayed, [saveStateDelayed])
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       await MidiIO.init()
       const lastStateStr = reactLocalStorage.get('lastState', '')
 
       if (lastStateStr) {
         const lastState = JSON.parse(lastStateStr)
+        lastState.calibrationStep = 0
+        lastState.instrumentsLoader = false
         // validate lastState shape
         if (hasSameShape(lastState, initialState)) {
           dispatch({ type: 'provider-ready', savedState: lastState })

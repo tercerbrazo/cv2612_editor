@@ -190,10 +190,10 @@ const crc32_push = (crc: number, data: number[]) => {
 const calculate_crc32 = (state: State) => {
   const get = (id: Param, pid: number, cid: number, op: number) =>
     state.moduleState[
-      encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
+    encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
     ]
-  const getBinding = (binding: BindingKey, param: Param, op: OperatorId) => {
-    const { bi } = getParamMeta(param, state, op)
+  const getBinding = (binding: BindingKey, id: Param, op: OperatorId) => {
+    const { bi } = getParamMeta(id, op)
     if (bi === undefined) return 0
     return state.bindings[binding].includes(bi) ? 1 : 0
   }
@@ -218,8 +218,8 @@ const calculate_crc32 = (state: State) => {
       // ch_lr_ams_fms_t
       data.push(
         get('fms', pid, cid, 0) |
-          (get('ams', pid, cid, 0) << 3) |
-          (get('st', pid, cid, 0) << 6),
+        (get('ams', pid, cid, 0) << 3) |
+        (get('st', pid, cid, 0) << 6),
       )
 
       for (let op = 0; op < 4; op++) {
@@ -249,25 +249,25 @@ const calculate_crc32 = (state: State) => {
     const key = bindings[i]
     data.push(
       getBinding(key, 'lfo', 0) |
-        (getBinding(key, 'st', 0) << 1) |
-        (getBinding(key, 'fb', 0) << 2) |
-        (getBinding(key, 'al', 0) << 3) |
-        (getBinding(key, 'ams', 0) << 4) |
-        (getBinding(key, 'fms', 0) << 5) |
-        0,
+      (getBinding(key, 'st', 0) << 1) |
+      (getBinding(key, 'fb', 0) << 2) |
+      (getBinding(key, 'al', 0) << 3) |
+      (getBinding(key, 'ams', 0) << 4) |
+      (getBinding(key, 'fms', 0) << 5) |
+      0,
     )
     for (let i = 0; i < 4; i++) {
       const op = i as OperatorId
       // op_bitmask_t
       data.push(
         getBinding(key, 'ar', op) |
-          (getBinding(key, 'd1', op) << 1) |
-          (getBinding(key, 'sl', op) << 2) |
-          (getBinding(key, 'd2', op) << 3) |
-          (getBinding(key, 'tl', op) << 4) |
-          (getBinding(key, 'rr', op) << 5) |
-          (getBinding(key, 'det', op) << 6) |
-          (getBinding(key, 'mul', op) << 7),
+        (getBinding(key, 'd1', op) << 1) |
+        (getBinding(key, 'sl', op) << 2) |
+        (getBinding(key, 'd2', op) << 3) |
+        (getBinding(key, 'tl', op) << 4) |
+        (getBinding(key, 'rr', op) << 5) |
+        (getBinding(key, 'det', op) << 6) |
+        (getBinding(key, 'mul', op) << 7),
       )
       data.push(getBinding(key, 'rs', op) | (getBinding(key, 'am', op) << 1))
     }

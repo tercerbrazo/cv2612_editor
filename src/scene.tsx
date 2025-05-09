@@ -59,8 +59,8 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   })
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
-      }
+      transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
+    }
     : undefined
 
   const setNodeRef = useCombinedRefs(setDroppableNodeRef, setDraggableNodeRef)
@@ -143,9 +143,8 @@ const StepSeq = () => {
                     <div
                       onClick={() => handleHeaderClick(stepIndex)}
                       key={stepIndex}
-                      className={`seq-cell seq-header ${
-                        stepIndex <= sequenceSteps ? 'active' : 'inactive'
-                      }`}
+                      className={`seq-cell seq-header ${stepIndex <= sequenceSteps ? 'active' : 'inactive'
+                        }`}
                     >
                       {stepIndex + 1}
                     </div>
@@ -157,9 +156,8 @@ const StepSeq = () => {
                 {voiceSteps.map((stepValue, stepIndex) => {
                   return (
                     <div
-                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
-                        stepIndex <= sequenceSteps ? 'active' : 'inactive'
-                      }`}
+                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${stepIndex <= sequenceSteps ? 'active' : 'inactive'
+                        }`}
                       key={stepIndex}
                       onClick={() => handleCellClick(voiceIndex, stepIndex)}
                     />
@@ -246,17 +244,17 @@ const Scene = () => {
 
   const handlePatchClick =
     (index: PatchId): MouseEventHandler =>
-    (ev) => {
-      ev.preventDefault()
-      dispatch({ type: 'change-patch', index })
-    }
+      (ev) => {
+        ev.preventDefault()
+        dispatch({ type: 'change-patch', index })
+      }
 
   const handleChannelClick =
     (index: ChannelId): MouseEventHandler =>
-    (ev) => {
-      ev.preventDefault()
-      dispatch({ type: 'change-channel', index })
-    }
+      (ev) => {
+        ev.preventDefault()
+        dispatch({ type: 'change-channel', index })
+      }
 
   const handlePatchDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -297,8 +295,6 @@ const Scene = () => {
     },
     [dispatch],
   )
-
-  if (state.calibrationStep > 0) return null
 
   return (
     <>

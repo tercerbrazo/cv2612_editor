@@ -9,6 +9,12 @@ import { CV2612Context } from './context'
 const Patch = () => {
   const { state, dispatch } = useContext(CV2612Context)
 
+  const handleInstrumentsClick: MouseEventHandler<HTMLAnchorElement> =
+    useCallback((ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'toggle-instruments-loader' })
+    }, [])
+
   const handleCalibrationClick: MouseEventHandler<HTMLAnchorElement> =
     useCallback((ev) => {
       ev.preventDefault()
@@ -91,8 +97,6 @@ const Patch = () => {
     [],
   )
 
-  if (state.calibrationStep > 0) return null
-
   return (
     <nav className="patch">
       <span>Patch: </span>
@@ -110,6 +114,9 @@ const Patch = () => {
       <span> </span>
       <a href="/" title="Calibrate Module" onClick={handleCalibrationClick}>
         CALIBRATE
+      </a>
+      <a href="/" title="Load Instruments" onClick={handleInstrumentsClick}>
+        INSTRUMENTS
       </a>
       <a href="/" title="Load a Patch" onClick={handleLoadClick}>
         LOAD

@@ -21,11 +21,8 @@ declare global {
   type BindingKey = 'x' | 'y' | 'z'
 
   type ParamMeta = {
-    key: string
     title: string
     label: string
-    cc: number
-    ch: number
     max: number
     bits: number
     options: string[]
@@ -34,6 +31,8 @@ declare global {
 
   type ParamData = ParamMeta & {
     value: number
+    cc: number
+    ch: number
     binding?: BindingKey
   }
 
@@ -70,7 +69,7 @@ declare global {
   }
 
   /*
-   * A ModuleState is the state of the YM2612 regarding sound design.
+   * A ModuleState is the state of the CV2612 regarding sound design.
    * What defines it is the value of the whole parameters set,
    * which can be defined by a set of values.
    * The key is defined as `ctrlId-patchId-channelId-operatorId`
@@ -88,5 +87,6 @@ declare global {
     patchIdx: PatchId
     channelIdx: ChannelId
     calibrationStep: number
+    instrumentsLoader: boolean
   }
 }

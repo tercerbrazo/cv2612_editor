@@ -156,8 +156,8 @@ const getParamMidiCc = (
   id: Param,
   state: State,
   op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
+  pid: PatchId,
+  cid: ChannelId,
 ): { ch: number; cc: number } => {
   if (isSettingParam(id)) {
     const index = SETTINGS_PARAM_INDEXES[id]
@@ -257,15 +257,7 @@ const decodeKey = (key: string) => {
   }
 }
 
-const getParamMeta = (
-  id: Param,
-  state: State,
-  op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
-): ParamMeta => {
-  const key = encodeKey(id, pid, cid, op)
-  const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
+const getParamMeta = (id: Param, op: OperatorId): ParamMeta => {
   const label: string = id
   const bits = paramBitness[id]
   const title = paramTitles[id]
@@ -277,12 +269,9 @@ const getParamMeta = (
     title,
     label,
     bi,
-    cc,
-    ch,
     max,
     bits,
     options,
-    key,
   }
 }
 
