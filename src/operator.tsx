@@ -1,12 +1,10 @@
-import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import React from 'react'
+import { dispatch } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
 
 type OperatorProps = { op: OperatorId }
 const Operator = ({ op }: OperatorProps) => {
-  const { dispatch } = useContext(CV2612Context)
-
   const onEnvelopeClick = (ev) => {
     ev.preventDefault()
     dispatch({ type: 'reset-operator', op })

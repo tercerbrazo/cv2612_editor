@@ -7,6 +7,7 @@ import type {
   PlayModeEnum,
   SettingParamEnum,
 } from './enums'
+import Operator from './operator'
 
 declare global {
   type PatchId = 0 | 1 | 2 | 3
@@ -68,25 +69,29 @@ declare global {
     MULTITRACK = 18,
   }
 
-  /*
-   * A ModuleState is the state of the CV2612 regarding sound design.
-   * What defines it is the value of the whole parameters set,
-   * which can be defined by a set of values.
-   * The key is defined as `ctrlId-patchId-channelId-operatorId`
-   * but to ensure keys are properly built, we should encode/decode them
-   * with the provided helpers
-   */
-  type ModuleState = Record<string, number>
+  type Operator = Record<OperatorParam, number>
+
+  type Channel = Record<ChannelParam, number> & {
+    operators: [Operator, Operator, Operator, Operator]
+  }
+
+  type Patch = {
+    lfo: number
+    channels: [Channel, Channel, Channel, Channel, Channel, Channel]
+  }
+
+  type Settings = Record<SettingParam, number>
 
   type State = {
     name: string
     sequence: number[][]
     bindingKey?: BindingKey
     bindings: Record<BindingKey, number[]>
-    moduleState: ModuleState
     patchIdx: PatchId
     channelIdx: ChannelId
     calibrationStep: number
     instrumentsLoader: boolean
+    settings: Settings
+    patches: [Patch, Patch, Patch, Patch]
   }
 }

@@ -1,27 +1,12 @@
-import React, { FC, useCallback, useContext, useMemo, useState } from 'react'
-import { CV2612Context } from './context'
+import React, { FC, useCallback, useMemo, useState } from 'react'
+import { useParamData } from './context'
 import Envelope from './envelope'
 import algorithmAscii from './utils/algorithmAscii'
 
-type InstOp = {
-  ml: number
-  tl: number
-  ar: number
-  d1: number
-  sl: number
-  rr: number
-  am: number
-  rs: number
-  dt: number
-  d2: number
-}
+type InstOp = Record<OperatorParam, number>
 
-type Inst = {
+type Inst = Record<ChannelParam, number> & {
   name: string
-  fms: number
-  fb: number
-  al: number
-  ams: number
   ops: InstOp[]
 }
 
@@ -63,7 +48,7 @@ const readDmp = (data: Int8Array, name: string): Inst | null => {
       const o = op * 11 + 7
 
       ops.push({
-        ml: data[o + 0],
+        mul: data[o + 0],
         tl: data[o + 1],
         ar: data[o + 2],
         d1: data[o + 3],
@@ -71,12 +56,13 @@ const readDmp = (data: Int8Array, name: string): Inst | null => {
         rr: data[o + 5],
         am: data[o + 6],
         rs: data[o + 7],
-        dt: data[o + 8],
+        det: data[o + 8],
         d2: data[o + 9],
       })
     }
     return {
       name,
+      st: 3,
       fms: data[3],
       fb: data[4],
       al: data[5],
@@ -108,10 +94,9 @@ const InstrumentSelect: FC<InstrumentSelectProps> = ({
   instruments,
   index,
 }) => {
-  const { state } = useContext(CV2612Context)
   const [selected, setSelected] = useState(index ?? 0)
 
-  const onChange = (ev) => {
+  const onChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
     setSelected(val)
@@ -133,8 +118,7 @@ type SliderProps = {
   value: number
 }
 const Slider = ({ id, value }: SliderProps) => {
-  const { getParamData } = useContext(CV2612Context)
-  const { label, max } = getParamData(id, 0)
+  const { label, max } = useParamData(id, 0)
 
   return (
     <div className="slider">
@@ -156,8 +140,8 @@ const Operator = ({ op }: OperatorProps) => {
       <Slider id="rr" value={op.rr} />
       <Slider id="tl" value={op.tl} />
       <Envelope op={op} />
-      <Slider id="mul" value={op.ml} />
-      <Slider id="det" value={op.dt} />
+      <Slider id="mul" value={op.mul} />
+      <Slider id="det" value={op.det} />
       <Slider id="rs" value={op.rs} />
       <Slider id="am" value={op.am} />
     </div>
@@ -175,7 +159,7 @@ const InstrumentPreviewer: FC<InstrumentPreviewerProps> = ({ instruments }) => {
     [selected, instruments],
   )
 
-  const onChange = (ev): void => {
+  const onChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
     setSelected(val)
@@ -255,60 +239,64 @@ const patches = ['A', 'B', 'C', 'D']
 const channels = [0, 1, 2, 3, 4, 5]
 
 const InstrumentsLoader = () => {
-  const { state, dispatch } = useContext(CV2612Context)
   const [instruments, setInstruments] = useState<Inst[]>([])
 
-  const handleUploadClick = useCallback((ev) => {
-    ev.preventDefault()
-    const fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.accept = '.dmp'
-    fileInput.multiple = true
+  const handleUploadClick = useCallback(
+    (ev: React.MouseEvent<HTMLAnchorElement>) => {
+      ev.preventDefault()
+      const fileInput = document.createElement('input')
+      fileInput.type = 'file'
+      fileInput.accept = '.dmp'
+      fileInput.multiple = true
 
-    fileInput.addEventListener('change', async (event) => {
-      const { files } = event.target as HTMLInputElement
+      fileInput.addEventListener('change', async (event) => {
+        const { files } = event.target as HTMLInputElement
 
-      if (files) {
-        const filePromises: Promise<any>[] = []
+        if (files) {
+          const filePromises: Promise<any>[] = []
 
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i]
 
-          const promise = new Promise<any>((resolve, reject) => {
-            const reader = new FileReader()
+            const promise = new Promise<any>((resolve, reject) => {
+              const reader = new FileReader()
 
-            reader.onload = (e) => {
-              if (e.target) {
-                const data = new Int8Array(e.target.result as ArrayBuffer)
-                const name = file.name.replace('.dmp', '')
-                resolve(readDmp(data, name))
-              } else {
-                resolve(null)
+              reader.onload = (e) => {
+                if (e.target) {
+                  const data = new Int8Array(e.target.result as ArrayBuffer)
+                  const name = file.name.replace('.dmp', '')
+                  resolve(readDmp(data, name))
+                } else {
+                  resolve(null)
+                }
               }
-            }
 
-            reader.onerror = reject
+              reader.onerror = reject
 
-            reader.readAsArrayBuffer(file)
-          })
+              reader.readAsArrayBuffer(file)
+            })
 
-          filePromises.push(promise)
+            filePromises.push(promise)
+          }
+
+          const newInstruments = (await Promise.all(filePromises)).filter(
+            Boolean,
+          )
+          const newNames = new Set(newInstruments.map((i) => i.name))
+
+          setInstruments((prev) =>
+            [
+              ...prev.filter((inst) => !newNames.has(inst.name)),
+              ...newInstruments,
+            ].sort((a, b) => a.name.localeCompare(b.name)),
+          )
         }
+      })
 
-        const newInstruments = (await Promise.all(filePromises)).filter(Boolean)
-        const newNames = new Set(newInstruments.map((i) => i.name))
-
-        setInstruments((prev) =>
-          [
-            ...prev.filter((inst) => !newNames.has(inst.name)),
-            ...newInstruments,
-          ].sort((a, b) => a.name.localeCompare(b.name)),
-        )
-      }
-    })
-
-    fileInput.click()
-  }, [])
+      fileInput.click()
+    },
+    [],
+  )
 
   return (
     <div className="instruments">

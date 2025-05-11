@@ -2,12 +2,12 @@ import React, {
   ChangeEventHandler,
   MouseEventHandler,
   useCallback,
-  useContext,
 } from 'react'
-import { CV2612Context } from './context'
+import { state, dispatch } from './context'
+import { useSnapshot } from 'valtio'
 
 const Patch = () => {
-  const { state, dispatch } = useContext(CV2612Context)
+  const snap = useSnapshot(state)
 
   const handleInstrumentsClick: MouseEventHandler<HTMLAnchorElement> =
     useCallback((ev) => {
@@ -78,7 +78,7 @@ const Patch = () => {
       // Clean up by revoking the URL
       URL.revokeObjectURL(url)
     },
-    [state.name],
+    [],
   )
 
   const handleNameChange: ChangeEventHandler<HTMLInputElement> = useCallback(
@@ -103,7 +103,7 @@ const Patch = () => {
       <input
         placeholder="Patch Name"
         type="text"
-        value={state.name}
+        value={snap.name}
         size={30}
         onChange={handleNameChange}
         onFocus={(e) => e.target.select()}

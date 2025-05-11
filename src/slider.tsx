@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { ChangeEvent, MouseEventHandler, useContext } from 'react'
-import { CV2612Context } from './context'
+import React, { ChangeEvent, MouseEventHandler } from 'react'
+import { state, dispatch, useParamData } from './context'
 
 type SliderProps = {
   id: Param
@@ -8,9 +8,7 @@ type SliderProps = {
 }
 
 const Slider = ({ id, op = 0 }: SliderProps) => {
-  const { state, dispatch, getParamData } = useContext(CV2612Context)
-
-  const { title, label, max, value, ch, cc, bi, binding } = getParamData(id, op)
+  const { title, label, max, value, ch, cc, bi, binding } = useParamData(id, op)
 
   const className = `slider ${bi && state.bindingKey ? 'learn' : ''}`
 
@@ -37,7 +35,6 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     <div
       className={className}
       onClick={onClick}
-      aria-hidden="true"
       data-title={`${title} - CC ${ch}:${cc}`}
     >
       <label>

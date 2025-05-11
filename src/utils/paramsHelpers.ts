@@ -154,7 +154,7 @@ const getParamOptions = (id: Param): string[] => {
  * */
 const getParamMidiCc = (
   id: Param,
-  state: State,
+  playMode: PlayModeEnum,
   op: OperatorId,
   pid: PatchId,
   cid: ChannelId,
@@ -181,7 +181,7 @@ const getParamMidiCc = (
   }
   // isOperatorParam
   const index = OPERATOR_PARAM_INDEXES[id]
-  if ((state.moduleState['pm-0-0-0'] as PlayModeEnum) === PlayModeEnum.POLY) {
+  if (playMode === PlayModeEnum.POLY) {
     return {
       ch: 0,
       cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
@@ -227,34 +227,34 @@ const getParamBindingIndex = (
   return undefined
 }
 
-const encodeKey = (
+const OPERATOR_SIZE = 10
+const CHANNEL_SIZE = 5 + 4 * OPERATOR_SIZE
+const PATCH_SIZE = 1 + 6 * CHANNEL_SIZE
+
+const getParamIndex = (
   id: Param,
   pid: PatchId,
   cid: ChannelId,
   op: OperatorId,
-): string => {
-  if (isSettingParam(id)) {
-    return `${id}-0-0-0`
-  }
+): number => {
   if (isPatchParam(id)) {
-    return `${id}-${pid}-0-0`
+    // LFO
+    return PATCH_SIZE * pid
   }
   if (isChannelParam(id)) {
-    return `${id}-${pid}-${cid}-0`
+    return PATCH_SIZE * pid + CHANNEL_SIZE * cid + CHANNEL_PARAM_INDEXES[id]
   }
-  // isOperatorParam
-  return `${id}-${pid}-${cid}-${op}`
-}
-
-const decodeKey = (key: string) => {
-  const parts = key.split('-')
-
-  return {
-    id: parts[0] as Param,
-    pid: parseInt(parts[1], 10) as PatchId,
-    cid: parseInt(parts[2], 10) as ChannelId,
-    op: parseInt(parts[3], 10) as OperatorId,
+  if (isOperatorParam(id)) {
+    return (
+      PATCH_SIZE * pid +
+      CHANNEL_SIZE * cid +
+      OPERATOR_SIZE * op +
+      OPERATOR_PARAM_INDEXES[id]
+    )
   }
+
+  // isSettingParam(id)
+  return PATCH_SIZE * 4 + SETTINGS_PARAM_INDEXES[id]
 }
 
 const getParamMeta = (id: Param, op: OperatorId): ParamMeta => {
@@ -280,10 +280,9 @@ export {
   isPatchParam,
   isChannelParam,
   isOperatorParam,
+  getParamIndex,
   getParamMidiCc,
   getParamBindingIndex,
-  encodeKey,
-  decodeKey,
   getParamMeta,
   getParamOptions,
 }

@@ -1,14 +1,12 @@
-import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import React from 'react'
+import { dispatch, useParamData } from './context'
 
 type DropdownProps = {
   id: Param
 }
 
 const Dropdown = ({ id }: DropdownProps) => {
-  const { dispatch, getParamData } = useContext(CV2612Context)
-
-  const { title, label, options, value, ch, cc } = getParamData(id, 0)
+  const { title, label, options, value, ch, cc } = useParamData(id, 0)
 
   const onChange = (ev) => {
     ev.preventDefault()
@@ -23,11 +21,7 @@ const Dropdown = ({ id }: DropdownProps) => {
   }
 
   return (
-    <div
-      className="dropdown"
-      aria-hidden="true"
-      data-title={`${title} - CC ${ch}:${cc}`}
-    >
+    <div className="dropdown" data-title={`${title} - CC ${ch}:${cc}`}>
       <label>{label}</label>
       <select onChange={onChange} value={value}>
         {options.map((o, i) => (

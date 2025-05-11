@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { CV2612Context } from './context'
+import { state, dispatch } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
 
@@ -21,8 +21,6 @@ const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
 ]
 
 const Midi = () => {
-  const { state, dispatch } = useContext(CV2612Context)
-
   const [speed, setSpeed] = useState('normal')
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])

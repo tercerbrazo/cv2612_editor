@@ -163,7 +163,7 @@ typedef struct {
 
 */
 
-import { encodeKey, getParamMeta } from './paramsHelpers'
+import { getParamIndex, getParamMeta } from './paramsHelpers'
 
 const CRC32_POLY = 0x04c11db7
 
@@ -188,10 +188,6 @@ const crc32_push = (crc: number, data: number[]) => {
 }
 
 const calculate_crc32 = (state: State) => {
-  const get = (id: Param, pid: number, cid: number, op: number) =>
-    state.moduleState[
-    encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
-    ]
   const getBinding = (binding: BindingKey, id: Param, op: OperatorId) => {
     const { bi } = getParamMeta(id, op)
     if (bi === undefined) return 0
@@ -204,39 +200,33 @@ const calculate_crc32 = (state: State) => {
   // PATCHES
   // =======
   for (let pid = 0; pid < 4; pid++) {
-    // for each patch
-
-    const lfo = get('lfo', pid, 0, 0)
+    const patch = state.patches[pid]
     // lfo_t
-    data.push(lfo === 0 ? 0 : lfo | (1 << 3))
+    data.push(patch.lfo === 0 ? 0 : patch.lfo | (1 << 3))
 
     for (let cid = 0; cid < 6; cid++) {
-      // for each channel
+      const ch = patch.channels[cid]
 
       // ch_fb_alg_t
-      data.push(get('al', pid, cid, 0) | (get('fb', pid, cid, 0) << 3))
+      data.push(ch.al | (ch.fb << 3))
       // ch_lr_ams_fms_t
-      data.push(
-        get('fms', pid, cid, 0) |
-        (get('ams', pid, cid, 0) << 3) |
-        (get('st', pid, cid, 0) << 6),
-      )
+      data.push(ch.fms | (ch.ams << 3) | (ch.st << 6))
 
-      for (let op = 0; op < 4; op++) {
-        // for each operator
+      for (let o = 0; o < 4; o++) {
+        const op = ch.operators[o]
 
         // op_dt1_mul_t;
-        data.push(get('mul', pid, cid, op) | (get('det', pid, cid, op) << 4))
+        data.push(op.mul | (op.det << 4))
         // op_tl_t;
-        data.push(get('tl', pid, cid, op))
+        data.push(op.tl)
         // op_rs_ar_t;
-        data.push(get('ar', pid, cid, op) | (get('rs', pid, cid, op) << 6))
+        data.push(op.ar | (op.rs << 6))
         // op_am_d1r_t;
-        data.push(get('d1', pid, cid, op) | (get('am', pid, cid, op) << 7))
+        data.push(op.d1 | (op.am << 7))
         // op_d2r_t;
-        data.push(get('d2', pid, cid, op))
+        data.push(op.d2)
         // op_d1l_rr_t;
-        data.push(get('rr', pid, cid, op) | (get('sl', pid, cid, op) << 4))
+        data.push(op.rr | (op.sl << 4))
       }
     }
   }
@@ -249,25 +239,25 @@ const calculate_crc32 = (state: State) => {
     const key = bindings[i]
     data.push(
       getBinding(key, 'lfo', 0) |
-      (getBinding(key, 'st', 0) << 1) |
-      (getBinding(key, 'fb', 0) << 2) |
-      (getBinding(key, 'al', 0) << 3) |
-      (getBinding(key, 'ams', 0) << 4) |
-      (getBinding(key, 'fms', 0) << 5) |
-      0,
+        (getBinding(key, 'st', 0) << 1) |
+        (getBinding(key, 'fb', 0) << 2) |
+        (getBinding(key, 'al', 0) << 3) |
+        (getBinding(key, 'ams', 0) << 4) |
+        (getBinding(key, 'fms', 0) << 5) |
+        0,
     )
     for (let i = 0; i < 4; i++) {
       const op = i as OperatorId
       // op_bitmask_t
       data.push(
         getBinding(key, 'ar', op) |
-        (getBinding(key, 'd1', op) << 1) |
-        (getBinding(key, 'sl', op) << 2) |
-        (getBinding(key, 'd2', op) << 3) |
-        (getBinding(key, 'tl', op) << 4) |
-        (getBinding(key, 'rr', op) << 5) |
-        (getBinding(key, 'det', op) << 6) |
-        (getBinding(key, 'mul', op) << 7),
+          (getBinding(key, 'd1', op) << 1) |
+          (getBinding(key, 'sl', op) << 2) |
+          (getBinding(key, 'd2', op) << 3) |
+          (getBinding(key, 'tl', op) << 4) |
+          (getBinding(key, 'rr', op) << 5) |
+          (getBinding(key, 'det', op) << 6) |
+          (getBinding(key, 'mul', op) << 7),
       )
       data.push(getBinding(key, 'rs', op) | (getBinding(key, 'am', op) << 1))
     }
@@ -275,12 +265,13 @@ const calculate_crc32 = (state: State) => {
 
   // SETTINGS
   // ========
+  const settings = state.settings
   // play mode
-  data.push(get('pm', 0, 0, 0))
+  data.push(settings.pm)
   // midi recv channel
-  data.push(get('rc', 0, 0, 0))
+  data.push(settings.rc)
   // polyphony
-  data.push(get('polyphony', 0, 0, 0))
+  data.push(settings.polyphony)
 
   // sequence
   for (let i = 0; i < 6; i++) {
@@ -290,21 +281,20 @@ const calculate_crc32 = (state: State) => {
     // Split into two uint8_t
     const lower = value & 0xff
     const upper = (value >> 8) & 0xff
-    console.log('seq', i, lower, upper)
     data.push(lower)
     data.push(upper)
   }
 
   // led brightness + quantize
-  data.push(get('lb', 0, 0, 0) | (get('quantize', 0, 0, 0) << 7))
+  data.push(settings.lb | (settings.quantize << 7))
   // transpose + legato
-  data.push(get('tr', 0, 0, 0) | (get('legato', 0, 0, 0) << 7))
+  data.push(settings.tr | (settings.legato << 7))
   // tuning + velocity
-  data.push(get('tu', 0, 0, 0) | (get('velocity', 0, 0, 0) << 7))
+  data.push(settings.tu | (settings.velocity << 7))
   // portamento + RESERVED
-  data.push(get('portamento', 0, 0, 0))
+  data.push(settings.portamento)
   // seq steps + __ALIGN
-  data.push(get('stp', 0, 0, 0))
+  data.push(settings.stp)
 
   // calculate CRC 32 of the data
   let crc32 = 0

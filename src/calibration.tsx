@@ -1,9 +1,7 @@
-import React, { useCallback, useContext } from 'react'
-import { CV2612Context } from './context'
+import React, { useCallback } from 'react'
+import { state, dispatch } from './context'
 
 const CalibrationStart = () => {
-  const { dispatch } = useContext(CV2612Context)
-
   const handleCancelClick = useCallback(() => {
     dispatch({ type: 'calibration-step', step: 0 })
   }, [])
@@ -33,8 +31,6 @@ const CalibrationStart = () => {
 }
 
 const CalibrationStep = ({ name, children }) => {
-  const { state, dispatch } = useContext(CV2612Context)
-
   const handleExitClick = useCallback(() => {
     dispatch({ type: 'calibration-step', step: 0 })
   }, [])
@@ -75,8 +71,6 @@ const Input = ({ name, signal }) => {
 }
 
 const CalibrationDone = () => {
-  const { dispatch } = useContext(CV2612Context)
-
   const handleDoneClick = useCallback(() => {
     dispatch({ type: 'calibration-step', step: 0 })
   }, [])
@@ -91,8 +85,6 @@ const CalibrationDone = () => {
 }
 
 const Calibration = () => {
-  const { state } = useContext(CV2612Context)
-
   switch (state.calibrationStep) {
     case 1:
       return <CalibrationStart />

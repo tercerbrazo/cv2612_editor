@@ -14,16 +14,12 @@ import {
 } from '@dnd-kit/modifiers'
 import { MidiChannelEnum, PlayModeEnum } from './enums'
 
-import React, {
-  MouseEventHandler,
-  useCallback,
-  useContext,
-  useMemo,
-} from 'react'
+import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import Channel from './channel'
-import { CV2612Context } from './context'
+import { state, dispatch, useParamData } from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
+import { useSnapshot } from 'valtio'
 
 function useCombinedRefs<T>(...refs: ((node: T) => void)[]): (node: T) => void {
   return useMemo(
@@ -59,8 +55,8 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   })
   const style = transform
     ? {
-      transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
-    }
+        transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
+      }
     : undefined
 
   const setNodeRef = useCombinedRefs(setDroppableNodeRef, setDraggableNodeRef)
@@ -105,8 +101,7 @@ const Droppable = ({ index }) => {
 }
 
 const StepSeq = () => {
-  const { state, dispatch, sequenceSteps } = useContext(CV2612Context)
-
+  const snap = useSnapshot(state)
   const handleCellClick = useCallback(
     (voice: number, step: number) => {
       dispatch({ type: 'toggle-seq-step', voice, step })
@@ -134,7 +129,7 @@ const StepSeq = () => {
       </div>
       <div className="tcol">
         <div className="seq">
-          {state.sequence.map((voiceSteps, voiceIndex) => (
+          {snap.sequence.map((voiceSteps, voiceIndex) => (
             <React.Fragment key={voiceIndex}>
               {voiceIndex === 0 && (
                 <div className="seq-row">
@@ -143,8 +138,9 @@ const StepSeq = () => {
                     <div
                       onClick={() => handleHeaderClick(stepIndex)}
                       key={stepIndex}
-                      className={`seq-cell seq-header ${stepIndex <= sequenceSteps ? 'active' : 'inactive'
-                        }`}
+                      className={`seq-cell seq-header ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
                     >
                       {stepIndex + 1}
                     </div>
@@ -156,8 +152,9 @@ const StepSeq = () => {
                 {voiceSteps.map((stepValue, stepIndex) => {
                   return (
                     <div
-                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${stepIndex <= sequenceSteps ? 'active' : 'inactive'
-                        }`}
+                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
                       key={stepIndex}
                       onClick={() => handleCellClick(voiceIndex, stepIndex)}
                     />
@@ -177,9 +174,7 @@ type MidiMappingProps = {
   op: OperatorId
 }
 const MidiMapping = ({ id, op }: MidiMappingProps) => {
-  const { getParamData } = useContext(CV2612Context)
-
-  const { title, label, cc } = getParamData(id, 0)
+  const { title, label, cc } = useParamData(id, 0)
   return (
     <div data-title={title} className="midi-mapping">
       <label>{label}</label>
@@ -189,9 +184,8 @@ const MidiMapping = ({ id, op }: MidiMappingProps) => {
 }
 
 const MidiChannelDetails = () => {
-  const { midiChannel } = useContext(CV2612Context)
-
-  if (midiChannel === MidiChannelEnum.OMNI) {
+  const snap = useSnapshot(state)
+  if (snap.settings.rc === MidiChannelEnum.OMNI) {
     return (
       <>
         Notes will be played as MONO using all voices simultaneously.
@@ -200,7 +194,7 @@ const MidiChannelDetails = () => {
       </>
     )
   }
-  if (midiChannel === MidiChannelEnum.FORWARD) {
+  if (snap.settings.rc === MidiChannelEnum.FORWARD) {
     return (
       <>
         Notes on channel <b>N</b> will affect voice <b>N</b>, for <b>N</b> in
@@ -210,7 +204,7 @@ const MidiChannelDetails = () => {
       </>
     )
   }
-  if (midiChannel === MidiChannelEnum.MULTITRACK) {
+  if (snap.settings.rc === MidiChannelEnum.MULTITRACK) {
     return (
       <>
         Notes and CC on channel <b>N</b> will affect voice <b>N</b>, for{' '}
@@ -220,7 +214,7 @@ const MidiChannelDetails = () => {
   }
   return (
     <>
-      Same as <b>OMNI</b>, but only listening to channel {midiChannel + 1}
+      Same as <b>OMNI</b>, but only listening to channel {snap.settings.rc + 1}
       <br />
       Notes will be played as MONO using all voices simultaneously.
       <br />
@@ -230,8 +224,7 @@ const MidiChannelDetails = () => {
 }
 
 const Scene = () => {
-  const { midiChannel, playMode, state, dispatch } = useContext(CV2612Context)
-
+  const snap = useSnapshot(state)
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
     activationConstraint: {
@@ -244,57 +237,51 @@ const Scene = () => {
 
   const handlePatchClick =
     (index: PatchId): MouseEventHandler =>
-      (ev) => {
-        ev.preventDefault()
-        dispatch({ type: 'change-patch', index })
-      }
+    (ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'change-patch', index })
+    }
 
   const handleChannelClick =
     (index: ChannelId): MouseEventHandler =>
-      (ev) => {
-        ev.preventDefault()
-        dispatch({ type: 'change-channel', index })
-      }
+    (ev) => {
+      ev.preventDefault()
+      dispatch({ type: 'change-channel', index })
+    }
 
-  const handlePatchDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const drag = event.active?.data?.current
-      const drop = event.over?.data?.current
+  const handlePatchDragEnd = useCallback((event: DragEndEvent) => {
+    const drag = event.active?.data?.current
+    const drop = event.over?.data?.current
 
-      if (!drag || !drop) return
+    if (!drag || !drop) return
 
-      if (drop.action === 'move') {
-        dispatch({ type: 'move-patch', index: drag.index, before: drop.index })
-      } else if (drop.action === 'copy') {
-        dispatch({ type: 'copy-patch', source: drag.index, target: drop.index })
-      }
-    },
-    [dispatch],
-  )
+    if (drop.action === 'move') {
+      dispatch({ type: 'move-patch', index: drag.index, before: drop.index })
+    } else if (drop.action === 'copy') {
+      dispatch({ type: 'copy-patch', source: drag.index, target: drop.index })
+    }
+  }, [])
 
-  const handleChannelDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const drag = event.active?.data?.current
-      const drop = event.over?.data?.current
+  const handleChannelDragEnd = useCallback((event: DragEndEvent) => {
+    const drag = event.active?.data?.current
+    const drop = event.over?.data?.current
 
-      if (!drag || !drop) return
+    if (!drag || !drop) return
 
-      if (drop.action === 'move') {
-        dispatch({
-          type: 'move-channel',
-          index: drag.index,
-          before: drop.index,
-        })
-      } else if (drop.action === 'copy') {
-        dispatch({
-          type: 'copy-channel',
-          source: drag.index,
-          target: drop.index,
-        })
-      }
-    },
-    [dispatch],
-  )
+    if (drop.action === 'move') {
+      dispatch({
+        type: 'move-channel',
+        index: drag.index,
+        before: drop.index,
+      })
+    } else if (drop.action === 'copy') {
+      dispatch({
+        type: 'copy-channel',
+        source: drag.index,
+        target: drop.index,
+      })
+    }
+  }, [])
 
   return (
     <>
@@ -302,7 +289,7 @@ const Scene = () => {
       <div className="four-cols">
         <div className="col">
           <Dropdown id="pm" />
-          {playMode === PlayModeEnum.POLY && <Dropdown id="rc" />}
+          {snap.settings.pm === PlayModeEnum.POLY && <Dropdown id="rc" />}
         </div>
         <div className="col">
           <Slider id="tr" />
@@ -315,9 +302,9 @@ const Scene = () => {
         </div>
       </div>
 
-      {playMode === PlayModeEnum.SEQ && <StepSeq />}
+      {snap.settings.pm === PlayModeEnum.SEQ && <StepSeq />}
 
-      {playMode === PlayModeEnum.POLY ? (
+      {snap.settings.pm === PlayModeEnum.POLY ? (
         <>
           <p>
             <b>POLY</b> is a special performance mode that is not compatible
@@ -325,7 +312,7 @@ const Scene = () => {
             <br />
             This is a MIDI only mode ( GATE/CV are disabled) and behaviour is
             based on the Midi Receive Channel setting. For{' '}
-            <b>{MidiChannelEnum[midiChannel]}</b>:
+            <b>{MidiChannelEnum[snap.settings.rc]}</b>:
           </p>
           <blockquote>
             <MidiChannelDetails />
@@ -387,7 +374,7 @@ const Scene = () => {
                       <Draggable
                         index={i}
                         text={item}
-                        active={state.patchIdx === i}
+                        active={snap.patchIdx === i}
                         onClick={handlePatchClick(i as PatchId)}
                       />
                     </React.Fragment>
@@ -410,7 +397,7 @@ const Scene = () => {
                       <Draggable
                         index={i}
                         text={item}
-                        active={state.channelIdx === i}
+                        active={snap.channelIdx === i}
                         onClick={handleChannelClick(i as ChannelId)}
                       />
                     </React.Fragment>

@@ -1,18 +1,19 @@
-import React, { useCallback, useContext } from 'react'
+import React, { useCallback } from 'react'
 import Calibration from './calibration'
 import InstrumentsLoader from './instruments-loader'
-import { CV2612Provider, CV2612Context } from './context'
+import { state } from './context'
 import logo from './logo.png'
 import Midi from './midi'
 import Patch from './patch'
 import Scene from './scene'
 import './styles.sass'
+import { useSnapshot } from 'valtio'
 
 const App = () => {
-  const { state } = useContext(CV2612Context)
+  const snap = useSnapshot(state)
 
   const renderView = useCallback(() => {
-    if (state.instrumentsLoader) {
+    if (snap.instrumentsLoader) {
       return (
         <>
           <Midi />
@@ -20,7 +21,7 @@ const App = () => {
         </>
       )
     }
-    if (state.calibrationStep > 0) {
+    if (snap.calibrationStep > 0) {
       return <Calibration />
     }
 
@@ -31,7 +32,7 @@ const App = () => {
         <Scene />
       </>
     )
-  }, [state.calibrationStep, state.instrumentsLoader])
+  }, [snap.calibrationStep, snap.instrumentsLoader])
 
   return (
     <>
@@ -53,12 +54,4 @@ const App = () => {
   )
 }
 
-const AppWithContext = () => {
-  return (
-    <CV2612Provider>
-      <App />
-    </CV2612Provider>
-  )
-}
-
-export default AppWithContext
+export default App

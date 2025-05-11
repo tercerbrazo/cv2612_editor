@@ -1,11 +1,11 @@
-import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import React from 'react'
+import { dispatch, state } from './context'
 import algorithmAscii from './utils/algorithmAscii'
+import { useSnapshot } from 'valtio'
 
 const Algorithm = () => {
-  const { dispatch, getParamData } = useContext(CV2612Context)
-
-  const { value } = getParamData('al', 0)
+  const snap = useSnapshot(state)
+  const value = snap.patches[snap.patchIdx].channels[snap.channelIdx].al
 
   const onAlgorithmClick = (
     ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
