@@ -1,6 +1,5 @@
-/* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { ChangeEvent, MouseEventHandler } from 'react'
-import { state, dispatch, useParamData } from './context'
+import { dispatch, useParamData, useParamMidi, useBinding } from './context'
 
 type SliderProps = {
   id: Param
@@ -8,9 +7,11 @@ type SliderProps = {
 }
 
 const Slider = ({ id, op = 0 }: SliderProps) => {
-  const { title, label, max, value, ch, cc, bi, binding } = useParamData(id, op)
+  const { title, label, max, value } = useParamData(id, op)
+  const { bindingIndex, boundTo, bindingId } = useBinding(id, op)
+  const { ch, cc } = useParamMidi(id, op)
 
-  const className = `slider ${bi && state.bindingKey ? 'learn' : ''}`
+  const className = `slider ${bindingIndex && bindingId ? 'learn' : ''}`
 
   const onChange = (ev: ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault()
@@ -26,7 +27,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
 
   const onClick: MouseEventHandler<HTMLDivElement> = (ev) => {
     ev.preventDefault()
-    if (bi) {
+    if (bindingIndex) {
       dispatch({ type: 'toggle-param-binding', id, op })
     }
   }
@@ -39,7 +40,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     >
       <label>
         {label}
-        <i className={binding ?? ''} />
+        <i className={boundTo ?? ''} />
       </label>
       <input
         type="range"

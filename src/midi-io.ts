@@ -122,6 +122,9 @@ const sendCC = async (channel: number, number: number, value: number) => {
   pendingCount++
 }
 
+// TODO: where to put this???
+init()
+
 export { SpeedPreset }
 export default {
   pub,

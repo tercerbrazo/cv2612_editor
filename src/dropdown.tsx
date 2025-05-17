@@ -1,12 +1,13 @@
 import React from 'react'
-import { dispatch, useParamData } from './context'
+import { dispatch, useParamData, useParamMidi } from './context'
 
 type DropdownProps = {
   id: Param
 }
 
 const Dropdown = ({ id }: DropdownProps) => {
-  const { title, label, options, value, ch, cc } = useParamData(id, 0)
+  const { title, label, options, value } = useParamData(id, 0)
+  const { cc, ch } = useParamMidi(id, 0)
 
   const onChange = (ev) => {
     ev.preventDefault()

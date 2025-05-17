@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { MidiCommands } from './enums'
+import {
+  ChannelParamEnum,
+  MidiCommands,
+  OperatorParamEnum,
+  PlayModeEnum,
+  SettingParamEnum,
+} from './enums'
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
 import {
+  getParamBindingIndex,
   getParamMeta,
   getParamMidiCc,
+  getPolyParamMidiCc,
   isChannelParam,
   isOperatorParam,
   isPatchParam,
@@ -16,11 +24,11 @@ import { proxy, useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 
 // TODO: simplify binding commands in the firm and update this logic
-const BINDING_CMD_MAP = {
-  x: MidiCommands.BIND_X,
-  y: MidiCommands.BIND_Y,
-  z: MidiCommands.BIND_Z,
-} as const
+const BINDING_CMDS = [
+  MidiCommands.BIND_X,
+  MidiCommands.BIND_Y,
+  MidiCommands.BIND_Z,
+] as const
 
 const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
@@ -28,98 +36,98 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 
 type Action =
   | {
-      type: 'provider-ready'
-      savedState: State
-    }
+    type: 'provider-ready'
+    savedState: State
+  }
   | {
-      type: 'toggle-instruments-loader'
-    }
+    type: 'toggle-instruments-loader'
+  }
   | {
-      type: 'toggle-param-binding'
-      id: Param
-      op: OperatorId
-    }
+    type: 'toggle-param-binding'
+    id: Param
+    op: OperatorId
+  }
   | {
-      type: 'bind-all'
-      modulator?: keyof typeof BINDING_CMD_MAP
-    }
+    type: 'bind-all'
+    modulator?: BindingId
+  }
   | {
-      type: 'change-param'
-      id: Param
-      op: OperatorId
-      val: number
-    }
+    type: 'change-param'
+    id: Param
+    op: OperatorId
+    val: number
+  }
   | {
-      type: 'toggle-seq-step'
-      voice: number
-      step: number
-    }
+    type: 'toggle-seq-step'
+    voice: number
+    step: number
+  }
   | {
-      type: 'clear-sequence'
-    }
+    type: 'clear-sequence'
+  }
   | {
-      type: 'toggle-binding'
-      bindingKey: BindingKey
-    }
+    type: 'toggle-binding'
+    bindingId: BindingId
+  }
   | {
-      type: 'reset-channel'
-    }
+    type: 'reset-channel'
+  }
   | {
-      type: 'reset-operator'
-      op: OperatorId
-    }
+    type: 'reset-operator'
+    op: OperatorId
+  }
   | {
-      type: 'change-name'
-      name: string
-    }
+    type: 'change-name'
+    name: string
+  }
   | {
-      type: 'change-patch'
-      index: PatchId
-    }
+    type: 'change-patch'
+    index: PatchId
+  }
   | {
-      type: 'move-patch'
-      index: PatchId
-      before: PatchId
-    }
+    type: 'move-patch'
+    index: PatchId
+    before: PatchId
+  }
   | {
-      type: 'copy-patch'
-      source: PatchId
-      target: PatchId
-    }
+    type: 'copy-patch'
+    source: PatchId
+    target: PatchId
+  }
   | {
-      type: 'change-channel'
-      index: ChannelId
-    }
+    type: 'change-channel'
+    index: ChannelId
+  }
   | {
-      type: 'move-channel'
-      index: ChannelId
-      before: ChannelId
-    }
+    type: 'move-channel'
+    index: ChannelId
+    before: ChannelId
+  }
   | {
-      type: 'copy-channel'
-      source: ChannelId
-      target: ChannelId
-    }
+    type: 'copy-channel'
+    source: ChannelId
+    target: ChannelId
+  }
   | {
-      type: 'update-state'
-      newState: State
-    }
+    type: 'update-state'
+    newState: State
+  }
   | {
-      type: 'sync-midi'
-    }
+    type: 'sync-midi'
+  }
   | {
-      type: 'save-state'
-    }
+    type: 'save-state'
+  }
   | {
-      type: 'toggle-debug'
-    }
+    type: 'toggle-debug'
+  }
   | {
-      type: 'calibration-step'
-      step: number
-    }
+    type: 'calibration-step'
+    step: number
+  }
   | {
-      type: 'verify-checksum'
-    }
+    type: 'verify-checksum'
+  }
 
 const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
@@ -180,7 +188,7 @@ const initialSettings = {
 
 const initialState: State = {
   name: 'New Patch',
-  bindings: { x: [], y: [], z: [] },
+  bindings: [[], [], []],
   patchIdx: 0,
   channelIdx: 0,
   sequence: initialSequence,
@@ -194,30 +202,37 @@ const state = proxy(deepClone(initialState))
 
 const toggleParamBinding = (id: Param, op: OperatorId) => {
   // return unchanged state if not binding
-  if (!state.bindingKey) return
+  if (!state.bindingId) return
 
-  const { bi } = getParamMeta(id, op)
+  const bi = getParamBindingIndex(id, op)
 
   // return unchanged state if not boundable
   if (bi === undefined) {
     return
   }
   // update bindings state
-  ;(['x', 'y', 'z'] as const).forEach((mod) => {
-    const binding = state.bindings[mod]
-    const index = binding.indexOf(bi)
-    if (index !== -1) {
-      // remove the binding
-      binding.splice(index, 1)
-      // unbind cmd
-      sendMidiCmd(BINDING_CMD_MAP[mod], bi)
-    } else if (mod === state.bindingKey) {
-      // add the binding
-      binding.push(bi)
-      // bind cmd
-      sendMidiCmd(BINDING_CMD_MAP[mod], 64 + bi)
-    }
+
+  state.bindings.forEach((bindings, index) => {
+    bindings.forEach((bi) => {
+      // send binding via midi
+      sendMidiCmd(BINDING_CMDS[index], 64 + bi)
+    })
   })
+    ; ([0, 1, 2] as const).forEach((mod) => {
+      const binding = state.bindings[mod]
+      const index = binding.indexOf(bi)
+      if (index !== -1) {
+        // remove the binding
+        binding.splice(index, 1)
+        // unbind cmd
+        sendMidiCmd(BINDING_CMDS[mod], bi)
+      } else if (mod === state.bindingId) {
+        // add the binding
+        binding.push(bi)
+        // bind cmd
+        sendMidiCmd(BINDING_CMDS[mod], 64 + bi)
+      }
+    })
 }
 
 const toggleSeqStep = (voice: number, step: number) => {
@@ -252,63 +267,105 @@ const setParamValue = (
   state.patches[pid].channels[cid].operators[op][id] = value
 }
 
-const changeParam = (id: Param, op: OperatorId, val: number) => {
-  const pid = state.patchIdx
-  const cid = state.channelIdx
-  const { bits } = getParamMeta(id, op)
-  const { ch, cc } = getParamMidiCc(id, state.settings.pm, op, pid, cid)
-
-  setParamValue(id, pid, cid, op, val)
-
+const sendMidiParam = (
+  id: Param,
+  pid: PatchId,
+  cid: ChannelId,
+  op: OperatorId,
+  val: number,
+) => {
+  const { bits } = getParamMeta(id)
+  const { ch, cc } = getParamMidiCc(id, pid, cid, op)
+  // sync midi cc
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
 }
 
-const bindAll = (modulator?: keyof typeof BINDING_CMD_MAP) => {
+const changeParam = (id: Param, op: OperatorId, val: number) => {
+  const pid = state.patchIdx
+  const cid = state.channelIdx
+  setParamValue(id, pid, cid, op, val)
+  sendMidiParam(id, pid, cid, op, val)
+}
+
+const bindAll = (modulator?: number) => {
   // clear all bindings first
   sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
   // clear bindings state
-  state.bindings = { x: [], y: [], z: [] }
+  state.bindings = [[], [], []]
 
   // if this was a "clear bindings" only cmd, then return
   if (modulator === undefined) return
 
-  Object.keys(state.moduleState).forEach((key) => {
-    const { id, pid, cid, op } = decodeKey(key)
-    const { bi } = getParamMeta(id, op)
-
-    // send bindings for first patch/channel as they are repeated
-    if (bi !== undefined && pid === 0 && cid === 0) {
-      // push binding state
+  const params: Param[] = ['lfo', 'al', 'fms', 'st', 'ams']
+  params.forEach((id) => {
+    const bi = getParamBindingIndex(id, 0)
+    if (bi) {
       state.bindings[modulator].push(bi)
-      // send binding via midi
-      sendMidiCmd(BINDING_CMD_MAP[modulator], 64 + bi)
     }
+  })
+
+  const opParams: Param[] = Object.values(OperatorParamEnum)
+  opParams.forEach((id) => {
+    for (let o = 0; o < 4; o++) {
+      const bi = getParamBindingIndex(id, o as OperatorId)
+      if (bi) {
+        state.bindings[modulator].push(bi)
+      }
+    }
+  })
+
+  state.bindings.forEach((bindings, index) => {
+    bindings.forEach((bi) => {
+      // send binding via midi
+      sendMidiCmd(BINDING_CMDS[index], 64 + bi)
+    })
   })
 }
 
-const syncMidi = (state: State) => {
+// for convenience, as iterators are numbers
+const relaxedSendParamMidiCc = (
+  id: Param,
+  pid: number,
+  cid: number,
+  op: number,
+  val: number,
+) => {
+  sendMidiParam(id, pid as PatchId, cid as ChannelId, op as OperatorId, val)
+}
+
+const syncMidi = () => {
   // clear all bindings first
   sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
 
-  Object.entries(state.moduleState).forEach(([key, val]) => {
-    const { id, pid, cid, op } = decodeKey(key)
-    const { bits, bi } = getParamMeta(id, op)
-    const { ch, cc } = getParamMidiCc(id, state.settings.pm, op, pid, cid)
-    const ccVal = val << (7 - bits)
-    // sync midi cc
-    MidiIO.sendCC(ch, cc, ccVal)
+  // settings
+  Object.values(SettingParamEnum).forEach((id) => {
+    relaxedSendParamMidiCc(id, 0, 0, 0, state.settings[id])
+  })
 
-    // send bindings for first patch/channel as they are repeated
-    if (bi !== undefined && pid === 0 && cid === 0) {
-      if (state.bindings.x.includes(bi)) {
-        sendMidiCmd(MidiCommands.BIND_X, 64 + bi)
-      } else if (state.bindings.y.includes(bi)) {
-        sendMidiCmd(MidiCommands.BIND_Y, 64 + bi)
-      } else if (state.bindings.z.includes(bi)) {
-        sendMidiCmd(MidiCommands.BIND_Z, 64 + bi)
+  for (let pid = 0; pid < 4; pid++) {
+    const patch = state.patches[pid]
+    relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)
+    for (let cid = 0; cid < 6; cid++) {
+      const ch = patch.channels[cid]
+
+      Object.values(ChannelParamEnum).forEach((id) => {
+        relaxedSendParamMidiCc(id, pid, cid, 0, ch[id])
+      })
+
+      for (let o = 0; o < 4; o++) {
+        Object.values(OperatorParamEnum).forEach((id) => {
+          relaxedSendParamMidiCc(id, pid, cid, o, ch.operators[o][id])
+        })
       }
     }
+  }
+
+  state.bindings.forEach((bindings, index) => {
+    bindings.forEach((bi) => {
+      // send binding via midi
+      sendMidiCmd(BINDING_CMDS[index], 64 + bi)
+    })
   })
 }
 
@@ -316,12 +373,8 @@ const resetOperator = (op: OperatorId) => {
   const updateAndSync = (id: Param, val: number) => {
     const pid = state.patchIdx
     const cid = state.channelIdx
-    const { bits } = getParamMeta(id, op)
-    const { ch, cc } = getParamMidiCc(id, state.settings.pm, op, pid, cid)
     setParamValue(id, pid, cid, op, val)
-    // sync midi cc
-    const ccVal = val << (7 - bits)
-    MidiIO.sendCC(ch, cc, ccVal)
+    sendMidiParam(id, pid, cid, op, val)
   }
 
   updateAndSync('ar', 31)
@@ -340,12 +393,8 @@ const resetChannel = () => {
   const updateAndSync = (id: Param, val: number) => {
     const pid = state.patchIdx
     const cid = state.channelIdx
-    const { bits } = getParamMeta(id, 0)
-    const { ch, cc } = getParamMidiCc(id, state.settings.pm, 0, pid, cid)
     setParamValue(id, pid, cid, 0, val)
-    // sync midi cc
-    const ccVal = val << (7 - bits)
-    MidiIO.sendCC(ch, cc, ccVal)
+    sendMidiParam(id, pid, cid, 0, val)
   }
 
   updateAndSync('lfo', 0)
@@ -362,7 +411,7 @@ const resetChannel = () => {
 }
 
 // TODO: send crc32 checks periodically or after certain actions
-const sendCrc32 = (state: State) => {
+const sendCrc32 = () => {
   const crc32 = calculate_crc32(state)
 
   for (let index = 0; index < 8; index++) {
@@ -395,8 +444,8 @@ const dispatch = (action: Action) => {
       changeParam(action.id, action.op, action.val)
       break
     case 'toggle-binding':
-      state.bindingKey =
-        action.bindingKey === state.bindingKey ? undefined : action.bindingKey
+      state.bindingId =
+        action.bindingId === state.bindingId ? undefined : action.bindingId
       break
     case 'bind-all':
       bindAll(action.modulator)
@@ -416,52 +465,52 @@ const dispatch = (action: Action) => {
     }
     case 'move-patch': {
       /*
-      const { index, before } = action
-
-      const moduleState = Object.fromEntries(
-        Object.entries(state.moduleState).map(([key, val]) => {
-          const { id, pid, cid, op } = decodeKey(key)
-          let newPid: number = pid
-          if (pid === index && index !== before - 1 && index !== before) {
-            newPid = before
-          } else if (index > before && pid < index && pid >= before) {
-            newPid++
-          } else if (index < before - 1 && pid > index && pid <= before) {
-            newPid--
-          }
-          const newKey = encodeKey(id, newPid as PatchId, cid, op)
-          return [newKey, val]
-        }),
-      )
-
-      // encode two 3-bit values together
-      const val = ((index & 0b111) << 3) | (before & 0b111)
-      sendMidiCmd(MidiCommands.MOVE_PATCH, val)
-
-      return { ...state, moduleState }
-      */
+        const { index, before } = action
+  
+        const moduleState = Object.fromEntries(
+          Object.entries(state.moduleState).map(([key, val]) => {
+            const { id, pid, cid, op } = decodeKey(key)
+            let newPid: number = pid
+            if (pid === index && index !== before - 1 && index !== before) {
+              newPid = before
+            } else if (index > before && pid < index && pid >= before) {
+              newPid++
+            } else if (index < before - 1 && pid > index && pid <= before) {
+              newPid--
+            }
+            const newKey = encodeKey(id, newPid as PatchId, cid, op)
+            return [newKey, val]
+          }),
+        )
+  
+        // encode two 3-bit values together
+        const val = ((index & 0b111) << 3) | (before & 0b111)
+        sendMidiCmd(MidiCommands.MOVE_PATCH, val)
+  
+        return { ...state, moduleState }
+        */
 
       break
     }
     case 'copy-patch': {
       /*
-      const { source, target } = action
-
-      const moduleState = { ...state.moduleState }
-      Object.keys(moduleState).forEach((key) => {
-        const { id, pid, cid, op } = decodeKey(key)
-        if (pid === target) {
-          const sourceKey = encodeKey(id, source, cid, op)
-          moduleState[key] = moduleState[sourceKey]
-        }
-      })
-
-      // encode two 3-bit values together
-      const val = ((source & 0b111) << 3) | (target & 0b111)
-      sendMidiCmd(MidiCommands.COPY_PATCH, val)
-
-      return { ...state, moduleState }
-      */
+        const { source, target } = action
+  
+        const moduleState = { ...state.moduleState }
+        Object.keys(moduleState).forEach((key) => {
+          const { id, pid, cid, op } = decodeKey(key)
+          if (pid === target) {
+            const sourceKey = encodeKey(id, source, cid, op)
+            moduleState[key] = moduleState[sourceKey]
+          }
+        })
+  
+        // encode two 3-bit values together
+        const val = ((source & 0b111) << 3) | (target & 0b111)
+        sendMidiCmd(MidiCommands.COPY_PATCH, val)
+  
+        return { ...state, moduleState }
+        */
 
       break
     }
@@ -479,81 +528,81 @@ const dispatch = (action: Action) => {
     }
     case 'move-channel': {
       /*
-      const { index, before } = action
-
-      if (index === before - 1 || index === before) {
-        return state
-      }
-
-      const moduleState = Object.fromEntries(
-        Object.entries(state.moduleState).map(([key, val]) => {
-          const { id, pid, cid, op } = decodeKey(key)
-          let newCid: number = cid
-          if (pid === state.patchIdx) {
-            if (cid === index) {
-              newCid = before
-            } else if (index > before && cid < index && cid >= before) {
-              newCid++
-            } else if (index < before - 1 && cid > index && cid <= before) {
-              newCid--
+        const { index, before } = action
+  
+        if (index === before - 1 || index === before) {
+          return state
+        }
+  
+        const moduleState = Object.fromEntries(
+          Object.entries(state.moduleState).map(([key, val]) => {
+            const { id, pid, cid, op } = decodeKey(key)
+            let newCid: number = cid
+            if (pid === state.patchIdx) {
+              if (cid === index) {
+                newCid = before
+              } else if (index > before && cid < index && cid >= before) {
+                newCid++
+              } else if (index < before - 1 && cid > index && cid <= before) {
+                newCid--
+              }
             }
-          }
-          const newKey = encodeKey(id, pid, newCid as ChannelId, op)
-          return [newKey, val]
-        }),
-      )
-
-      // shrink before up to 5 values based on index value
-      // as index != before
-      // NOTE: it could be shrunk to 4 values, but 5 is enough
-      // and that way we keep the same logic as for COPY_CHANNEL
-      const encodedBefore = index < before ? before : before - 1
-      // encode values as a sum
-      const val = state.patchIdx * 30 + encodedBefore * 6 + index
-      sendMidiCmd(MidiCommands.MOVE_CHANNEL, val)
-
-      return { ...state, moduleState }
-      */
+            const newKey = encodeKey(id, pid, newCid as ChannelId, op)
+            return [newKey, val]
+          }),
+        )
+  
+        // shrink before up to 5 values based on index value
+        // as index != before
+        // NOTE: it could be shrunk to 4 values, but 5 is enough
+        // and that way we keep the same logic as for COPY_CHANNEL
+        const encodedBefore = index < before ? before : before - 1
+        // encode values as a sum
+        const val = state.patchIdx * 30 + encodedBefore * 6 + index
+        sendMidiCmd(MidiCommands.MOVE_CHANNEL, val)
+  
+        return { ...state, moduleState }
+        */
       break
     }
     case 'copy-channel': {
       /*
-      const { source, target } = action
-
-      if (source === target) {
-        return state
-      }
-
-      const moduleState = { ...state.moduleState }
-      Object.keys(moduleState).forEach((key) => {
-        const { id, pid, cid, op } = decodeKey(key)
-        if (pid === state.patchIdx && cid === target) {
-          const sourceKey = encodeKey(id, pid, source, op)
-          moduleState[key] = moduleState[sourceKey]
+        const { source, target } = action
+  
+        if (source === target) {
+          return state
         }
-      })
-
-      // shrink target up to 5 values based on source value
-      // as source != target
-      // NOTE: to decode it, target =  encodedTarget === source ? target + 1 : encodedTarget
-      const encodedTarget = target < source ? target : target - 1
-      // encode values as a sum
-      const val = state.patchIdx * 30 + encodedTarget * 6 + source
-      sendMidiCmd(MidiCommands.COPY_CHANNEL, val)
-
-      return { ...state, moduleState }
-      */
+  
+        const moduleState = { ...state.moduleState }
+        Object.keys(moduleState).forEach((key) => {
+          const { id, pid, cid, op } = decodeKey(key)
+          if (pid === state.patchIdx && cid === target) {
+            const sourceKey = encodeKey(id, pid, source, op)
+            moduleState[key] = moduleState[sourceKey]
+          }
+        })
+  
+        // shrink target up to 5 values based on source value
+        // as source != target
+        // NOTE: to decode it, target =  encodedTarget === source ? target + 1 : encodedTarget
+        const encodedTarget = target < source ? target : target - 1
+        // encode values as a sum
+        const val = state.patchIdx * 30 + encodedTarget * 6 + source
+        sendMidiCmd(MidiCommands.COPY_CHANNEL, val)
+  
+        return { ...state, moduleState }
+        */
       break
     }
     case 'sync-midi': {
-      syncMidi(state)
-      sendCrc32(state)
+      syncMidi()
+      sendCrc32()
       break
     }
     case 'save-state': {
-      state.bindingKey = undefined
+      state.bindingId = undefined
       sendMidiCmd(MidiCommands.SAVE_STATE)
-      sendCrc32(state)
+      sendCrc32()
       break
     }
     case 'toggle-debug': {
@@ -561,7 +610,7 @@ const dispatch = (action: Action) => {
       break
     }
     case 'verify-checksum': {
-      sendCrc32(state)
+      sendCrc32()
       break
     }
     case 'clear-sequence': {
@@ -572,12 +621,46 @@ const dispatch = (action: Action) => {
   }
 }
 
+const useParamMidi = (id: Param, op: OperatorId) => {
+  const snap = useSnapshot(state)
+  const pid = snap.patchIdx
+  const cid = snap.channelIdx
+  const { ch, cc } =
+    snap.settings.pm === PlayModeEnum.POLY
+      ? getPolyParamMidiCc(id, pid, cid, op)
+      : getParamMidiCc(id, pid, cid, op)
+
+  return {
+    cc,
+    ch,
+  }
+}
+
+const useBinding = (id: Param, op: OperatorId) => {
+  const snap = useSnapshot(state)
+  const bindingIndex = getParamBindingIndex(id, op)
+
+  let boundTo: BindingId | undefined = undefined
+  if (bindingIndex !== undefined) {
+    ; ([0, 1, 2] as const).forEach((mod) => {
+      if (snap.bindings[mod].includes(bindingIndex)) {
+        boundTo = mod
+      }
+    })
+  }
+
+  return {
+    bindingIndex,
+    boundTo,
+    bindingId: snap.bindingId,
+  }
+}
+
 const useParamData = (id: Param, op: OperatorId): ParamData => {
   const snap = useSnapshot(state)
   const pid = snap.patchIdx
   const cid = snap.channelIdx
-  const meta = getParamMeta(id, op)
-  const { ch, cc } = getParamMidiCc(id, snap.settings.pm, op, pid, cid)
+  const meta = getParamMeta(id)
 
   let value = 0
   if (isSettingParam(id)) {
@@ -593,21 +676,9 @@ const useParamData = (id: Param, op: OperatorId): ParamData => {
     value = snap.patches[pid].channels[cid].operators[op][id]
   }
 
-  let binding: BindingKey | undefined = undefined
-  if (meta.bi !== undefined) {
-    ;(['x', 'y', 'z'] as const).forEach((mod) => {
-      if (snap.bindings[mod].includes(meta.bi as number)) {
-        binding = mod
-      }
-    })
-  }
-
   return {
     ...meta,
-    cc,
-    ch,
     value,
-    binding,
   }
 }
 
@@ -650,8 +721,7 @@ const CV2612Provider = ({ children }) => {
   useEffect(saveStateDelayed, [saveStateDelayed])
 
   useEffect(() => {
-    ;(async () => {
-      await MidiIO.init()
+    ; (async () => {
       const lastStateStr = reactLocalStorage.get('lastState', '')
 
       if (lastStateStr) {
@@ -669,4 +739,11 @@ const CV2612Provider = ({ children }) => {
   return <>{children}</>
 }
 
-export { CV2612Provider, state, dispatch, useParamData }
+export {
+  CV2612Provider,
+  state,
+  dispatch,
+  useParamData,
+  useParamMidi,
+  useBinding,
+}

@@ -163,7 +163,7 @@ typedef struct {
 
 */
 
-import { getParamIndex, getParamMeta } from './paramsHelpers'
+import { getParamBindingIndex } from './paramsHelpers'
 
 const CRC32_POLY = 0x04c11db7
 
@@ -188,12 +188,6 @@ const crc32_push = (crc: number, data: number[]) => {
 }
 
 const calculate_crc32 = (state: State) => {
-  const getBinding = (binding: BindingKey, id: Param, op: OperatorId) => {
-    const { bi } = getParamMeta(id, op)
-    if (bi === undefined) return 0
-    return state.bindings[binding].includes(bi) ? 1 : 0
-  }
-
   // patches + bindings + settings
   const data: number[] = []
 
@@ -233,35 +227,41 @@ const calculate_crc32 = (state: State) => {
 
   // BINDINGS
   // ========
-  const bindings = Object.keys(state.bindings) as BindingKey[]
-  // ch_bitmask_t
-  for (let i = 0; i < bindings.length; i++) {
-    const key = bindings[i]
+  console.log('BINDINGS', state.bindings)
+  state.bindings.forEach((bindings) => {
+    const getBinding = (id: Param, op: OperatorId) => {
+      const bi = getParamBindingIndex(id, op)
+      if (bi === undefined) return 0
+      return bindings.includes(bi) ? 1 : 0
+    }
+
+    // ch_bitmask_t
     data.push(
-      getBinding(key, 'lfo', 0) |
-        (getBinding(key, 'st', 0) << 1) |
-        (getBinding(key, 'fb', 0) << 2) |
-        (getBinding(key, 'al', 0) << 3) |
-        (getBinding(key, 'ams', 0) << 4) |
-        (getBinding(key, 'fms', 0) << 5) |
-        0,
+      getBinding('lfo', 0) |
+      (getBinding('st', 0) << 1) |
+      (getBinding('fb', 0) << 2) |
+      (getBinding('al', 0) << 3) |
+      (getBinding('ams', 0) << 4) |
+      (getBinding('fms', 0) << 5) |
+      0,
     )
+
     for (let i = 0; i < 4; i++) {
       const op = i as OperatorId
       // op_bitmask_t
       data.push(
-        getBinding(key, 'ar', op) |
-          (getBinding(key, 'd1', op) << 1) |
-          (getBinding(key, 'sl', op) << 2) |
-          (getBinding(key, 'd2', op) << 3) |
-          (getBinding(key, 'tl', op) << 4) |
-          (getBinding(key, 'rr', op) << 5) |
-          (getBinding(key, 'det', op) << 6) |
-          (getBinding(key, 'mul', op) << 7),
+        getBinding('ar', op) |
+        (getBinding('d1', op) << 1) |
+        (getBinding('sl', op) << 2) |
+        (getBinding('d2', op) << 3) |
+        (getBinding('tl', op) << 4) |
+        (getBinding('rr', op) << 5) |
+        (getBinding('det', op) << 6) |
+        (getBinding('mul', op) << 7),
       )
-      data.push(getBinding(key, 'rs', op) | (getBinding(key, 'am', op) << 1))
+      data.push(getBinding('rs', op) | (getBinding('am', op) << 1))
     }
-  }
+  })
 
   // SETTINGS
   // ========

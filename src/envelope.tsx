@@ -1,33 +1,20 @@
 import React, { useMemo } from 'react'
-import { state } from './context'
-import { useSnapshot } from 'valtio'
 import { getParamMeta } from './utils/paramsHelpers'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
 
-type EnvelopeValues = Omit<
+type EnvelopeProps = Omit<
   Record<OperatorParam, number>,
   'am' | 'mul' | 'det' | 'rs'
 >
 
-const Envelope = ({ op }: { op: OperatorId }) => {
-  const snap = useSnapshot(state)
-
-  const values: EnvelopeValues = {
-    ar: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].ar,
-    d1: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].d1,
-    sl: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].sl,
-    d2: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].d2,
-    rr: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].rr,
-    tl: snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op].tl,
-  }
-
+const Envelope = (values: EnvelopeProps) => {
   const points = useMemo(() => {
     const normalizedValues = Object.fromEntries(
       Object.entries(values).map(([k, v]) => {
-        const { max } = getParamMeta(k as OperatorParam, 0)
+        const { max } = getParamMeta(k as OperatorParam)
         return [k, v / max]
       }),
-    ) as EnvelopeValues
+    ) as EnvelopeProps
 
     return calculateEnvelopePoints(normalizedValues)
   }, [values])

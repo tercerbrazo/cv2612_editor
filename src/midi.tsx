@@ -3,6 +3,7 @@ import { reactLocalStorage } from 'reactjs-localstorage'
 import { state, dispatch } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
+import { useSnapshot } from 'valtio'
 
 const activityDuration = 80
 
@@ -21,6 +22,7 @@ const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
 ]
 
 const Midi = () => {
+  const snap = useSnapshot(state)
   const [speed, setSpeed] = useState('normal')
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
@@ -102,18 +104,18 @@ const Midi = () => {
       </select>
       <span> </span>
       <span> </span>
-      {(['x', 'y', 'z'] as const).map((i) => (
+      {([0, 1, 2] as const).map((i) => (
         <a
           href="/"
-          title={`Bind parameters to ${i.toUpperCase()}`}
-          className={`${i} ${state.bindingKey === i ? 'active' : ''}`}
+          title={`Bind parameters to ${'XYZ'[i]}`}
+          className={`${i} ${snap.bindingId === i ? 'active' : ''}`}
           onClick={(ev) => {
             ev.preventDefault()
-            dispatch({ type: 'toggle-binding', bindingKey: i })
+            dispatch({ type: 'toggle-binding', bindingId: i })
           }}
           key={i}
         >
-          {i.toUpperCase()}
+          {'XYZ'[i]}
         </a>
       ))}
       <MenuDropdown
@@ -126,13 +128,13 @@ const Midi = () => {
               dispatch({ type: 'bind-all' })
               break
             case 1:
-              dispatch({ type: 'bind-all', modulator: 'x' })
+              dispatch({ type: 'bind-all', modulator: 0 })
               break
             case 2:
-              dispatch({ type: 'bind-all', modulator: 'y' })
+              dispatch({ type: 'bind-all', modulator: 1 })
               break
             case 3:
-              dispatch({ type: 'bind-all', modulator: 'z' })
+              dispatch({ type: 'bind-all', modulator: 2 })
               break
           }
         }}

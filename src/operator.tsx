@@ -1,10 +1,16 @@
 import React from 'react'
-import { dispatch } from './context'
+import { dispatch, state } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
+import { useSnapshot } from 'valtio'
 
 type OperatorProps = { op: OperatorId }
 const Operator = ({ op }: OperatorProps) => {
+  const snap = useSnapshot(state)
+
+  const operator =
+    snap.patches[snap.patchIdx].channels[snap.channelIdx].operators[op]
+
   const onEnvelopeClick = (ev) => {
     ev.preventDefault()
     dispatch({ type: 'reset-operator', op })
@@ -19,7 +25,14 @@ const Operator = ({ op }: OperatorProps) => {
       <Slider id="rr" op={op} />
       <Slider id="tl" op={op} />
       <a href="!#" onClick={onEnvelopeClick}>
-        <Envelope op={op} />
+        <Envelope
+          ar={operator.ar}
+          d1={operator.d1}
+          sl={operator.sl}
+          d2={operator.d2}
+          rr={operator.rr}
+          tl={operator.tl}
+        />
       </a>
       <Slider id="mul" op={op} />
       <Slider id="det" op={op} />

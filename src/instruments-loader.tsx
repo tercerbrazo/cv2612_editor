@@ -139,7 +139,7 @@ const Operator = ({ op }: OperatorProps) => {
       <Slider id="d2" value={op.d2} />
       <Slider id="rr" value={op.rr} />
       <Slider id="tl" value={op.tl} />
-      <Envelope op={op} />
+      <Envelope {...op} />
       <Slider id="mul" value={op.mul} />
       <Slider id="det" value={op.det} />
       <Slider id="rs" value={op.rs} />

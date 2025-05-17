@@ -12,21 +12,22 @@ import {
   restrictToHorizontalAxis,
   restrictToParentElement,
 } from '@dnd-kit/modifiers'
-import { MidiChannelEnum, PlayModeEnum } from './enums'
+import { PlayModeEnum } from './enums'
 
 import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import Channel from './channel'
-import { state, dispatch, useParamData } from './context'
+import { state, dispatch } from './context'
 import Dropdown from './dropdown'
 import Slider from './slider'
 import { useSnapshot } from 'valtio'
+import Poly from './poly'
+import Sequencer from './sequencer'
 
 function useCombinedRefs<T>(...refs: ((node: T) => void)[]): (node: T) => void {
   return useMemo(
     () => (node: T) => {
       refs.forEach((ref) => ref(node))
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     refs,
   )
 }
@@ -64,7 +65,6 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   return (
     <button
       type="button"
-      // eslint-disable-next-line no-nested-ternary
       className={` 
         ${active ? 'active' : ''} 
         ${isDragging ? 'dragging' : ''} 
@@ -73,9 +73,7 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
       ref={setNodeRef}
       style={style}
       onClick={onClick}
-      // eslint-disable-next-line react/jsx-props-no-spreading
       {...listeners}
-      // eslint-disable-next-line react/jsx-props-no-spreading
       {...attributes}
     >
       {text}
@@ -97,129 +95,6 @@ const Droppable = ({ index }) => {
         `}
       ref={setNodeRef}
     />
-  )
-}
-
-const StepSeq = () => {
-  const snap = useSnapshot(state)
-  const handleCellClick = useCallback(
-    (voice: number, step: number) => {
-      dispatch({ type: 'toggle-seq-step', voice, step })
-    },
-    [dispatch],
-  )
-
-  const handleHeaderClick = useCallback(
-    (step: number) => {
-      dispatch({ type: 'change-param', id: 'stp', val: step, op: 0 })
-    },
-    [dispatch],
-  )
-
-  const handleClearClick = useCallback(() => {
-    dispatch({ type: 'clear-sequence' })
-  }, [dispatch])
-
-  return (
-    <div className="four-cols">
-      <div className="col">
-        <button className={`btn`} onClick={() => handleClearClick()}>
-          CLEAR SEQ
-        </button>
-      </div>
-      <div className="tcol">
-        <div className="seq">
-          {snap.sequence.map((voiceSteps, voiceIndex) => (
-            <React.Fragment key={voiceIndex}>
-              {voiceIndex === 0 && (
-                <div className="seq-row">
-                  <div className="seq-cell seq-header" />
-                  {voiceSteps.map((_step, stepIndex) => (
-                    <div
-                      onClick={() => handleHeaderClick(stepIndex)}
-                      key={stepIndex}
-                      className={`seq-cell seq-header ${
-                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                      }`}
-                    >
-                      {stepIndex + 1}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="seq-row">
-                <div className="seq-cell seq-header">{voiceIndex + 1}</div>
-                {voiceSteps.map((stepValue, stepIndex) => {
-                  return (
-                    <div
-                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
-                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                      }`}
-                      key={stepIndex}
-                      onClick={() => handleCellClick(voiceIndex, stepIndex)}
-                    />
-                  )
-                })}
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-type MidiMappingProps = {
-  id: Param
-  op: OperatorId
-}
-const MidiMapping = ({ id, op }: MidiMappingProps) => {
-  const { title, label, cc } = useParamData(id, 0)
-  return (
-    <div data-title={title} className="midi-mapping">
-      <label>{label}</label>
-      <span className="cell">CC {cc + op * 10}</span>
-    </div>
-  )
-}
-
-const MidiChannelDetails = () => {
-  const snap = useSnapshot(state)
-  if (snap.settings.rc === MidiChannelEnum.OMNI) {
-    return (
-      <>
-        Notes will be played as MONO using all voices simultaneously.
-        <br />
-        Control Change messages will affect all voices.
-      </>
-    )
-  }
-  if (snap.settings.rc === MidiChannelEnum.FORWARD) {
-    return (
-      <>
-        Notes on channel <b>N</b> will affect voice <b>N</b>, for <b>N</b> in
-        [1..6]
-        <br />
-        Control Change messages will affect all voices, no matter the channel.
-      </>
-    )
-  }
-  if (snap.settings.rc === MidiChannelEnum.MULTITRACK) {
-    return (
-      <>
-        Notes and CC on channel <b>N</b> will affect voice <b>N</b>, for{' '}
-        <b>N</b> in [1..6]
-      </>
-    )
-  }
-  return (
-    <>
-      Same as <b>OMNI</b>, but only listening to channel {snap.settings.rc + 1}
-      <br />
-      Notes will be played as MONO using all voices simultaneously.
-      <br />
-      Control Change messages will affect all voices.
-    </>
   )
 }
 
@@ -302,61 +177,10 @@ const Scene = () => {
         </div>
       </div>
 
-      {snap.settings.pm === PlayModeEnum.SEQ && <StepSeq />}
+      {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
 
       {snap.settings.pm === PlayModeEnum.POLY ? (
-        <>
-          <p>
-            <b>POLY</b> is a special performance mode that is not compatible
-            with patch edition, due to midi message handling in this mode.
-            <br />
-            This is a MIDI only mode ( GATE/CV are disabled) and behaviour is
-            based on the Midi Receive Channel setting. For{' '}
-            <b>{MidiChannelEnum[snap.settings.rc]}</b>:
-          </p>
-          <blockquote>
-            <MidiChannelDetails />
-          </blockquote>
-          <p>
-            Patches and modulations are respected, but CCs sent within this mode
-            will change the parameter in all four patches at once.
-            <br />
-            <br />
-            MIDI mappings reference:
-          </p>
-          <div className="four-cols">
-            <div className="col">
-              <MidiMapping id="lfo" op={0} />
-              <MidiMapping id="st" op={0} />
-            </div>
-            <div className="col">
-              <MidiMapping id="ams" op={0} />
-              <MidiMapping id="fms" op={0} />
-            </div>
-            <div className="col">
-              <MidiMapping id="al" op={0} />
-              <MidiMapping id="fb" op={0} />
-            </div>
-            <div className="col"></div>
-          </div>
-          <br />
-          <div className="four-cols">
-            {([0, 1, 2, 3] as OperatorId[]).map((op) => (
-              <div className="col" key={op}>
-                <MidiMapping id="ar" op={op} />
-                <MidiMapping id="d1" op={op} />
-                <MidiMapping id="sl" op={op} />
-                <MidiMapping id="d2" op={op} />
-                <MidiMapping id="rr" op={op} />
-                <MidiMapping id="tl" op={op} />
-                <MidiMapping id="mul" op={op} />
-                <MidiMapping id="det" op={op} />
-                <MidiMapping id="rs" op={op} />
-                <MidiMapping id="am" op={op} />
-              </div>
-            ))}
-          </div>
-        </>
+        <Poly />
       ) : (
         <>
           <div className="two-cols">

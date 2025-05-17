@@ -24,7 +24,7 @@ const SETTINGS_PARAM_INDEXES: Record<SettingParam, number> = {
   stp: 9,
 }
 
-const CHANNEL_PARAM_INDEXES = {
+const CH_PARAM_INDEXES = {
   al: 0,
   fb: 1,
   ams: 2,
@@ -32,7 +32,7 @@ const CHANNEL_PARAM_INDEXES = {
   st: 4,
 }
 
-const OPERATOR_PARAM_INDEXES = {
+const OP_PARAM_INDEXES = {
   ar: 0,
   d1: 1,
   sl: 2,
@@ -154,10 +154,9 @@ const getParamOptions = (id: Param): string[] => {
  * */
 const getParamMidiCc = (
   id: Param,
-  playMode: PlayModeEnum,
-  op: OperatorId,
   pid: PatchId,
   cid: ChannelId,
+  op: OperatorId,
 ): { ch: number; cc: number } => {
   if (isSettingParam(id)) {
     const index = SETTINGS_PARAM_INDEXES[id]
@@ -166,31 +165,38 @@ const getParamMidiCc = (
 
   if (isPatchParam(id)) {
     // LFO case
-    return {
-      ch: pid * 4,
-      cc: LFO_CC,
-    }
+    return { ch: pid * 4, cc: LFO_CC }
   }
 
   if (isChannelParam(id)) {
-    const index = CHANNEL_PARAM_INDEXES[id]
+    const index = CH_PARAM_INDEXES[id]
     return {
       ch: pid * 4,
       cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index, // 10-39 range
     }
   }
   // isOperatorParam
-  const index = OPERATOR_PARAM_INDEXES[id]
-  if (playMode === PlayModeEnum.POLY) {
+  const index = OP_PARAM_INDEXES[id]
+  return {
+    ch: pid * 4 + op,
+    cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
+  }
+}
+
+const getPolyParamMidiCc = (
+  id: Param,
+  pid: PatchId,
+  cid: ChannelId,
+  op: OperatorId,
+): { ch: number; cc: number } => {
+  if (isOperatorParam(id)) {
+    const index = OP_PARAM_INDEXES[id]
     return {
       ch: 0,
       cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
     }
   } else {
-    return {
-      ch: pid * 4 + op,
-      cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
-    }
+    return getParamMidiCc(id, pid, cid, op)
   }
 }
 
@@ -214,61 +220,25 @@ const getParamBindingIndex = (
     return 2
   }
   if (isChannelParam(id)) {
-    const values: ChannelParam[] = Object.values(ChannelParamEnum)
-    const index = values.indexOf(id)
-    return CH_BINDING_OFFSET + index
+    return CH_BINDING_OFFSET + CH_PARAM_INDEXES[id]
   }
   if (isOperatorParam(id)) {
-    const values: OperatorParam[] = Object.values(OperatorParamEnum)
-    const index = values.indexOf(id)
-    return OP_BINDING_OFFSET + values.length * op + index
+    return OP_BINDING_OFFSET + OP_PARAM_COUNT * op + OP_PARAM_INDEXES[id]
   }
   // for any other non-boundable parameter it'll be undefined
   return undefined
 }
 
-const OPERATOR_SIZE = 10
-const CHANNEL_SIZE = 5 + 4 * OPERATOR_SIZE
-const PATCH_SIZE = 1 + 6 * CHANNEL_SIZE
-
-const getParamIndex = (
-  id: Param,
-  pid: PatchId,
-  cid: ChannelId,
-  op: OperatorId,
-): number => {
-  if (isPatchParam(id)) {
-    // LFO
-    return PATCH_SIZE * pid
-  }
-  if (isChannelParam(id)) {
-    return PATCH_SIZE * pid + CHANNEL_SIZE * cid + CHANNEL_PARAM_INDEXES[id]
-  }
-  if (isOperatorParam(id)) {
-    return (
-      PATCH_SIZE * pid +
-      CHANNEL_SIZE * cid +
-      OPERATOR_SIZE * op +
-      OPERATOR_PARAM_INDEXES[id]
-    )
-  }
-
-  // isSettingParam(id)
-  return PATCH_SIZE * 4 + SETTINGS_PARAM_INDEXES[id]
-}
-
-const getParamMeta = (id: Param, op: OperatorId): ParamMeta => {
+const getParamMeta = (id: Param): ParamMeta => {
   const label: string = id
   const bits = paramBitness[id]
   const title = paramTitles[id]
   const options = getParamOptions(id)
-  const bi = getParamBindingIndex(id, op)
   const max = 127 >> (7 - bits)
 
   return {
     title,
     label,
-    bi,
     max,
     bits,
     options,
@@ -280,8 +250,8 @@ export {
   isPatchParam,
   isChannelParam,
   isOperatorParam,
-  getParamIndex,
   getParamMidiCc,
+  getPolyParamMidiCc,
   getParamBindingIndex,
   getParamMeta,
   getParamOptions,
