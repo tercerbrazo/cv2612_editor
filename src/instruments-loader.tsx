@@ -1,13 +1,12 @@
 import React, { FC, useCallback, useMemo, useState } from 'react'
-import { useParamData } from './context'
+import { state } from './context'
 import Envelope from './envelope'
 import algorithmAscii from './utils/algorithmAscii'
+import { getParamMeta } from './utils/paramsHelpers'
+import { useSnapshot } from 'valtio'
 
-type InstOp = Record<OperatorParam, number>
-
-type Inst = Record<ChannelParam, number> & {
+type Instrument = Channel & {
   name: string
-  ops: InstOp[]
 }
 
 /*
@@ -37,17 +36,17 @@ type Inst = Record<ChannelParam, number> & {
  * Transforms a dmp buffer into a compact 26-bytes representation
  * of a YM2612 channel, that matches chip REGISTERS bit a bit
  */
-const readDmp = (data: Int8Array, name: string): Inst | null => {
+const readDmp = (data: Int8Array, name: string): Instrument | null => {
   //version 9 or 11, genesis, FM patch
   if (
     (data[0] === 0x09 && data[1] === 0x01 && data[2] === 0x00) ||
     (data[0] === 0x0b && data[1] === 0x02 && data[2] === 0x01)
   ) {
-    const ops: InstOp[] = []
+    const operators: Operator[] = []
     for (let op = 0; op < 4; op++) {
       const o = op * 11 + 7
 
-      ops.push({
+      operators.push({
         mul: data[o + 0],
         tl: data[o + 1],
         ar: data[o + 2],
@@ -67,39 +66,33 @@ const readDmp = (data: Int8Array, name: string): Inst | null => {
       fb: data[4],
       al: data[5],
       ams: data[6],
-      ops,
+      operators: operators as [Operator, Operator, Operator, Operator],
     }
   } else {
     return null
   }
 }
 
-/*
- * YM2612 layout reference
-+-----+-----+------+------+------+------+-----+-----+
-|  -  |  -  | FB   |  #   |   #  | ALG  |  #  |  #  |
-| L   | R   | AMS  |  #   |   #  | FMS  |  #  |  #  |
-|  -  | DT1 |  #   |  #   | MUL  |   #  |  #  |  #  |
-|  -  | TL  |  #   |  #   |  #   |   #  |  #  |  #  |
-| RS  |  #  |   -  | AR   |  #   |   #  |  #  |  #  |
-| AM  |  -  |   -  | D1R  |  #   |   #  |  #  |  #  |
-|  -  |  -  |   -  | D2R  |  #   |   #  |  #  |  #  |
-| D1L |  #  |   #  |  #   | RR   |   #  |  #  |  #  |
-+-----+-----+------+------+------+------+-----+-----+
-*/
-
-type InstrumentSelectProps = { instruments: Inst[]; index: number }
+type InstrumentSelectProps = {
+  instruments: Instrument[]
+  pid: number
+  cid: number
+}
 
 const InstrumentSelect: FC<InstrumentSelectProps> = ({
   instruments,
-  index,
+  cid,
+  pid,
 }) => {
-  const [selected, setSelected] = useState(index ?? 0)
+  const snap = useSnapshot(state)
+  const [selected, setSelected] = useState(0)
 
   const onChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
     setSelected(val)
+    console.log({ val, pid, cid })
+    state.patches[pid].channels[cid] = instruments[val]
   }
 
   return (
@@ -118,7 +111,7 @@ type SliderProps = {
   value: number
 }
 const Slider = ({ id, value }: SliderProps) => {
-  const { label, max } = useParamData(id, 0)
+  const { label, max } = getParamMeta(id)
 
   return (
     <div className="slider">
@@ -129,7 +122,7 @@ const Slider = ({ id, value }: SliderProps) => {
   )
 }
 
-type OperatorProps = { op: InstOp }
+type OperatorProps = { op: Operator }
 const Operator = ({ op }: OperatorProps) => {
   return (
     <div className="operator">
@@ -149,7 +142,7 @@ const Operator = ({ op }: OperatorProps) => {
 }
 
 type InstrumentPreviewerProps = {
-  instruments: Inst[]
+  instruments: Instrument[]
 }
 const InstrumentPreviewer: FC<InstrumentPreviewerProps> = ({ instruments }) => {
   const [selected, setSelected] = useState(0)
@@ -219,27 +212,27 @@ const InstrumentPreviewer: FC<InstrumentPreviewerProps> = ({ instruments }) => {
       </div>
       <div className="four-cols">
         <div className="col">
-          <Operator op={instrument.ops[0]} />
+          <Operator op={instrument.operators[0]} />
         </div>
         <div className="col">
-          <Operator op={instrument.ops[1]} />
+          <Operator op={instrument.operators[1]} />
         </div>
         <div className="col">
-          <Operator op={instrument.ops[2]} />
+          <Operator op={instrument.operators[2]} />
         </div>
         <div className="col">
-          <Operator op={instrument.ops[3]} />
+          <Operator op={instrument.operators[3]} />
         </div>
       </div>
     </div>
   )
 }
 
-const patches = ['A', 'B', 'C', 'D']
+const patches = [0, 1, 2, 3]
 const channels = [0, 1, 2, 3, 4, 5]
 
 const InstrumentsLoader = () => {
-  const [instruments, setInstruments] = useState<Inst[]>([])
+  const [instruments, setInstruments] = useState<Instrument[]>([])
 
   const handleUploadClick = useCallback(
     (ev: React.MouseEvent<HTMLAnchorElement>) => {
@@ -310,6 +303,16 @@ const InstrumentsLoader = () => {
         <a href="/" title="Upload DMP" onClick={handleUploadClick}>
           UPLOAD
         </a>
+        <a
+          href="/"
+          title="Back to Editor"
+          onClick={(ev) => {
+            ev.preventDefault()
+            state.instrumentsLoader = false
+          }}
+        >
+          DONE
+        </a>
       </nav>
       <table>
         <thead>
@@ -323,10 +326,10 @@ const InstrumentsLoader = () => {
         <tbody>
           {patches.map((p) => (
             <tr key={p}>
-              <td>{p}</td>
+              <td>{'ABCD'[p]}</td>
               {channels.map((c) => (
                 <th key={c}>
-                  <InstrumentSelect instruments={instruments} index={0} />
+                  <InstrumentSelect instruments={instruments} pid={p} cid={c} />
                 </th>
               ))}
             </tr>

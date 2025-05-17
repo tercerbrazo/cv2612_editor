@@ -14,14 +14,14 @@ import {
 } from '@dnd-kit/modifiers'
 import { PlayModeEnum } from './enums'
 
-import React, { MouseEventHandler, useCallback, useMemo } from 'react'
-import Channel from './channel'
-import { state, dispatch } from './context'
-import Dropdown from './dropdown'
-import Slider from './slider'
+import React, { FC, MouseEventHandler, useCallback, useMemo } from 'react'
 import { useSnapshot } from 'valtio'
+import Channel from './channel'
+import { dispatch, state } from './context'
+import Dropdown from './dropdown'
 import Poly from './poly'
 import Sequencer from './sequencer'
+import Slider from './slider'
 
 function useCombinedRefs<T>(...refs: ((node: T) => void)[]): (node: T) => void {
   return useMemo(
@@ -56,8 +56,8 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   })
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
-      }
+      transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
+    }
     : undefined
 
   const setNodeRef = useCombinedRefs(setDroppableNodeRef, setDraggableNodeRef)
@@ -98,6 +98,60 @@ const Droppable = ({ index }) => {
   )
 }
 
+type StereoProps = {
+  cid: ChannelId
+}
+
+const Stereo: FC<StereoProps> = ({ cid }) => {
+  const snap = useSnapshot(state)
+  // all `st` values are the same between patches
+  // FIXME: refactor data shape to reflect this
+  const value = snap.patches[0].channels[cid].st
+  const left = value & 0b01
+  const right = (value & 0b10) >> 1
+
+  const handleLeftClick = () => {
+    const newValue = (right << 1) | (left ? 0 : 1)
+    for (let i = 0; i < 4; i++) {
+      state.patches[i].channels[cid].st = newValue
+    }
+  }
+
+  const handleRightClick = () => {
+    const newValue = ((right ? 0 : 1) << 1) | left
+    for (let i = 0; i < 4; i++) {
+      state.patches[i].channels[cid].st = newValue
+    }
+  }
+
+  return (
+    <div className="stereo">
+      <div onClick={handleLeftClick} className={`left ${left ? 'on' : ''}`}>
+        L
+      </div>
+      <div onClick={handleRightClick} className={`right ${right ? 'on' : ''}`}>
+        R
+      </div>
+    </div>
+  )
+}
+
+const Mixer = () => {
+  return (
+    <table className="mixer">
+      <tbody>
+        <tr>
+          {([0, 1, 2, 3, 4, 5] as const).map((i) => (
+            <td key={i}>
+              <Stereo cid={i} />
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
 const Scene = () => {
   const snap = useSnapshot(state)
   const mouseSensor = useSensor(MouseSensor, {
@@ -112,17 +166,17 @@ const Scene = () => {
 
   const handlePatchClick =
     (index: PatchId): MouseEventHandler =>
-    (ev) => {
-      ev.preventDefault()
-      dispatch({ type: 'change-patch', index })
-    }
+      (ev) => {
+        ev.preventDefault()
+        dispatch({ type: 'change-patch', index })
+      }
 
   const handleChannelClick =
     (index: ChannelId): MouseEventHandler =>
-    (ev) => {
-      ev.preventDefault()
-      dispatch({ type: 'change-channel', index })
-    }
+      (ev) => {
+        ev.preventDefault()
+        dispatch({ type: 'change-channel', index })
+      }
 
   const handlePatchDragEnd = useCallback((event: DragEndEvent) => {
     const drag = event.active?.data?.current
@@ -229,6 +283,7 @@ const Scene = () => {
                   <Droppable index={6} />
                 </nav>
               </DndContext>
+              <Mixer />
             </div>
           </div>
           <br />

@@ -108,7 +108,7 @@ const Midi = () => {
         <a
           href="/"
           title={`Bind parameters to ${'XYZ'[i]}`}
-          className={`${i} ${snap.bindingId === i ? 'active' : ''}`}
+          className={`${'xyz'[i]} ${snap.bindingId === i ? 'active' : ''}`}
           onClick={(ev) => {
             ev.preventDefault()
             dispatch({ type: 'toggle-binding', bindingId: i })

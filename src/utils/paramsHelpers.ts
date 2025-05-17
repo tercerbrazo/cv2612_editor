@@ -219,10 +219,10 @@ const getParamBindingIndex = (
   if (id === PatchParamEnum.LFO) {
     return 2
   }
-  if (isChannelParam(id)) {
+  if (isChannelParam(id) && id !== 'st') {
     return CH_BINDING_OFFSET + CH_PARAM_INDEXES[id]
   }
-  if (isOperatorParam(id)) {
+  if (isOperatorParam(id) && id !== 'am' && id !== 'rs') {
     return OP_BINDING_OFFSET + OP_PARAM_COUNT * op + OP_PARAM_INDEXES[id]
   }
   // for any other non-boundable parameter it'll be undefined

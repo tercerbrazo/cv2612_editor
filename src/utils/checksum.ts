@@ -275,7 +275,7 @@ const calculate_crc32 = (state: State) => {
 
   // sequence
   for (let i = 0; i < 6; i++) {
-    const seq = state.sequence[i]
+    const seq = state.settings.sequence[i]
     // Convert 16-bit array into a number using reduce
     const value = seq.reduce((acc, bit, j) => acc | ((bit ? 1 : 0) << j), 0)
     // Split into two uint8_t

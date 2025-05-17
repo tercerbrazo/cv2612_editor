@@ -311,8 +311,10 @@ button
         padding: 0
 
   .slider
+    height: 26px
+    margin-bottom: 4px
     &.learn
-      background: rgba(0,255,255,0.12)
+      background: lighten( $black, 10%)
       &:hover
         cursor: pointer
         border: 2px dashed $primary
@@ -390,15 +392,18 @@ button
           opacity: 1
           // filter: drop-shadow(0 0 5px $white)
 
+table
+  border-collapse: collapse
+  table-layout: fixed
+  width: 100%
+  th, td
+    border: 1px solid $white
+    height: 32px
+
 .instruments
   padding-top: 20px
   table
-    border-collapse: collapse
-    table-layout: fixed
-    width: 100%
     th, td
-      border: 1px solid $white
-      height: 32px
       &:first-child
         width: 40px
         text-align: center
@@ -414,6 +419,31 @@ button
       &:focus
         outline: none
         box-shadow: none
+
+.mixer
+  th, td
+    border: 0px solid $white
+    height: auto
+
+.stereo
+  font-size: 0.75em
+  font-weight: bold
+  .left,.right
+    width: 50%
+    border: 4px solid $black
+    box-sizing: border-box
+    text-align: center
+    background: lighten($black, 25%)
+    color: $black
+    display: block
+    float: left
+    cursor: pointer
+    &.on
+      background: $primary
+      color: $black
+    &:hover
+      border-color: $primary
+      border-style: dashed
 
 @keyframes blinkLed
   from

@@ -31,7 +31,7 @@ const Sequencer = () => {
       </div>
       <div className="tcol">
         <div className="seq">
-          {snap.sequence.map((voiceSteps, voiceIndex) => (
+          {snap.settings.sequence.map((voiceSteps, voiceIndex) => (
             <React.Fragment key={voiceIndex}>
               {voiceIndex === 0 && (
                 <div className="seq-row">
@@ -40,9 +40,8 @@ const Sequencer = () => {
                     <div
                       onClick={() => handleHeaderClick(stepIndex)}
                       key={stepIndex}
-                      className={`seq-cell seq-header ${
-                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                      }`}
+                      className={`seq-cell seq-header ${stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                        }`}
                     >
                       {stepIndex + 1}
                     </div>
@@ -54,9 +53,8 @@ const Sequencer = () => {
                 {voiceSteps.map((stepValue, stepIndex) => {
                   return (
                     <div
-                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
-                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                      }`}
+                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                        }`}
                       key={stepIndex}
                       onClick={() => handleCellClick(voiceIndex, stepIndex)}
                     />

@@ -44,20 +44,28 @@ declare global {
     channels: [Channel, Channel, Channel, Channel, Channel, Channel]
   }
 
-  type Settings = Record<SettingParam, number>
+  type Settings = Record<SettingParam, number> & {
+    sequence: number[][]
+  }
 
   type Bindings = number[] // an array of binding indexes
 
   type State = {
     name: string
-    sequence: number[][]
-    bindingId?: BindingId
-    bindings: [Bindings, Bindings, Bindings]
-    patchIdx: PatchId
-    channelIdx: ChannelId
-    calibrationStep: number
-    instrumentsLoader: boolean
+
+    // actual module state
     settings: Settings
     patches: [Patch, Patch, Patch, Patch]
+    bindings: [Bindings, Bindings, Bindings]
+
+    // current editor parameters page
+    patchIdx: PatchId
+    channelIdx: ChannelId
+    // mapping parameters?
+    bindingId?: BindingId
+    // TODO: trun into views?
+    calibrationStep: number
+    instrumentsLoader: boolean
+    mixer: boolean
   }
 }

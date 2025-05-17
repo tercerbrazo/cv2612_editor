@@ -11,7 +11,8 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const { bindingIndex, boundTo, bindingId } = useBinding(id, op)
   const { ch, cc } = useParamMidi(id, op)
 
-  const className = `slider ${bindingIndex && bindingId ? 'learn' : ''}`
+  const learn = bindingIndex !== undefined && bindingId !== undefined
+  const className = `slider ${learn ? 'learn' : ''}`
 
   const onChange = (ev: ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault()
@@ -40,7 +41,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
     >
       <label>
         {label}
-        <i className={boundTo ?? ''} />
+        <i className={boundTo !== undefined ? 'xyz'[boundTo] : ''} />
       </label>
       <input
         type="range"

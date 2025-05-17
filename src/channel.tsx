@@ -9,7 +9,6 @@ const Channel = () => {
       <div className="four-cols">
         <div className="col">
           <Slider id="lfo" />
-          <Slider id="st" />
         </div>
         <div className="col">
           <Slider id="ams" />

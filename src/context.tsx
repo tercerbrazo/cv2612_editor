@@ -40,9 +40,6 @@ type Action =
     savedState: State
   }
   | {
-    type: 'toggle-instruments-loader'
-  }
-  | {
     type: 'toggle-param-binding'
     id: Param
     op: OperatorId
@@ -109,10 +106,6 @@ type Action =
     target: ChannelId
   }
   | {
-    type: 'update-state'
-    newState: State
-  }
-  | {
     type: 'sync-midi'
   }
   | {
@@ -151,7 +144,7 @@ const initialChannel: Channel = {
   fb: 0,
   ams: 0,
   fms: 0,
-  st: 0,
+  st: 3,
   operators: [
     initialOperator,
     initialOperator,
@@ -184,6 +177,7 @@ const initialSettings = {
   velocity: 0,
   portamento: 0,
   polyphony: 0,
+  sequence: initialSequence,
 }
 
 const initialState: State = {
@@ -191,9 +185,9 @@ const initialState: State = {
   bindings: [[], [], []],
   patchIdx: 0,
   channelIdx: 0,
-  sequence: initialSequence,
   calibrationStep: 0,
   instrumentsLoader: false,
+  mixer: false,
   settings: initialSettings,
   patches: [initialPatch, initialPatch, initialPatch, initialPatch],
 }
@@ -202,7 +196,7 @@ const state = proxy(deepClone(initialState))
 
 const toggleParamBinding = (id: Param, op: OperatorId) => {
   // return unchanged state if not binding
-  if (!state.bindingId) return
+  if (state.bindingId === undefined) return
 
   const bi = getParamBindingIndex(id, op)
 
@@ -236,10 +230,10 @@ const toggleParamBinding = (id: Param, op: OperatorId) => {
 }
 
 const toggleSeqStep = (voice: number, step: number) => {
-  const prev = state.sequence[voice][step]
+  const prev = state.settings.sequence[voice][step]
   const val = voice * 16 + step
 
-  state.sequence[voice][step] = prev === 0 ? 1 : 0
+  state.settings.sequence[voice][step] = prev === 0 ? 1 : 0
 
   sendMidiCmd(
     prev === 0 ? MidiCommands.SET_SEQ_STEP_ON : MidiCommands.SET_SEQ_STEP_OFF,
@@ -424,9 +418,6 @@ const sendCrc32 = () => {
 // TODO: udpateParams without sending MIDI out
 const dispatch = (action: Action) => {
   switch (action.type) {
-    case 'toggle-instruments-loader':
-      state.instrumentsLoader = !state.instrumentsLoader
-      break
     case 'calibration-step':
       sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, action.step)
       state.calibrationStep = action.step
@@ -515,13 +506,6 @@ const dispatch = (action: Action) => {
       break
     }
 
-    case 'update-state': {
-      const newState = deepClone(action.newState)
-      Object.keys(newState).forEach((key) => {
-        state[key] = newState[key]
-      })
-      break
-    }
     case 'change-channel': {
       state.channelIdx = action.index
       break
@@ -615,7 +599,7 @@ const dispatch = (action: Action) => {
     }
     case 'clear-sequence': {
       sendMidiCmd(MidiCommands.CLEAR_SEQ)
-      state.sequence = deepClone(initialSequence)
+      state.settings.sequence = deepClone(initialSequence)
       break
     }
   }

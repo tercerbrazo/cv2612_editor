@@ -12,7 +12,7 @@ const Patch = () => {
   const handleInstrumentsClick: MouseEventHandler<HTMLAnchorElement> =
     useCallback((ev) => {
       ev.preventDefault()
-      dispatch({ type: 'toggle-instruments-loader' })
+      state.instrumentsLoader = true
     }, [])
 
   const handleCalibrationClick: MouseEventHandler<HTMLAnchorElement> =
@@ -40,7 +40,7 @@ const Patch = () => {
           reader.onload = (e) => {
             try {
               const newState = JSON.parse(e.target?.result as string)
-              dispatch({ type: 'update-state', newState })
+              // FIXME
             } catch (error) {
               console.error('Error parsing JSON:', error)
             }

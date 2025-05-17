@@ -7,15 +7,13 @@ const Algorithm = () => {
   const snap = useSnapshot(state)
   const value = snap.patches[snap.patchIdx].channels[snap.channelIdx].al
 
-  const onAlgorithmClick = (
-    ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-  ) => {
+  const handleClick = (ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     ev.preventDefault()
     dispatch({ type: 'reset-channel' })
   }
 
   return (
-    <a href="!#" onClick={onAlgorithmClick} style={{ textDecoration: 'none' }}>
+    <a href="!#" onClick={handleClick} style={{ textDecoration: 'none' }}>
       <pre className="algorithm">{algorithmAscii(value)}</pre>
     </a>
   )
