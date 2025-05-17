@@ -420,7 +420,18 @@ table
         outline: none
         box-shadow: none
 
+
 .mixer
+  position: relative
+  &:before
+    content: "OUTS"
+    position: absolute
+    left: -30px
+    width: 30px
+    top: 4px
+    display: block
+    color: $white
+    font-size: 0.75em
   th, td
     border: 0px solid $white
     height: auto

@@ -127,10 +127,10 @@ const Stereo: FC<StereoProps> = ({ cid }) => {
   return (
     <div className="stereo">
       <div onClick={handleLeftClick} className={`left ${left ? 'on' : ''}`}>
-        L
+        1
       </div>
       <div onClick={handleRightClick} className={`right ${right ? 'on' : ''}`}>
-        R
+        2
       </div>
     </div>
   )
