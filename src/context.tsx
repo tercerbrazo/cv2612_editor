@@ -1,5 +1,3 @@
-import React, { useCallback, useEffect } from 'react'
-import { reactLocalStorage } from 'reactjs-localstorage'
 import {
   ChannelParamEnum,
   MidiCommands,
@@ -20,7 +18,7 @@ import {
   isSettingParam,
 } from './utils/paramsHelpers'
 
-import { proxy, useSnapshot } from 'valtio'
+import { proxy, subscribe, useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 import initialLibrary from './instruments.json'
 
@@ -195,7 +193,22 @@ const initialState: State = {
   patches: [initialPatch, initialPatch, initialPatch, initialPatch],
 }
 
-const state = proxy(deepClone(initialState))
+const getInitialState = () => {
+  const lastStateStr = localStorage.getItem('lastState')
+  if (lastStateStr !== null) {
+    const lastState = JSON.parse(lastStateStr)
+    if (hasSameShape(lastState, initialState)) {
+      return lastState
+    }
+  }
+  return deepClone(initialState)
+}
+
+const state = proxy(getInitialState())
+
+subscribe(state, () => {
+  localStorage.setItem('lastState', JSON.stringify(state))
+})
 
 const toggleParamBinding = (id: Param, op: OperatorId) => {
   // return unchanged state if not binding
@@ -692,45 +705,4 @@ function hasSameShape(a: unknown, b: unknown) {
   return normalizedA === normalizedB
 }
 
-let saveId = 0
-const CV2612Provider = ({ children }) => {
-  const doSaveState = useCallback(() => {
-    reactLocalStorage.set('lastState', JSON.stringify(state))
-  }, [state])
-
-  const saveStateDelayed = useCallback(() => {
-    if (saveId) {
-      clearTimeout(saveId)
-    }
-    saveId = setTimeout(doSaveState, 500)
-  }, [doSaveState])
-
-  useEffect(saveStateDelayed, [saveStateDelayed])
-
-  useEffect(() => {
-    ; (async () => {
-      const lastStateStr = reactLocalStorage.get('lastState', '')
-
-      if (lastStateStr) {
-        const lastState = JSON.parse(lastStateStr)
-        lastState.calibrationStep = 0
-        lastState.instrumentsLoader = false
-        // validate lastState shape
-        if (hasSameShape(lastState, initialState)) {
-          dispatch({ type: 'provider-ready', savedState: lastState })
-        }
-      }
-    })()
-  }, [])
-
-  return <>{children}</>
-}
-
-export {
-  CV2612Provider,
-  state,
-  dispatch,
-  useParamData,
-  useParamMidi,
-  useBinding,
-}
+export { state, dispatch, useParamData, useParamMidi, useBinding }
