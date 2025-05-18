@@ -139,7 +139,10 @@ const InstrumentsBrowser = () => {
           {`<`}
         </a>
         <select onChange={handleChange} value={selected}>
-          <option value={-1}>---</option>
+          <option value={-1} disabled selected={selected === -1}>
+            Pick an instrument for {'ABCD'[snap.patchIdx]}
+            {snap.channelIdx + 1}
+          </option>
           {snap.library.map((inst, i) => (
             <option key={inst.name} value={i}>
               {inst.name}
@@ -190,6 +193,7 @@ const addDmpInstruments = () => {
                 state.library[index] = channel
               } else {
                 state.library.push(channel)
+                state.library.sort((a, b) => a.name.localeCompare(b.name))
               }
             }
           }

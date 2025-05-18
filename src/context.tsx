@@ -198,7 +198,7 @@ const getInitialState = () => {
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (hasSameShape(lastState, initialState)) {
-      return lastState
+      return lastState as State
     }
   }
   return deepClone(initialState)
