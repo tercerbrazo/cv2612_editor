@@ -36,6 +36,7 @@ declare global {
   type Operator = Record<OperatorParam, number>
 
   type Channel = Record<ChannelParam, number> & {
+    name: string
     operators: [Operator, Operator, Operator, Operator]
   }
 
@@ -63,9 +64,12 @@ declare global {
     channelIdx: ChannelId
     // mapping parameters?
     bindingId?: BindingId
-    // TODO: trun into views?
+    // TODO: turn into views?
     calibrationStep: number
     instrumentsLoader: boolean
     mixer: boolean
+
+    // instruments library
+    library: Channel[]
   }
 }

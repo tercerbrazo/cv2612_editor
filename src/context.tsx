@@ -22,6 +22,7 @@ import {
 
 import { proxy, useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
+import initialLibrary from './instruments.json'
 
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMDS = [
@@ -140,6 +141,7 @@ const initialOperator: Operator = {
 }
 
 const initialChannel: Channel = {
+  name: '---',
   al: 7,
   fb: 0,
   ams: 0,
@@ -189,6 +191,7 @@ const initialState: State = {
   instrumentsLoader: false,
   mixer: false,
   settings: initialSettings,
+  library: initialLibrary as Channel[],
   patches: [initialPatch, initialPatch, initialPatch, initialPatch],
 }
 

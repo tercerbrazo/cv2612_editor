@@ -1,110 +1,12 @@
-import React, { FC, useCallback, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useSnapshot } from 'valtio'
+import { deepClone } from 'valtio/utils'
 import { state } from './context'
 import Envelope from './envelope'
 import algorithmAscii from './utils/algorithmAscii'
 import { getParamMeta } from './utils/paramsHelpers'
-import { useSnapshot } from 'valtio'
-
-type Instrument = Channel & {
-  name: string
-}
-
-/*
-* Converts a dmp instrument file into an object of CC
-* being the `key` the cc number and the `value` the cc value
-* to be sent in order to set this dmp in the cv2612 module
-    http://www.deflemask.com/DMP_SPECS.txt
-    1 Byte: LFO (FMS on YM2612, PMS on YM2151)
-    1 Byte: FB
-    1 Byte: ALG
-    1 Byte: LFO2 (AMS on YM2612, AMS on YM2151)
-    Repeat this TOTAL_OPERATORS times
-      1 Byte: MULT
-      1 Byte: TL
-      1 Byte: AR
-      1 Byte: DR
-      1 Byte: SL
-      1 Byte: RR
-      1 Byte: AM
-      1 Byte: RS
-      1 Byte: DT (DT2<<4 | DT on YM2151)
-      1 Byte: D2R
-      1 Byte: SSGEG_Enabled <<3 | SSGEG
-      */
-
-/*
- * Transforms a dmp buffer into a compact 26-bytes representation
- * of a YM2612 channel, that matches chip REGISTERS bit a bit
- */
-const readDmp = (data: Int8Array, name: string): Instrument | null => {
-  //version 9 or 11, genesis, FM patch
-  if (
-    (data[0] === 0x09 && data[1] === 0x01 && data[2] === 0x00) ||
-    (data[0] === 0x0b && data[1] === 0x02 && data[2] === 0x01)
-  ) {
-    const operators: Operator[] = []
-    for (let op = 0; op < 4; op++) {
-      const o = op * 11 + 7
-
-      operators.push({
-        mul: data[o + 0],
-        tl: data[o + 1],
-        ar: data[o + 2],
-        d1: data[o + 3],
-        sl: data[o + 4],
-        rr: data[o + 5],
-        am: data[o + 6],
-        rs: data[o + 7],
-        det: data[o + 8],
-        d2: data[o + 9],
-      })
-    }
-    return {
-      name,
-      st: 3,
-      fms: data[3],
-      fb: data[4],
-      al: data[5],
-      ams: data[6],
-      operators: operators as [Operator, Operator, Operator, Operator],
-    }
-  } else {
-    return null
-  }
-}
-
-type InstrumentSelectProps = {
-  instruments: Instrument[]
-  pid: number
-  cid: number
-}
-
-const InstrumentSelect: FC<InstrumentSelectProps> = ({
-  instruments,
-  cid,
-  pid,
-}) => {
-  const snap = useSnapshot(state)
-  const [selected, setSelected] = useState(0)
-
-  const onChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
-    ev.preventDefault()
-    const val = parseInt(ev.target.value, 10)
-    setSelected(val)
-    console.log({ val, pid, cid })
-    state.patches[pid].channels[cid] = instruments[val]
-  }
-
-  return (
-    <select onChange={onChange} value={selected}>
-      {instruments.map((inst, i) => (
-        <option key={inst.name} value={i}>
-          {inst.name}
-        </option>
-      ))}
-    </select>
-  )
-}
+import { readDmp } from './utils/readDmp'
+import { Stereo } from './stereo'
 
 type SliderProps = {
   id: Param
@@ -141,61 +43,12 @@ const Operator = ({ op }: OperatorProps) => {
   )
 }
 
-type InstrumentPreviewerProps = {
-  instruments: Instrument[]
-}
-const InstrumentPreviewer: FC<InstrumentPreviewerProps> = ({ instruments }) => {
-  const [selected, setSelected] = useState(0)
+const InstrumentsPreview = () => {
+  const snap = useSnapshot(state)
+  const instrument = snap.patches[snap.patchIdx].channels[snap.channelIdx]
 
-  const instrument = useMemo(
-    () => instruments[selected],
-    [selected, instruments],
-  )
-
-  const onChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
-    ev.preventDefault()
-    const val = parseInt(ev.target.value, 10)
-    setSelected(val)
-  }
-
-  return instrument === undefined ? (
-    <h4>Upload some DMPs</h4>
-  ) : (
-    <div className="previewer">
-      <nav>
-        <a
-          href="/"
-          title="Prev"
-          onClick={(ev) => {
-            ev.preventDefault()
-            setSelected((prev) =>
-              prev == 0 ? instruments.length - 1 : prev - 1,
-            )
-          }}
-        >
-          {`<`}
-        </a>
-        <select onChange={onChange} value={selected}>
-          {instruments.map((inst, i) => (
-            <option key={inst.name} value={i}>
-              {inst.name}
-            </option>
-          ))}
-        </select>
-        <a
-          href="/"
-          title="Next"
-          onClick={(ev) => {
-            ev.preventDefault()
-            setSelected((prev) =>
-              prev == instruments.length - 1 ? 0 : prev + 1,
-            )
-          }}
-        >
-          {`>`}
-        </a>
-      </nav>
-      <br />
+  return (
+    <>
       <div className="four-cols">
         <div className="col"></div>
         <div className="col">
@@ -224,121 +77,189 @@ const InstrumentPreviewer: FC<InstrumentPreviewerProps> = ({ instruments }) => {
           <Operator op={instrument.operators[3]} />
         </div>
       </div>
+    </>
+  )
+}
+
+const cloneInstrument = (val: number) => {
+  state.patches[state.patchIdx].channels[state.channelIdx] = deepClone(
+    state.library[val],
+  )
+}
+
+const InstrumentsBrowser = () => {
+  const snap = useSnapshot(state)
+  const [selected, setSelected] = useState(-1)
+
+  useEffect(() => {
+    const name = state.patches[state.patchIdx].channels[state.channelIdx].name
+    const index = state.library.findIndex((inst) => inst.name === name)
+    setSelected(index)
+  })
+
+  const handlePrevClick: React.MouseEventHandler<HTMLAnchorElement> = (ev) => {
+    ev.preventDefault()
+    setSelected((prev) => {
+      const val = prev === 0 ? snap.library.length - 1 : prev - 1
+      cloneInstrument(val)
+      return val
+    })
+  }
+
+  const handleNextClick: React.MouseEventHandler<HTMLAnchorElement> = (ev) => {
+    ev.preventDefault()
+    setSelected((prev) => {
+      const val = prev === snap.library.length - 1 ? 0 : prev + 1
+      cloneInstrument(val)
+      return val
+    })
+  }
+
+  const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (ev) => {
+    ev.preventDefault()
+    const val = parseInt(ev.target.value, 10)
+    setSelected(val)
+    cloneInstrument(val)
+  }
+
+  const handleLoadClick = (ev: React.MouseEvent<HTMLAnchorElement>) => {
+    ev.preventDefault()
+    addDmpInstruments()
+  }
+
+  const handleBackClick = (ev: React.MouseEvent<HTMLAnchorElement>) => {
+    ev.preventDefault()
+    state.instrumentsLoader = false
+  }
+
+  return (
+    <div className="previewer">
+      <nav>
+        <a href="/" title="Prev" onClick={handlePrevClick}>
+          {`<`}
+        </a>
+        <select onChange={handleChange} value={selected}>
+          <option value={-1}>---</option>
+          {snap.library.map((inst, i) => (
+            <option key={inst.name} value={i}>
+              {inst.name}
+            </option>
+          ))}
+        </select>
+        <a href="/" title="Next" onClick={handleNextClick}>
+          {`>`}
+        </a>
+        <a href="/" title="Load DMP files" onClick={handleLoadClick}>
+          LOAD
+        </a>
+        <a href="/" title="Back to Editor" onClick={handleBackClick}>
+          DONE
+        </a>
+      </nav>
+      <br />
+      <InstrumentsPreview />
     </div>
   )
 }
 
-const patches = [0, 1, 2, 3]
-const channels = [0, 1, 2, 3, 4, 5]
+const addDmpInstruments = () => {
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = '.dmp'
+  fileInput.multiple = true
+
+  fileInput.addEventListener('change', async (event) => {
+    const { files } = event.target as HTMLInputElement
+
+    if (files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+
+        const reader = new FileReader()
+
+        reader.onload = (e) => {
+          if (e.target) {
+            const data = new Int8Array(e.target.result as ArrayBuffer)
+            const name = file.name.replace('.dmp', '')
+            const channel = readDmp(data, name)
+            if (channel) {
+              const index = state.library.findIndex(
+                (inst) => inst.name === name,
+              )
+              if (index !== -1) {
+                state.library[index] = channel
+              } else {
+                state.library.push(channel)
+              }
+            }
+          }
+        }
+
+        reader.readAsArrayBuffer(file)
+      }
+    }
+  })
+
+  fileInput.click()
+}
 
 const InstrumentsLoader = () => {
-  const [instruments, setInstruments] = useState<Instrument[]>([])
-
-  const handleUploadClick = useCallback(
-    (ev: React.MouseEvent<HTMLAnchorElement>) => {
-      ev.preventDefault()
-      const fileInput = document.createElement('input')
-      fileInput.type = 'file'
-      fileInput.accept = '.dmp'
-      fileInput.multiple = true
-
-      fileInput.addEventListener('change', async (event) => {
-        const { files } = event.target as HTMLInputElement
-
-        if (files) {
-          const filePromises: Promise<any>[] = []
-
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-
-            const promise = new Promise<any>((resolve, reject) => {
-              const reader = new FileReader()
-
-              reader.onload = (e) => {
-                if (e.target) {
-                  const data = new Int8Array(e.target.result as ArrayBuffer)
-                  const name = file.name.replace('.dmp', '')
-                  resolve(readDmp(data, name))
-                } else {
-                  resolve(null)
-                }
-              }
-
-              reader.onerror = reject
-
-              reader.readAsArrayBuffer(file)
-            })
-
-            filePromises.push(promise)
-          }
-
-          const newInstruments = (await Promise.all(filePromises)).filter(
-            Boolean,
-          )
-          const newNames = new Set(newInstruments.map((i) => i.name))
-
-          setInstruments((prev) =>
-            [
-              ...prev.filter((inst) => !newNames.has(inst.name)),
-              ...newInstruments,
-            ].sort((a, b) => a.name.localeCompare(b.name)),
-          )
-        }
-      })
-
-      fileInput.click()
-    },
-    [],
-  )
+  const snap = useSnapshot(state)
 
   return (
     <div className="instruments">
-      <nav className="midi">
-        <span>Instruments</span>
-        <span> </span>
-        <span> </span>
-        <span> </span>
-        <span> </span>
-        <span> </span>
-        <a href="/" title="Upload DMP" onClick={handleUploadClick}>
-          UPLOAD
-        </a>
-        <a
-          href="/"
-          title="Back to Editor"
-          onClick={(ev) => {
-            ev.preventDefault()
-            state.instrumentsLoader = false
-          }}
-        >
-          DONE
-        </a>
-      </nav>
-      <table>
+      <table className="instruments-matrix">
         <thead>
           <tr>
             <th></th>
-            {channels.map((c) => (
-              <th key={c}>{c + 1}</th>
+            {snap.patches[0].channels.map((_c, cid) => (
+              <th key={cid}>{cid + 1}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {patches.map((p) => (
-            <tr key={p}>
-              <td>{'ABCD'[p]}</td>
-              {channels.map((c) => (
-                <th key={c}>
-                  <InstrumentSelect instruments={instruments} pid={p} cid={c} />
-                </th>
-              ))}
+          <tr>
+            <td>out</td>
+            {snap.patches[0].channels.map((_c, cid) => (
+              <td>
+                <Stereo cid={cid as ChannelId} />
+              </td>
+            ))}
+          </tr>
+          {snap.patches.map((p, pid) => (
+            <tr key={pid}>
+              <td>{'ABCD'[pid]}</td>
+              {p.channels.map((ch, cid) => {
+                const libIndex = state.library.findIndex(
+                  (inst) => inst.name === ch.name,
+                )
+                let changed = false
+                if (libIndex !== -1) {
+                  changed =
+                    JSON.stringify(ch) !==
+                    JSON.stringify(state.library[libIndex])
+                }
+                return (
+                  <td
+                    key={cid}
+                    className={`${snap.patchIdx === pid && snap.channelIdx === cid ? 'active' : ''}`}
+                    onClick={() => {
+                      state.patchIdx = pid as PatchId
+                      state.channelIdx = cid as ChannelId
+                    }}
+                  >
+                    {ch.name}
+                    {changed ? ' (*)' : ''}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>
       </table>
       <br />
       <br />
-      <InstrumentPreviewer instruments={instruments} />
+      <InstrumentsBrowser />
     </div>
   )
 }

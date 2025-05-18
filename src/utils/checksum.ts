@@ -227,7 +227,6 @@ const calculate_crc32 = (state: State) => {
 
   // BINDINGS
   // ========
-  console.log('BINDINGS', state.bindings)
   state.bindings.forEach((bindings) => {
     const getBinding = (id: Param, op: OperatorId) => {
       const bi = getParamBindingIndex(id, op)
@@ -238,7 +237,7 @@ const calculate_crc32 = (state: State) => {
     // ch_bitmask_t
     data.push(
       getBinding('lfo', 0) |
-      (getBinding('st', 0) << 1) |
+      // 'st' isnt bindable anymore
       (getBinding('fb', 0) << 2) |
       (getBinding('al', 0) << 3) |
       (getBinding('ams', 0) << 4) |
@@ -259,7 +258,10 @@ const calculate_crc32 = (state: State) => {
         (getBinding('det', op) << 6) |
         (getBinding('mul', op) << 7),
       )
-      data.push(getBinding('rs', op) | (getBinding('am', op) << 1))
+      // 'rs' and 'am' are not bindable anymore
+      // but the bindings struct isnt updated yet
+      // so we need to push a zero there
+      data.push(0)
     }
   })
 
