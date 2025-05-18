@@ -1,4 +1,4 @@
-type SpeedPreset = 'fast' | 'normal' | 'slow' | 'shitty'
+type SpeedPreset = 'turbo' | 'fast' | 'normal' | 'slow' | 'shitty'
 const state: {
   ma?: WebMidi.MIDIAccess
   midiOutId: string
@@ -13,6 +13,8 @@ const MINIMUM_THROTTLE = 10
 
 const getInterval = () => {
   switch (state.speedPreset) {
+    case 'turbo':
+      return 1
     case 'fast':
       return 3
     case 'normal':
