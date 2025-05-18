@@ -1,6 +1,6 @@
 import React, { FC } from 'react'
 import { useSnapshot } from 'valtio'
-import { state } from './context'
+import { sendMidiParam, state } from './context'
 
 type StereoProps = {
   cid: ChannelId
@@ -16,15 +16,17 @@ const Stereo: FC<StereoProps> = ({ cid }) => {
 
   const handleLeftClick = () => {
     const newValue = (right << 1) | (left ? 0 : 1)
-    for (let i = 0; i < 4; i++) {
-      state.patches[i].channels[cid].st = newValue
+    for (let pid = 0; pid < 4; pid++) {
+      state.patches[pid].channels[cid].st = newValue
+      sendMidiParam('st', pid as PatchId, cid, 0, newValue)
     }
   }
 
   const handleRightClick = () => {
     const newValue = ((right ? 0 : 1) << 1) | left
-    for (let i = 0; i < 4; i++) {
-      state.patches[i].channels[cid].st = newValue
+    for (let pid = 0; pid < 4; pid++) {
+      state.patches[pid].channels[cid].st = newValue
+      sendMidiParam('st', pid as PatchId, cid, 0, newValue)
     }
   }
 

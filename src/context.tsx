@@ -705,4 +705,11 @@ function hasSameShape(a: unknown, b: unknown) {
   return normalizedA === normalizedB
 }
 
-export { state, dispatch, useParamData, useParamMidi, useBinding }
+export {
+  state,
+  dispatch,
+  useParamData,
+  useParamMidi,
+  useBinding,
+  sendMidiParam,
+}

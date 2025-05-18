@@ -27,8 +27,8 @@ const App = () => {
 
     return (
       <>
-        <Patch />
         <Midi />
+        <Patch />
         <Scene />
       </>
     )

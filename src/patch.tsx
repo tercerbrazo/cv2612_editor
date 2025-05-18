@@ -3,83 +3,68 @@ import React, {
   MouseEventHandler,
   useCallback,
 } from 'react'
-import { state, dispatch } from './context'
 import { useSnapshot } from 'valtio'
+import { dispatch, state } from './context'
+import { MenuDropdown } from './menu-dropdown'
+
+const loadJSON = () => {
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = '.json'
+
+  fileInput.addEventListener('change', (event) => {
+    const target = event.target as HTMLInputElement
+
+    const file = target.files?.[0]
+
+    if (file) {
+      const reader = new FileReader()
+
+      reader.onload = (e) => {
+        try {
+          const newState = JSON.parse(e.target?.result as string)
+          // FIXME
+        } catch (error) {
+          console.error('Error parsing JSON:', error)
+        }
+      }
+
+      reader.readAsText(file)
+    }
+  })
+
+  fileInput.click()
+}
+
+const downloadJSON = () => {
+  // Convert the object to a JSON string
+  var jsonData = JSON.stringify(state)
+
+  // Create a Blob from the JSON data
+  var blob = new Blob([jsonData], { type: 'application/json' })
+
+  // Create a URL for the Blob
+  var url = URL.createObjectURL(blob)
+
+  // Create a download link
+  var a = document.createElement('a')
+  a.href = url
+  a.download = `${state.name}.json`
+
+  // Trigger the download
+  a.click()
+
+  // Clean up by revoking the URL
+  URL.revokeObjectURL(url)
+}
 
 const Patch = () => {
   const snap = useSnapshot(state)
 
-  const handleInstrumentsClick: MouseEventHandler<HTMLAnchorElement> =
-    useCallback((ev) => {
-      ev.preventDefault()
-      state.instrumentsLoader = true
-    }, [])
-
-  const handleCalibrationClick: MouseEventHandler<HTMLAnchorElement> =
-    useCallback((ev) => {
-      ev.preventDefault()
-      dispatch({ type: 'calibration-step', step: 1 })
-    }, [])
-
-  const handleLoadClick: MouseEventHandler<HTMLAnchorElement> = useCallback(
-    (ev) => {
-      ev.preventDefault()
-
-      const fileInput = document.createElement('input')
-      fileInput.type = 'file'
-      fileInput.accept = '.json'
-
-      fileInput.addEventListener('change', (event) => {
-        const target = event.target as HTMLInputElement
-
-        const file = target.files?.[0]
-
-        if (file) {
-          const reader = new FileReader()
-
-          reader.onload = (e) => {
-            try {
-              const newState = JSON.parse(e.target?.result as string)
-              // FIXME
-            } catch (error) {
-              console.error('Error parsing JSON:', error)
-            }
-          }
-
-          reader.readAsText(file)
-        }
-      })
-
-      fileInput.click()
-    },
-    [],
-  )
-
-  const handleDownloadClick: MouseEventHandler<HTMLAnchorElement> = useCallback(
-    (ev) => {
-      ev.preventDefault()
-      // Convert the object to a JSON string
-      var jsonData = JSON.stringify(state)
-
-      // Create a Blob from the JSON data
-      var blob = new Blob([jsonData], { type: 'application/json' })
-
-      // Create a URL for the Blob
-      var url = URL.createObjectURL(blob)
-
-      // Create a download link
-      var a = document.createElement('a')
-      a.href = url
-      a.download = `${state.name}.json`
-
-      // Trigger the download
-      a.click()
-
-      // Clean up by revoking the URL
-      URL.revokeObjectURL(url)
-    },
-    [],
-  )
+  const handlePresetsClick: MouseEventHandler<HTMLAnchorElement> = (ev) => {
+    ev.preventDefault()
+    state.instrumentsLoader = true
+  }
 
   const handleNameChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     (e) => {
@@ -112,18 +97,40 @@ const Patch = () => {
       <span> </span>
       <span> </span>
       <span> </span>
-      <a href="/" title="Calibrate Module" onClick={handleCalibrationClick}>
-        CALIBRATE
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <span> </span>
+      <a href="/" title="Open Presets Matrix" onClick={handlePresetsClick}>
+        PRESETS
       </a>
-      <a href="/" title="Load Instruments" onClick={handleInstrumentsClick}>
-        INSTRUMENTS
-      </a>
-      <a href="/" title="Load a Patch" onClick={handleLoadClick}>
-        LOAD
-      </a>
-      <a href="/" title="Download Patch" onClick={handleDownloadClick}>
-        DOWNLOAD
-      </a>
+      <MenuDropdown
+        title="More..."
+        text="⋯"
+        options={[
+          { label: 'Calibrate', value: 1 },
+          { label: 'Load JSON', value: 2 },
+          { label: 'Download JSON', value: 3 },
+        ]}
+        onSelect={(option) => {
+          switch (option.value) {
+            case 1:
+              dispatch({ type: 'calibration-step', step: 1 })
+              break
+            case 2:
+              loadJSON()
+              break
+            case 3:
+              downloadJSON()
+              break
+          }
+        }}
+      />
     </nav>
   )
 }

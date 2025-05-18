@@ -3,10 +3,11 @@ import { useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 import { state } from './context'
 import Envelope from './envelope'
+import { Stereo } from './stereo'
 import algorithmAscii from './utils/algorithmAscii'
 import { getParamMeta } from './utils/paramsHelpers'
 import { readDmp } from './utils/readDmp'
-import { Stereo } from './stereo'
+import { MenuDropdown } from './menu-dropdown'
 
 type SliderProps = {
   id: Param
@@ -41,6 +42,16 @@ const Operator = ({ op }: OperatorProps) => {
       <Slider id="am" value={op.am} />
     </div>
   )
+}
+
+const instrumentName = (pid: number, cid: number) => {
+  const ch = state.patches[pid].channels[cid]
+  const index = state.library.findIndex((inst) => inst.name === ch.name)
+  let changed = false
+  if (index !== -1) {
+    changed = JSON.stringify(ch) !== JSON.stringify(state.library[index])
+  }
+  return `${ch.name}${changed ? ' (*)' : ''}`
 }
 
 const InstrumentsPreview = () => {
@@ -122,11 +133,6 @@ const InstrumentsBrowser = () => {
     cloneInstrument(val)
   }
 
-  const handleLoadClick = (ev: React.MouseEvent<HTMLAnchorElement>) => {
-    ev.preventDefault()
-    addDmpInstruments()
-  }
-
   const handleBackClick = (ev: React.MouseEvent<HTMLAnchorElement>) => {
     ev.preventDefault()
     state.instrumentsLoader = false
@@ -152,15 +158,23 @@ const InstrumentsBrowser = () => {
         <a href="/" title="Next" onClick={handleNextClick}>
           {`>`}
         </a>
-        <a href="/" title="Load DMP files" onClick={handleLoadClick}>
-          LOAD
-        </a>
         <a href="/" title="Back to Editor" onClick={handleBackClick}>
-          DONE
+          EDITOR
         </a>
+        <MenuDropdown
+          title="More..."
+          text="⋯"
+          options={[{ label: 'Add DMP', value: 1 }]}
+          onSelect={(option) => {
+            switch (option.value) {
+              case 1:
+                addDmpInstruments()
+                break
+            }
+          }}
+        />
       </nav>
       <br />
-      <InstrumentsPreview />
     </div>
   )
 }
@@ -212,6 +226,8 @@ const InstrumentsLoader = () => {
 
   return (
     <div className="instruments">
+      <InstrumentsBrowser />
+      <h4>Instruments Matrix</h4>
       <table className="instruments-matrix">
         <thead>
           <tr>
@@ -233,37 +249,30 @@ const InstrumentsLoader = () => {
           {snap.patches.map((p, pid) => (
             <tr key={pid}>
               <td>{'ABCD'[pid]}</td>
-              {p.channels.map((ch, cid) => {
-                const libIndex = state.library.findIndex(
-                  (inst) => inst.name === ch.name,
-                )
-                let changed = false
-                if (libIndex !== -1) {
-                  changed =
-                    JSON.stringify(ch) !==
-                    JSON.stringify(state.library[libIndex])
-                }
-                return (
-                  <td
-                    key={cid}
-                    className={`${snap.patchIdx === pid && snap.channelIdx === cid ? 'active' : ''}`}
-                    onClick={() => {
-                      state.patchIdx = pid as PatchId
-                      state.channelIdx = cid as ChannelId
-                    }}
-                  >
-                    {ch.name}
-                    {changed ? ' (*)' : ''}
-                  </td>
-                )
-              })}
+              {p.channels.map((_ch, cid) => (
+                <td
+                  key={cid}
+                  className={`${snap.patchIdx === pid && snap.channelIdx === cid ? 'active' : ''}`}
+                  onClick={() => {
+                    state.patchIdx = pid as PatchId
+                    state.channelIdx = cid as ChannelId
+                  }}
+                >
+                  {instrumentName(pid, cid)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
       <br />
       <br />
-      <InstrumentsBrowser />
+      <h4>
+        {'ABCD'[snap.patchIdx]}
+        {snap.channelIdx + 1} Preview (
+        {instrumentName(snap.patchIdx, snap.channelIdx)})
+      </h4>
+      <InstrumentsPreview />
     </div>
   )
 }
