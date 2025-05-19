@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
-import { state } from './context'
+import { state, syncCurrentChannel } from './context'
 import Envelope from './envelope'
 import { Stereo } from './stereo'
 import algorithmAscii from './utils/algorithmAscii'
@@ -96,6 +96,7 @@ const cloneInstrument = (val: number) => {
   state.patches[state.patchIdx].channels[state.channelIdx] = deepClone(
     state.library[val],
   )
+  syncCurrentChannel()
 }
 
 const InstrumentsBrowser = () => {

@@ -379,6 +379,25 @@ const syncMidi = () => {
   })
 }
 
+const syncCurrentChannel = () => {
+  const pid = state.patchIdx
+  const cid = state.channelIdx
+
+  const patch = state.patches[pid]
+  relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)
+  const ch = patch.channels[cid]
+
+  Object.values(ChannelParamEnum).forEach((id) => {
+    relaxedSendParamMidiCc(id, pid, cid, 0, ch[id])
+  })
+
+  for (let o = 0; o < 4; o++) {
+    Object.values(OperatorParamEnum).forEach((id) => {
+      relaxedSendParamMidiCc(id, pid, cid, o, ch.operators[o][id])
+    })
+  }
+}
+
 const resetOperator = (op: OperatorId) => {
   const updateAndSync = (id: Param, val: number) => {
     const pid = state.patchIdx
@@ -712,4 +731,5 @@ export {
   useParamMidi,
   useBinding,
   sendMidiParam,
+  syncCurrentChannel,
 }
