@@ -1,19 +1,20 @@
 import { MidiChannelEnum } from './enums'
 
 import React from 'react'
-import { state, useParamData, useParamMidi } from './context'
 import { useSnapshot } from 'valtio'
+import { state } from './context'
+import { getParamMeta, getPolyParamMidiCc } from './utils/paramsHelpers'
 
 type MidiMappingProps = {
   id: Param
   op: OperatorId
 }
 const MidiMapping = ({ id, op }: MidiMappingProps) => {
-  const { title, label } = useParamData(id, op)
-  const { cc } = useParamMidi(id, op)
+  const { title } = getParamMeta(id)
+  const { cc } = getPolyParamMidiCc(id, 0, 0, op)
   return (
     <div data-title={title} className="midi-mapping">
-      <label>{label}</label>
+      <label>{id}</label>
       <span className="cell">CC {cc}</span>
     </div>
   )

@@ -50,7 +50,6 @@ const readDmp = (data: Int8Array, name: string): Channel | null => {
     }
     return {
       name,
-      st: 3,
       fms: data[3],
       fb: data[4],
       al: data[5],

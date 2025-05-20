@@ -2,7 +2,6 @@ import {
   ChannelParamEnum,
   MidiCommands,
   OperatorParamEnum,
-  PlayModeEnum,
   SettingParamEnum,
 } from './enums'
 import MidiIO from './midi-io'
@@ -11,7 +10,6 @@ import {
   getParamBindingIndex,
   getParamMeta,
   getParamMidiCc,
-  getPolyParamMidiCc,
   isChannelParam,
   isOperatorParam,
   isPatchParam,
@@ -35,50 +33,10 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 
 type Action =
   | {
-    type: 'provider-ready'
-    savedState: State
-  }
-  | {
-    type: 'toggle-param-binding'
-    id: Param
-    op: OperatorId
-  }
-  | {
-    type: 'bind-all'
-    modulator?: BindingId
-  }
-  | {
     type: 'change-param'
     id: Param
     op: OperatorId
     val: number
-  }
-  | {
-    type: 'toggle-seq-step'
-    voice: number
-    step: number
-  }
-  | {
-    type: 'clear-sequence'
-  }
-  | {
-    type: 'toggle-binding'
-    bindingId: BindingId
-  }
-  | {
-    type: 'reset-channel'
-  }
-  | {
-    type: 'reset-operator'
-    op: OperatorId
-  }
-  | {
-    type: 'change-name'
-    name: string
-  }
-  | {
-    type: 'change-patch'
-    index: PatchId
   }
   | {
     type: 'move-patch'
@@ -91,10 +49,6 @@ type Action =
     target: PatchId
   }
   | {
-    type: 'change-channel'
-    index: ChannelId
-  }
-  | {
     type: 'move-channel'
     index: ChannelId
     before: ChannelId
@@ -105,20 +59,7 @@ type Action =
     target: ChannelId
   }
   | {
-    type: 'sync-midi'
-  }
-  | {
-    type: 'save-state'
-  }
-  | {
     type: 'toggle-debug'
-  }
-  | {
-    type: 'calibration-step'
-    step: number
-  }
-  | {
-    type: 'verify-checksum'
   }
 
 const initialSequence = Array.from({ length: 6 }).map((_) =>
@@ -144,7 +85,6 @@ const initialChannel: Channel = {
   fb: 0,
   ams: 0,
   fms: 0,
-  st: 3,
   operators: [
     initialOperator,
     initialOperator,
@@ -180,14 +120,16 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
+const CURRENT_VERSION = 3
 const initialState: State = {
+  version: CURRENT_VERSION,
   name: 'New Patch',
   bindings: [[], [], []],
   patchIdx: 0,
   channelIdx: 0,
   calibrationStep: 0,
   instrumentsLoader: false,
-  mixer: false,
+  routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary as Channel[],
   patches: [initialPatch, initialPatch, initialPatch, initialPatch],
@@ -197,8 +139,13 @@ const getInitialState = () => {
   const lastStateStr = localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
-    if (hasSameShape(lastState, initialState)) {
+    if (lastState.version === CURRENT_VERSION) {
       return lastState as State
+    } else {
+      // TODO: migrate a previous version?
+      console.error(
+        `MISSING MIGRATION FROM ${lastState.version} to ${CURRENT_VERSION}`,
+      )
     }
   }
   return deepClone(initialState)
@@ -307,7 +254,7 @@ const bindAll = (modulator?: number) => {
   // if this was a "clear bindings" only cmd, then return
   if (modulator === undefined) return
 
-  const params: Param[] = ['lfo', 'al', 'fms', 'st', 'ams']
+  const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
   params.forEach((id) => {
     const bi = getParamBindingIndex(id, 0)
     if (bi) {
@@ -453,42 +400,6 @@ const sendCrc32 = () => {
 // TODO: udpateParams without sending MIDI out
 const dispatch = (action: Action) => {
   switch (action.type) {
-    case 'calibration-step':
-      sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, action.step)
-      state.calibrationStep = action.step
-      break
-    case 'change-name':
-      state.name = action.name
-      break
-    case 'provider-ready':
-      // return action.savedState ? action.savedState : state
-      break
-    case 'toggle-param-binding':
-      toggleParamBinding(action.id, action.op)
-      break
-    case 'change-param':
-      changeParam(action.id, action.op, action.val)
-      break
-    case 'toggle-binding':
-      state.bindingId =
-        action.bindingId === state.bindingId ? undefined : action.bindingId
-      break
-    case 'bind-all':
-      bindAll(action.modulator)
-      break
-    case 'toggle-seq-step':
-      toggleSeqStep(action.voice, action.step)
-      break
-    case 'reset-channel':
-      resetChannel()
-      break
-    case 'reset-operator':
-      resetOperator(action.op)
-      break
-    case 'change-patch': {
-      state.patchIdx = action.index
-      break
-    }
     case 'move-patch': {
       /*
         const { index, before } = action
@@ -541,10 +452,6 @@ const dispatch = (action: Action) => {
       break
     }
 
-    case 'change-channel': {
-      state.channelIdx = action.index
-      break
-    }
     case 'move-channel': {
       /*
         const { index, before } = action
@@ -613,41 +520,29 @@ const dispatch = (action: Action) => {
         */
       break
     }
-    case 'sync-midi': {
-      syncMidi()
-      sendCrc32()
-      break
-    }
-    case 'save-state': {
-      state.bindingId = undefined
-      sendMidiCmd(MidiCommands.SAVE_STATE)
-      sendCrc32()
-      break
-    }
     case 'toggle-debug': {
       sendMidiCmd(MidiCommands.TOGGLE_DEBUG)
       break
     }
-    case 'verify-checksum': {
-      sendCrc32()
-      break
-    }
-    case 'clear-sequence': {
-      sendMidiCmd(MidiCommands.CLEAR_SEQ)
-      state.settings.sequence = deepClone(initialSequence)
-      break
-    }
   }
+}
+
+const saveState = () => {
+  state.bindingId = undefined
+  sendMidiCmd(MidiCommands.SAVE_STATE)
+  sendCrc32()
+}
+
+const clearSequence = () => {
+  sendMidiCmd(MidiCommands.CLEAR_SEQ)
+  state.settings.sequence = deepClone(initialSequence)
 }
 
 const useParamMidi = (id: Param, op: OperatorId) => {
   const snap = useSnapshot(state)
   const pid = snap.patchIdx
   const cid = snap.channelIdx
-  const { ch, cc } =
-    snap.settings.pm === PlayModeEnum.POLY
-      ? getPolyParamMidiCc(id, pid, cid, op)
-      : getParamMidiCc(id, pid, cid, op)
+  const { ch, cc } = getParamMidiCc(id, pid, cid, op)
 
   return {
     cc,
@@ -675,11 +570,10 @@ const useBinding = (id: Param, op: OperatorId) => {
   }
 }
 
-const useParamData = (id: Param, op: OperatorId): ParamData => {
+const useParamValue = (id: Param, op: OperatorId): number => {
   const snap = useSnapshot(state)
   const pid = snap.patchIdx
   const cid = snap.channelIdx
-  const meta = getParamMeta(id)
 
   let value = 0
   if (isSettingParam(id)) {
@@ -695,41 +589,31 @@ const useParamData = (id: Param, op: OperatorId): ParamData => {
     value = snap.patches[pid].channels[cid].operators[op][id]
   }
 
-  return {
-    ...meta,
-    value,
-  }
+  return value
 }
 
-function normalize(value: unknown) {
-  if (typeof value === 'number') return 0
-  if (typeof value === 'boolean') return false
-  if (typeof value === 'string') return ''
-  if (Array.isArray(value)) {
-    return value.map(normalize) // Recursively normalize array elements
-  }
-  if (value !== null && typeof value === 'object') {
-    const normalizedObject = {}
-    for (let key in value) {
-      normalizedObject[key] = normalize(value[key]) // Recursively normalize object properties
-    }
-    return normalizedObject
-  }
-  return value // For other types (null, undefined, etc.), return as is
-}
-
-function hasSameShape(a: unknown, b: unknown) {
-  const normalizedA = JSON.stringify(normalize(a))
-  const normalizedB = JSON.stringify(normalize(b))
-  return normalizedA === normalizedB
+const setCalibrationStep = (step: number) => {
+  sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, step)
+  state.calibrationStep = step
 }
 
 export {
   state,
+  setCalibrationStep,
   dispatch,
-  useParamData,
+  useParamValue,
   useParamMidi,
   useBinding,
   sendMidiParam,
   syncCurrentChannel,
+  clearSequence,
+  toggleSeqStep,
+  toggleParamBinding,
+  bindAll,
+  syncMidi,
+  sendCrc32,
+  saveState,
+  changeParam,
+  resetChannel,
+  resetOperator,
 }

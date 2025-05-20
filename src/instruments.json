@@ -1,7 +1,6 @@
 [
   {
     "name": "2OP Pads",
-    "st": 3,
     "fms": 4,
     "fb": 0,
     "al": 4,
@@ -59,7 +58,6 @@
   },
   {
     "name": "2OP Sawtooth Lead",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 4,
@@ -117,7 +115,6 @@
   },
   {
     "name": "2OP Square Lead",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 4,
@@ -175,7 +172,6 @@
   },
   {
     "name": "Additive Chimes A",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 7,
@@ -233,7 +229,6 @@
   },
   {
     "name": "Additive Chimes B",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 7,
@@ -291,7 +286,6 @@
   },
   {
     "name": "Additive Square",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 7,
@@ -349,7 +343,6 @@
   },
   {
     "name": "Aquanet Lead",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 3,
@@ -407,7 +400,6 @@
   },
   {
     "name": "Brass Section",
-    "st": 3,
     "fms": 1,
     "fb": 7,
     "al": 3,
@@ -465,7 +457,6 @@
   },
   {
     "name": "Chimes A",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 6,
@@ -523,7 +514,6 @@
   },
   {
     "name": "Chimes B",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 6,
@@ -581,7 +571,6 @@
   },
   {
     "name": "Chimes C",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 6,
@@ -639,7 +628,6 @@
   },
   {
     "name": "Church Organ A",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 6,
@@ -697,7 +685,6 @@
   },
   {
     "name": "Church Organ B",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 6,
@@ -755,7 +742,6 @@
   },
   {
     "name": "Church Organ C",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 6,
@@ -813,7 +799,6 @@
   },
   {
     "name": "Clean Guitar",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -871,7 +856,6 @@
   },
   {
     "name": "CurrentAffair Lead",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 2,
@@ -929,7 +913,6 @@
   },
   {
     "name": "DX Piano 01",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -987,7 +970,6 @@
   },
   {
     "name": "DX Piano 02",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -1045,7 +1027,6 @@
   },
   {
     "name": "DX Piano 03",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -1103,7 +1084,6 @@
   },
   {
     "name": "ElectricBass",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 2,
@@ -1161,7 +1141,6 @@
   },
   {
     "name": "Electro Bass",
-    "st": 3,
     "fms": 0,
     "fb": 5,
     "al": 1,
@@ -1219,7 +1198,6 @@
   },
   {
     "name": "FeedLead 2",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 1,
@@ -1277,7 +1255,6 @@
   },
   {
     "name": "FeedLead 3",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 1,
@@ -1335,7 +1312,6 @@
   },
   {
     "name": "Harp",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -1393,7 +1369,6 @@
   },
   {
     "name": "Harpsichord",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 1,
@@ -1451,7 +1426,6 @@
   },
   {
     "name": "Jazz Fretless Bass",
-    "st": 3,
     "fms": 0,
     "fb": 4,
     "al": 2,
@@ -1509,7 +1483,6 @@
   },
   {
     "name": "MonsterLead",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 1,
@@ -1567,7 +1540,6 @@
   },
   {
     "name": "Orch 01",
-    "st": 3,
     "fms": 1,
     "fb": 7,
     "al": 2,
@@ -1625,7 +1597,6 @@
   },
   {
     "name": "Orch 02",
-    "st": 3,
     "fms": 1,
     "fb": 7,
     "al": 2,
@@ -1683,7 +1654,6 @@
   },
   {
     "name": "Orch 03",
-    "st": 3,
     "fms": 1,
     "fb": 7,
     "al": 2,
@@ -1741,7 +1711,6 @@
   },
   {
     "name": "Overdrive Lead 01",
-    "st": 3,
     "fms": 2,
     "fb": 6,
     "al": 2,
@@ -1799,7 +1768,6 @@
   },
   {
     "name": "Overdrive Lead 02",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 2,
@@ -1857,7 +1825,6 @@
   },
   {
     "name": "Picked Electric Bass",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 2,
@@ -1915,7 +1882,6 @@
   },
   {
     "name": "Potsnpan Bass",
-    "st": 3,
     "fms": 0,
     "fb": 6,
     "al": 2,
@@ -1973,7 +1939,6 @@
   },
   {
     "name": "Sines Pad",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 7,
@@ -2031,7 +1996,6 @@
   },
   {
     "name": "SyncLead",
-    "st": 3,
     "fms": 0,
     "fb": 7,
     "al": 1,
@@ -2089,7 +2053,6 @@
   },
   {
     "name": "Synth Bass 01",
-    "st": 3,
     "fms": 7,
     "fb": 6,
     "al": 2,
@@ -2147,7 +2110,6 @@
   },
   {
     "name": "Synth Brass",
-    "st": 3,
     "fms": 2,
     "fb": 6,
     "al": 2,
@@ -2205,7 +2167,6 @@
   },
   {
     "name": "Trumpet",
-    "st": 3,
     "fms": 1,
     "fb": 7,
     "al": 5,
@@ -2263,7 +2224,6 @@
   },
   {
     "name": "Vibraphone",
-    "st": 3,
     "fms": 0,
     "fb": 0,
     "al": 5,

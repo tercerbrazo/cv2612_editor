@@ -1,31 +1,22 @@
-import React, { useCallback } from 'react'
-import { state, dispatch } from './context'
+import React from 'react'
+import { state, useParamMidi, clearSequence, toggleSeqStep } from './context'
 import { useSnapshot } from 'valtio'
+import MidiIO from './midi-io'
 
 const Sequencer = () => {
   const snap = useSnapshot(state)
-  const handleCellClick = useCallback(
-    (voice: number, step: number) => {
-      dispatch({ type: 'toggle-seq-step', voice, step })
-    },
-    [dispatch],
-  )
 
-  const handleHeaderClick = useCallback(
-    (step: number) => {
-      dispatch({ type: 'change-param', id: 'stp', val: step, op: 0 })
-    },
-    [dispatch],
-  )
+  const { cc, ch } = useParamMidi('stp', 0)
 
-  const handleClearClick = useCallback(() => {
-    dispatch({ type: 'clear-sequence' })
-  }, [dispatch])
+  const handleHeaderClick = (val: number) => {
+    state.settings.stp = val
+    MidiIO.sendCC(ch, cc, val)
+  }
 
   return (
     <div className="four-cols">
       <div className="col">
-        <button className={`btn`} onClick={() => handleClearClick()}>
+        <button className={`btn`} onClick={() => clearSequence()}>
           CLEAR SEQ
         </button>
       </div>
@@ -56,7 +47,7 @@ const Sequencer = () => {
                       className={`seq-cell ${stepValue ? 'step-on' : ''} ${stepIndex <= snap.settings.stp ? 'active' : 'inactive'
                         }`}
                       key={stepIndex}
-                      onClick={() => handleCellClick(voiceIndex, stepIndex)}
+                      onClick={() => toggleSeqStep(voiceIndex, stepIndex)}
                     />
                   )
                 })}

@@ -16,17 +16,21 @@ declare global {
   type BindingId = 0 | 1 | 2 // x | y | z
 
   type SettingParam = `${SettingParamEnum}`
+  type RoutingParam = 'st'
   type PatchParam = `${PatchParamEnum}`
   type ChannelParam = `${ChannelParamEnum}`
   type OperatorParam = `${OperatorParamEnum}`
-  type Param = SettingParam | PatchParam | ChannelParam | OperatorParam
+  type Param =
+    | SettingParam
+    | RoutingParam
+    | PatchParam
+    | ChannelParam
+    | OperatorParam
 
   type ParamMeta = {
     title: string
-    label: string
     max: number
     bits: number
-    options: string[]
   }
 
   type ParamData = ParamMeta & {
@@ -51,13 +55,19 @@ declare global {
 
   type Bindings = number[] // an array of binding indexes
 
+  type Routing = 0b00 | 0b01 | 0b10 | 0b11
+
   type State = {
+    // a way to migrate old persisted states
+    version: number
+
     name: string
 
     // actual module state
     settings: Settings
     patches: [Patch, Patch, Patch, Patch]
     bindings: [Bindings, Bindings, Bindings]
+    routing: [Routing, Routing, Routing, Routing, Routing, Routing]
 
     // current editor parameters page
     patchIdx: PatchId
@@ -67,7 +77,6 @@ declare global {
     // TODO: turn into views?
     calibrationStep: number
     instrumentsLoader: boolean
-    mixer: boolean
 
     // instruments library
     library: Channel[]

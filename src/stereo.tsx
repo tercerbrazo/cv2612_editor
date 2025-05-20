@@ -8,34 +8,25 @@ type StereoProps = {
 
 const Stereo: FC<StereoProps> = ({ cid }) => {
   const snap = useSnapshot(state)
-  // all `st` values are the same between patches
-  // FIXME: refactor data shape to reflect this
-  const value = snap.patches[0].channels[cid].st
-  const left = value & 0b01
-  const right = (value & 0b10) >> 1
 
-  const handleLeftClick = () => {
-    const newValue = (right << 1) | (left ? 0 : 1)
-    for (let pid = 0; pid < 4; pid++) {
-      state.patches[pid].channels[cid].st = newValue
-      sendMidiParam('st', pid as PatchId, cid, 0, newValue)
-    }
+  const value = snap.routing[cid]
+  const left = Boolean(value & 0b01)
+  const right = Boolean(value & 0b10)
+
+  const updateRouting = (l: boolean, r: boolean) => {
+    state.routing[cid] = (((r ? 1 : 0) << 1) | (l ? 1 : 0)) as Routing
+    sendMidiParam('st', 0, cid, 0, state.routing[cid])
   }
 
-  const handleRightClick = () => {
-    const newValue = ((right ? 0 : 1) << 1) | left
-    for (let pid = 0; pid < 4; pid++) {
-      state.patches[pid].channels[cid].st = newValue
-      sendMidiParam('st', pid as PatchId, cid, 0, newValue)
-    }
-  }
+  const toggleLeft = () => updateRouting(!left, right)
+  const toggleRight = () => updateRouting(left, !right)
 
   return (
     <div className="stereo">
-      <div onClick={handleLeftClick} className={`left ${left ? 'on' : ''}`}>
+      <div onClick={toggleLeft} className={`left ${left ? 'on' : ''}`}>
         1
       </div>
-      <div onClick={handleRightClick} className={`right ${right ? 'on' : ''}`}>
+      <div onClick={toggleRight} className={`right ${right ? 'on' : ''}`}>
         2
       </div>
     </div>

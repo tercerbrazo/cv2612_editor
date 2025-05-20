@@ -14,11 +14,11 @@ type SliderProps = {
   value: number
 }
 const Slider = ({ id, value }: SliderProps) => {
-  const { label, max } = getParamMeta(id)
+  const { max } = getParamMeta(id)
 
   return (
     <div className="slider">
-      <label>{label}</label>
+      <label>{id}</label>
       <input disabled type="range" max={max} value={value} />
       <span>{value}</span>
     </div>

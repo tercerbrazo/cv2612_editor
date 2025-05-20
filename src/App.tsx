@@ -32,7 +32,7 @@ const App = () => {
         <Scene />
       </>
     )
-  }, [snap.calibrationStep, snap.instrumentsLoader, snap.mixer])
+  }, [snap.calibrationStep, snap.instrumentsLoader])
 
   return (
     <>

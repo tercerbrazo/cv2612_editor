@@ -1,5 +1,12 @@
 import React, { ChangeEvent, MouseEventHandler } from 'react'
-import { dispatch, useParamData, useParamMidi, useBinding } from './context'
+import {
+  dispatch,
+  useBinding,
+  useParamValue,
+  useParamMidi,
+  toggleParamBinding,
+} from './context'
+import { getParamMeta } from './utils/paramsHelpers'
 
 type SliderProps = {
   id: Param
@@ -7,9 +14,10 @@ type SliderProps = {
 }
 
 const Slider = ({ id, op = 0 }: SliderProps) => {
-  const { title, label, max, value } = useParamData(id, op)
+  const { title, max } = getParamMeta(id)
   const { bindingIndex, boundTo, bindingId } = useBinding(id, op)
   const { ch, cc } = useParamMidi(id, op)
+  const value = useParamValue(id, op)
 
   const learn = bindingIndex !== undefined && bindingId !== undefined
   const className = `slider ${learn ? 'learn' : ''}`
@@ -29,7 +37,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const onClick: MouseEventHandler<HTMLDivElement> = (ev) => {
     ev.preventDefault()
     if (bindingIndex) {
-      dispatch({ type: 'toggle-param-binding', id, op })
+      toggleParamBinding(id, op)
     }
   }
 
@@ -40,7 +48,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
       data-title={`${title} - CC ${ch}:${cc}`}
     >
       <label>
-        {label}
+        {id}
         <i className={boundTo !== undefined ? 'xyz'[boundTo] : ''} />
       </label>
       <input

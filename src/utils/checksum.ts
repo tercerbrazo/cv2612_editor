@@ -41,19 +41,15 @@ typedef struct {
   uint8_t RR : 1;
   uint8_t DT1 : 1;
   uint8_t MUL : 1;
-  uint8_t RS : 1;
-  uint8_t AM : 1;
-  uint8_t __ALIGN : 6;
 } op_bitmask_t;
 
 typedef struct {
   uint8_t LFO : 1;
-  uint8_t LR : 1;
   uint8_t FB : 1;
   uint8_t ALG : 1;
   uint8_t AMS : 1;
   uint8_t FMS : 1;
-  uint8_t __ALIGN : 2;
+  uint8_t __ALIGN : 3;
   op_bitmask_t ops[4];
 } ch_bitmask_t;
 
@@ -204,7 +200,7 @@ const calculate_crc32 = (state: State) => {
       // ch_fb_alg_t
       data.push(ch.al | (ch.fb << 3))
       // ch_lr_ams_fms_t
-      data.push(ch.fms | (ch.ams << 3) | (ch.st << 6))
+      data.push(ch.fms | (ch.ams << 3) | (state.routing[cid] << 6))
 
       for (let o = 0; o < 4; o++) {
         const op = ch.operators[o]
@@ -237,12 +233,10 @@ const calculate_crc32 = (state: State) => {
     // ch_bitmask_t
     data.push(
       getBinding('lfo', 0) |
-      // 'st' isnt bindable anymore
-      (getBinding('fb', 0) << 2) |
-      (getBinding('al', 0) << 3) |
-      (getBinding('ams', 0) << 4) |
-      (getBinding('fms', 0) << 5) |
-      0,
+      (getBinding('fb', 0) << 1) |
+      (getBinding('al', 0) << 2) |
+      (getBinding('ams', 0) << 3) |
+      (getBinding('fms', 0) << 4),
     )
 
     for (let i = 0; i < 4; i++) {
@@ -258,10 +252,6 @@ const calculate_crc32 = (state: State) => {
         (getBinding('det', op) << 6) |
         (getBinding('mul', op) << 7),
       )
-      // 'rs' and 'am' are not bindable anymore
-      // but the bindings struct isnt updated yet
-      // so we need to push a zero there
-      data.push(0)
     }
   })
 

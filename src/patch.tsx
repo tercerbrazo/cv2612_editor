@@ -4,7 +4,7 @@ import React, {
   useCallback,
 } from 'react'
 import { useSnapshot } from 'valtio'
-import { dispatch, state } from './context'
+import { state } from './context'
 import { MenuDropdown } from './menu-dropdown'
 
 const loadJSON = () => {
@@ -77,7 +77,7 @@ const Patch = () => {
         .replace(/-+/g, '-') // Replace consecutive hyphens with a single hyphen
         .replace(/^-+/g, '') // Remove leading hyphens
 
-      dispatch({ type: 'change-name', name })
+      state.name = name
     },
     [],
   )
@@ -120,7 +120,7 @@ const Patch = () => {
         onSelect={(option) => {
           switch (option.value) {
             case 1:
-              dispatch({ type: 'calibration-step', step: 1 })
+              state.calibrationStep = 1
               break
             case 2:
               loadJSON()

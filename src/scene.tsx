@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/modifiers'
 import { PlayModeEnum } from './enums'
 
-import React, { FC, MouseEventHandler, useCallback, useMemo } from 'react'
+import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import { useSnapshot } from 'valtio'
 import Channel from './channel'
 import { dispatch, state } from './context'
@@ -131,14 +131,14 @@ const Scene = () => {
     (index: PatchId): MouseEventHandler =>
       (ev) => {
         ev.preventDefault()
-        dispatch({ type: 'change-patch', index })
+        state.patchIdx = index
       }
 
   const handleChannelClick =
     (index: ChannelId): MouseEventHandler =>
       (ev) => {
         ev.preventDefault()
-        dispatch({ type: 'change-channel', index })
+        state.channelIdx = index
       }
 
   const handlePatchDragEnd = useCallback((event: DragEndEvent) => {

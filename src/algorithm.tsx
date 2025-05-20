@@ -1,5 +1,5 @@
 import React from 'react'
-import { dispatch, state } from './context'
+import { resetChannel, state } from './context'
 import algorithmAscii from './utils/algorithmAscii'
 import { useSnapshot } from 'valtio'
 
@@ -9,7 +9,7 @@ const Algorithm = () => {
 
   const handleClick = (ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     ev.preventDefault()
-    dispatch({ type: 'reset-channel' })
+    resetChannel()
   }
 
   return (

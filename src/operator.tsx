@@ -1,5 +1,5 @@
 import React from 'react'
-import { dispatch, state } from './context'
+import { resetOperator, state } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
 import { useSnapshot } from 'valtio'
@@ -13,7 +13,7 @@ const Operator = ({ op }: OperatorProps) => {
 
   const onEnvelopeClick = (ev) => {
     ev.preventDefault()
-    dispatch({ type: 'reset-operator', op })
+    resetOperator(op)
   }
 
   return (

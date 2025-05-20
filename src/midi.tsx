@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { state, dispatch } from './context'
+import { state, bindAll, saveState, sendCrc32, syncMidi } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
 import { useSnapshot } from 'valtio'
@@ -112,7 +112,7 @@ const Midi = () => {
           className={`${'xyz'[i]} ${snap.bindingId === i ? 'active' : ''}`}
           onClick={(ev) => {
             ev.preventDefault()
-            dispatch({ type: 'toggle-binding', bindingId: i })
+            state.bindingId = i === snap.bindingId ? undefined : i
           }}
           key={i}
         >
@@ -126,16 +126,16 @@ const Midi = () => {
         onSelect={(option) => {
           switch (option.value) {
             case 0:
-              dispatch({ type: 'bind-all' })
+              bindAll()
               break
             case 1:
-              dispatch({ type: 'bind-all', modulator: 0 })
+              bindAll(0)
               break
             case 2:
-              dispatch({ type: 'bind-all', modulator: 1 })
+              bindAll(1)
               break
             case 3:
-              dispatch({ type: 'bind-all', modulator: 2 })
+              bindAll(2)
               break
           }
         }}
@@ -147,7 +147,7 @@ const Midi = () => {
         title="Sync Midi"
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'sync-midi' })
+          syncMidi()
         }}
       >
         SYNC
@@ -157,7 +157,7 @@ const Midi = () => {
         title="Verify State Checksum"
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'verify-checksum' })
+          sendCrc32()
         }}
       >
         VERIFY
@@ -167,7 +167,7 @@ const Midi = () => {
         title="Save state to EEPROM"
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'save-state' })
+          saveState()
         }}
       >
         SAVE STATE

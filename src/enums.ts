@@ -23,7 +23,6 @@ enum ChannelParamEnum {
   FB = 'fb',
   AMS = 'ams',
   FMS = 'fms',
-  ST = 'st',
 }
 
 enum OperatorParamEnum {

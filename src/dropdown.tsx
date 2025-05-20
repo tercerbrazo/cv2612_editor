@@ -1,29 +1,28 @@
 import React from 'react'
-import { dispatch, useParamData, useParamMidi } from './context'
+import { state, useParamMidi, useParamValue } from './context'
+import MidiIO from './midi-io'
+import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {
-  id: Param
+  id: SettingParam
 }
 
 const Dropdown = ({ id }: DropdownProps) => {
-  const { title, label, options, value } = useParamData(id, 0)
+  const options = getParamOptions(id)
+  const value = useParamValue(id, 0)
+  const { title } = getParamMeta(id)
   const { cc, ch } = useParamMidi(id, 0)
 
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-
-    dispatch({
-      type: 'change-param',
-      id,
-      op: 0,
-      val,
-    })
+    state.settings[id] = val
+    MidiIO.sendCC(ch, cc, val)
   }
 
   return (
     <div className="dropdown" data-title={`${title} - CC ${ch}:${cc}`}>
-      <label>{label}</label>
+      <label>{id}</label>
       <select onChange={onChange} value={value}>
         {options.map((o, i) => (
           <option key={o} value={i}>

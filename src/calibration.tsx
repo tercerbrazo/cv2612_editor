@@ -1,13 +1,13 @@
 import React, { useCallback } from 'react'
-import { state, dispatch } from './context'
+import { setCalibrationStep, state } from './context'
 
 const CalibrationStart = () => {
   const handleCancelClick = useCallback(() => {
-    dispatch({ type: 'calibration-step', step: 0 })
+    setCalibrationStep(0)
   }, [])
 
   const handleStartClick = useCallback(() => {
-    dispatch({ type: 'calibration-step', step: 2 })
+    setCalibrationStep(2)
   }, [])
 
   return (
@@ -32,11 +32,11 @@ const CalibrationStart = () => {
 
 const CalibrationStep = ({ name, children }) => {
   const handleExitClick = useCallback(() => {
-    dispatch({ type: 'calibration-step', step: 0 })
+    setCalibrationStep(0)
   }, [])
 
   const handleNextClick = useCallback(() => {
-    dispatch({ type: 'calibration-step', step: state.calibrationStep + 1 })
+    setCalibrationStep(state.calibrationStep + 1)
   }, [state.calibrationStep])
 
   return (
@@ -72,7 +72,7 @@ const Input = ({ name, signal }) => {
 
 const CalibrationDone = () => {
   const handleDoneClick = useCallback(() => {
-    dispatch({ type: 'calibration-step', step: 0 })
+    setCalibrationStep(0)
   }, [])
 
   return (
