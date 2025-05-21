@@ -604,8 +604,19 @@ const setCalibrationStep = (step: number) => {
   state.calibrationStep = step
 }
 
+const instrumentName = (pid: number, cid: number) => {
+  const ch = state.patches[pid].channels[cid]
+  const index = state.library.findIndex((inst) => inst.name === ch.name)
+  let changed = false
+  if (index !== -1) {
+    changed = JSON.stringify(ch) !== JSON.stringify(state.library[index])
+  }
+  return `${ch.name}${changed ? ' (*)' : ''}`
+}
+
 export {
   state,
+  instrumentName,
   setCalibrationStep,
   dispatch,
   useParamValue,

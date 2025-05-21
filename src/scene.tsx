@@ -17,7 +17,7 @@ import { PlayModeEnum } from './enums'
 import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import { useSnapshot } from 'valtio'
 import Channel from './channel'
-import { dispatch, state } from './context'
+import { dispatch, instrumentName, state } from './context'
 import Dropdown from './dropdown'
 import Poly from './poly'
 import Sequencer from './sequencer'
@@ -223,6 +223,7 @@ const Scene = () => {
                   <Droppable index={4} />
                 </nav>
               </DndContext>
+              <h4>{instrumentName(snap.patchIdx, snap.channelIdx)}</h4>
             </div>
             <div className="col">
               <DndContext
