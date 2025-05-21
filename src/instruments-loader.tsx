@@ -270,8 +270,8 @@ const InstrumentsLoader = () => {
       <br />
       <h4>
         {'ABCD'[snap.patchIdx]}
-        {snap.channelIdx + 1} Preview (
-        {instrumentName(snap.patchIdx, snap.channelIdx)})
+        {snap.channelIdx + 1} Preview:{' '}
+        {instrumentName(snap.patchIdx, snap.channelIdx)}
       </h4>
       <InstrumentsPreview />
     </div>

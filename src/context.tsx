@@ -300,6 +300,11 @@ const syncMidi = () => {
     relaxedSendParamMidiCc(id, 0, 0, 0, state.settings[id])
   })
 
+  // routing
+  for (let cid = 0; cid < 6; cid++) {
+    relaxedSendParamMidiCc('lr', 0, cid, 0, state.routing[cid])
+  }
+
   for (let pid = 0; pid < 4; pid++) {
     const patch = state.patches[pid]
     relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)
@@ -324,6 +329,8 @@ const syncMidi = () => {
       sendMidiCmd(BINDING_CMDS[index], 64 + bi)
     })
   })
+
+  sendCrc32()
 }
 
 const syncCurrentChannel = () => {
@@ -378,7 +385,7 @@ const resetChannel = () => {
   updateAndSync('fb', 0)
   updateAndSync('ams', 0)
   updateAndSync('fms', 0)
-  updateAndSync('st', 3)
+  updateAndSync('lr', 3)
 
   resetOperator(0)
   resetOperator(1)

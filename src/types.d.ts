@@ -16,7 +16,7 @@ declare global {
   type BindingId = 0 | 1 | 2 // x | y | z
 
   type SettingParam = `${SettingParamEnum}`
-  type RoutingParam = 'st'
+  type RoutingParam = 'lr'
   type PatchParam = `${PatchParamEnum}`
   type ChannelParam = `${ChannelParamEnum}`
   type OperatorParam = `${OperatorParamEnum}`

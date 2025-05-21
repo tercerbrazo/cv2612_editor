@@ -33,7 +33,7 @@ const PARAM_INDEXES: Record<Param, number> = {
   ams: 2,
   fms: 3,
   // routing indexes
-  st: 4,
+  lr: 4,
 
   // operator indexes
   ar: 0,
@@ -88,7 +88,7 @@ const paramTitle: Record<Param, string> = {
   portamento: 'Portamento',
   polyphony: 'Polyphony',
   lfo: 'Low Frequency Oscillator',
-  st: 'Stereo Mode',
+  lr: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
   fms: 'Frequency Modulation Sensitivity',
   al: 'Algorithm',
@@ -118,7 +118,7 @@ const paramBitness: Record<Param, number> = {
   portamento: 1,
   polyphony: 7,
   lfo: 3,
-  st: 2,
+  lr: 2,
   ams: 2,
   fms: 3,
   al: 3,
@@ -168,7 +168,7 @@ const getParamMidiCc = (
     return { ch: pid * 4, cc: index }
   }
 
-  if (id === 'st') {
+  if (id === 'lr') {
     return {
       ch: 0,
       cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index,

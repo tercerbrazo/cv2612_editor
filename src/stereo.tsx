@@ -15,7 +15,7 @@ const Stereo: FC<StereoProps> = ({ cid }) => {
 
   const updateRouting = (l: boolean, r: boolean) => {
     state.routing[cid] = (((r ? 1 : 0) << 1) | (l ? 1 : 0)) as Routing
-    sendMidiParam('st', 0, cid, 0, state.routing[cid])
+    sendMidiParam('lr', 0, cid, 0, state.routing[cid])
   }
 
   const toggleLeft = () => updateRouting(!left, right)
