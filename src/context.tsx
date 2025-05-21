@@ -213,15 +213,13 @@ const setParamValue = (
 ) => {
   if (isSettingParam(id)) {
     state.settings[id] = value
-  }
-  if (isPatchParam(id)) {
+  } else if (isPatchParam(id)) {
     state.patches[pid][id] = value
-  }
-  if (isChannelParam(id)) {
+  } else if (isChannelParam(id)) {
     state.patches[pid].channels[cid][id] = value
+  } else if (isOperatorParam(id)) {
+    state.patches[pid].channels[cid].operators[op][id] = value
   }
-  // isOperatorParam(id)
-  state.patches[pid].channels[cid].operators[op][id] = value
 }
 
 const sendMidiParam = (
@@ -614,9 +612,23 @@ const instrumentName = (pid: number, cid: number) => {
   return `${ch.name}${changed ? ' (*)' : ''}`
 }
 
+const useInstrumentName = () => {
+  const snap = useSnapshot(state)
+
+  const ch = snap.patches[snap.patchIdx].channels[snap.channelIdx]
+  const index = snap.library.findIndex((inst) => inst.name === ch.name)
+  let changed = false
+  if (index !== -1) {
+    changed = JSON.stringify(ch) !== JSON.stringify(snap.library[index])
+    console.log(ch.operators[0], snap.library[index].operators[0])
+  }
+  return `${ch.name}${changed ? ' (*)' : ''}`
+}
+
 export {
   state,
   instrumentName,
+  useInstrumentName,
   setCalibrationStep,
   dispatch,
   useParamValue,

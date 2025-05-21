@@ -17,7 +17,7 @@ import { PlayModeEnum } from './enums'
 import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import { useSnapshot } from 'valtio'
 import Channel from './channel'
-import { dispatch, instrumentName, state } from './context'
+import { dispatch, instrumentName, state, useInstrumentName } from './context'
 import Dropdown from './dropdown'
 import Poly from './poly'
 import Sequencer from './sequencer'
@@ -117,6 +117,7 @@ const Mixer = () => {
 
 const Scene = () => {
   const snap = useSnapshot(state)
+  const instrumentName = useInstrumentName()
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
     activationConstraint: {
@@ -223,7 +224,7 @@ const Scene = () => {
                   <Droppable index={4} />
                 </nav>
               </DndContext>
-              <h4>{instrumentName(snap.patchIdx, snap.channelIdx)}</h4>
+              <h4>{instrumentName}</h4>
             </div>
             <div className="col">
               <DndContext
