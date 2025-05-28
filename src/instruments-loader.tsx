@@ -102,7 +102,7 @@ const InstrumentsBrowser = () => {
   const handlePrevClick: React.MouseEventHandler<HTMLAnchorElement> = (ev) => {
     ev.preventDefault()
     setSelected((prev) => {
-      const val = prev === 0 ? snap.library.length - 1 : prev - 1
+      const val = prev <= 0 ? snap.library.length - 1 : prev - 1
       cloneInstrument(val)
       return val
     })
@@ -111,7 +111,7 @@ const InstrumentsBrowser = () => {
   const handleNextClick: React.MouseEventHandler<HTMLAnchorElement> = (ev) => {
     ev.preventDefault()
     setSelected((prev) => {
-      const val = prev === snap.library.length - 1 ? 0 : prev + 1
+      const val = prev >= snap.library.length - 1 ? 0 : prev + 1
       cloneInstrument(val)
       return val
     })
