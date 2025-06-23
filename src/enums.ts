@@ -6,12 +6,10 @@ enum SettingParamEnum {
   TUNNING = 'tu',
   MIDI_RECEIVE_CHANNEL = 'rc',
   SEQ_STEPS = 'stp',
-  // not used in the editor yet:
-  QUANTIZE = 'quantize',
-  LEGATO = 'legato',
-  VELOCITY = 'velocity',
+  VELOCITY_SENSITIVITY = 'vs',
+  PITCH_BEND_UP = 'pbu',
+  PITCH_BEND_DOWN = 'pbd',
   PORTAMENTO = 'portamento',
-  POLYPHONY = 'polyphony',
 }
 
 enum PatchParamEnum {

@@ -33,34 +33,34 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
 
 type Action =
   | {
-    type: 'change-param'
-    id: Param
-    op: OperatorId
-    val: number
-  }
+      type: 'change-param'
+      id: Param
+      op: OperatorId
+      val: number
+    }
   | {
-    type: 'move-patch'
-    index: PatchId
-    before: PatchId
-  }
+      type: 'move-patch'
+      index: PatchId
+      before: PatchId
+    }
   | {
-    type: 'copy-patch'
-    source: PatchId
-    target: PatchId
-  }
+      type: 'copy-patch'
+      source: PatchId
+      target: PatchId
+    }
   | {
-    type: 'move-channel'
-    index: ChannelId
-    before: ChannelId
-  }
+      type: 'move-channel'
+      index: ChannelId
+      before: ChannelId
+    }
   | {
-    type: 'copy-channel'
-    source: ChannelId
-    target: ChannelId
-  }
+      type: 'copy-channel'
+      source: ChannelId
+      target: ChannelId
+    }
   | {
-    type: 'toggle-debug'
-  }
+      type: 'toggle-debug'
+    }
 
 const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
@@ -112,15 +112,14 @@ const initialSettings = {
   tu: 64,
   rc: 0,
   stp: 7,
-  quantize: 0,
-  legato: 0,
-  velocity: 0,
+  vs: 63,
   portamento: 0,
-  polyphony: 0,
+  pbu: 2,
+  pbd: 12,
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 3
+const CURRENT_VERSION = 4
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
@@ -175,21 +174,21 @@ const toggleParamBinding = (id: Param, op: OperatorId) => {
       sendMidiCmd(BINDING_CMDS[index], 64 + bi)
     })
   })
-    ; ([0, 1, 2] as const).forEach((mod) => {
-      const binding = state.bindings[mod]
-      const index = binding.indexOf(bi)
-      if (index !== -1) {
-        // remove the binding
-        binding.splice(index, 1)
-        // unbind cmd
-        sendMidiCmd(BINDING_CMDS[mod], bi)
-      } else if (mod === state.bindingId) {
-        // add the binding
-        binding.push(bi)
-        // bind cmd
-        sendMidiCmd(BINDING_CMDS[mod], 64 + bi)
-      }
-    })
+  ;([0, 1, 2] as const).forEach((mod) => {
+    const binding = state.bindings[mod]
+    const index = binding.indexOf(bi)
+    if (index !== -1) {
+      // remove the binding
+      binding.splice(index, 1)
+      // unbind cmd
+      sendMidiCmd(BINDING_CMDS[mod], bi)
+    } else if (mod === state.bindingId) {
+      // add the binding
+      binding.push(bi)
+      // bind cmd
+      sendMidiCmd(BINDING_CMDS[mod], 64 + bi)
+    }
+  })
 }
 
 const toggleSeqStep = (voice: number, step: number) => {
@@ -561,7 +560,7 @@ const useBinding = (id: Param, op: OperatorId) => {
 
   let boundTo: BindingId | undefined = undefined
   if (bindingIndex !== undefined) {
-    ; ([0, 1, 2] as const).forEach((mod) => {
+    ;([0, 1, 2] as const).forEach((mod) => {
       if (snap.bindings[mod].includes(bindingIndex)) {
         boundTo = mod
       }

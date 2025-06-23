@@ -8,52 +8,68 @@ import {
 } from '../enums'
 
 // NOTE: needs to be in sync with firmware
-const PARAM_INDEXES: Record<Param, number> = {
-  // settings indexes
-  quantize: 0,
-  legato: 1,
-  velocity: 2,
-  pm: 3,
-  lb: 4,
-  tr: 5,
-  tu: 6,
-  rc: 7,
-  portamento: 8,
-  // FIXME: need to make room for polyphony
-  // probably spread over 2 or more channels
-  polyphony: 8,
-  stp: 9,
+const PARAM_BINDING_INDEXES = {
+  lfo: 2,
+  // al: 10,
+  fb: 11,
+  ams: 12,
+  fms: 13,
+  // operator indexes
+  ar: 20,
+  d1: 21,
+  sl: 22,
+  d2: 23,
+  rr: 24,
+  tl: 25,
+  mul: 26,
+  det: 27,
+} as const
 
+const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
+  PLAY_MODE: 0xe0, // channel 14, CC 0
+  LED_BRIGHTNESS: 0xe1,
+  TRANSPOSE: 0xe2,
+  TUNNING: 0xe3,
+  MIDI_RECEIVE_CHANNEL: 0xe4,
+  SEQ_STEPS: 0xe5,
+  PORTAMENTO: 0xe6,
+  VELOCITY_SENSITIVITY: 0xe7,
+  PITCH_BEND_UP: 0xe8,
+  PITCH_BEND_DOWN: 0xe9,
+}
+
+const PARAM_INDEXES: Record<
+  'lfo' | RoutingParam | ChannelParam | OperatorParam,
+  number
+> = {
   // patch indexes
   lfo: 9,
 
   // channel indexes
-  al: 0,
-  fb: 1,
-  ams: 2,
-  fms: 3,
+  al: 10,
+  fb: 11,
+  ams: 12,
+  fms: 13,
   // routing indexes
-  lr: 4,
+  lr: 14,
 
   // operator indexes
-  ar: 0,
-  d1: 1,
-  sl: 2,
-  d2: 3,
-  rr: 4,
-  tl: 5,
-  mul: 6,
-  det: 7,
-  rs: 8,
-  am: 9,
+  ar: 40,
+  d1: 41,
+  sl: 42,
+  d2: 43,
+  rr: 44,
+  tl: 45,
+  mul: 46,
+  det: 47,
+  rs: 48,
+  am: 49,
 }
 
-const CH_PARAM_OFFSET = 10
 const CH_PARAM_COUNT = 5
-const OP_PARAM_OFFSET = 40
 const OP_PARAM_COUNT = 10
-const CH_BINDING_OFFSET = 10
-const OP_BINDING_OFFSET = 20
+// special case, as 64 conflicts with sustain pedal
+const RR_CH2_MIDI_CC = 100
 
 const isSettingParam = (id: Param): id is SettingParam => {
   const keys: string[] = Object.values(SettingParamEnum)
@@ -82,11 +98,10 @@ const paramTitle: Record<Param, string> = {
   tu: 'Tunning',
   rc: 'Midi Receive Channel',
   stp: 'Seq Mode steps',
-  quantize: 'Quantize',
-  legato: 'Legato',
-  velocity: 'Velocity',
+  vs: 'Velocity Sensitivity',
   portamento: 'Portamento',
-  polyphony: 'Polyphony',
+  pbu: 'Pitch Bend Up',
+  pbd: 'Pitch Bend Down',
   lfo: 'Low Frequency Oscillator',
   lr: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
@@ -112,11 +127,10 @@ const paramBitness: Record<Param, number> = {
   tu: 7,
   rc: 7,
   stp: 7,
-  quantize: 1,
-  legato: 1,
-  velocity: 1,
+  vs: 4,
   portamento: 1,
-  polyphony: 7,
+  pbu: 4,
+  pbd: 4,
   lfo: 3,
   lr: 2,
   ams: 2,
@@ -146,6 +160,12 @@ const getParamOptions = (id: Param): string[] => {
   }
 }
 
+const settingKey = (id: SettingParam) => {
+  return (
+    Object.keys(SettingParamEnum) as (keyof typeof SettingParamEnum)[]
+  ).find((k) => SettingParamEnum[k] === id) as keyof typeof SettingParamEnum
+}
+
 /*
  * This is how Module parameters are mapped to Midi channel/control_change
  * for a particular id-patch-channel-operator combination.
@@ -158,12 +178,13 @@ const getParamMidiCc = (
   cid: ChannelId,
   op: OperatorId,
 ): { ch: number; cc: number } => {
-  const index = PARAM_INDEXES[id]
-
   if (isSettingParam(id)) {
-    return { ch: 15, cc: 0 + index }
+    const key = settingKey(id)
+    const packed = SETTING_PARAM_MIDI_CC[key]
+    return { ch: packed >> 4, cc: packed & 0b1111 }
   }
 
+  const index = PARAM_INDEXES[id]
   if (id === 'lfo') {
     return { ch: pid * 4, cc: index }
   }
@@ -171,37 +192,29 @@ const getParamMidiCc = (
   if (id === 'lr') {
     return {
       ch: 0,
-      cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index,
+      cc: cid * CH_PARAM_COUNT + index,
     }
   }
 
   if (isChannelParam(id)) {
     return {
       ch: pid * 4,
-      cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index, // 10-39 range
+      cc: cid * CH_PARAM_COUNT + index, // 10-39 range
     }
   }
+
+  // special case, as 64 conflicts with sustain pedal
+  if (id === 'rr' && cid === 2) {
+    return {
+      ch: pid * 4 + op,
+      cc: RR_CH2_MIDI_CC,
+    }
+  }
+
   // isOperatorParam
   return {
     ch: pid * 4 + op,
-    cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
-  }
-}
-
-const getPolyParamMidiCc = (
-  id: Param,
-  pid: PatchId,
-  cid: ChannelId,
-  op: OperatorId,
-): { ch: number; cc: number } => {
-  if (isOperatorParam(id)) {
-    const index = PARAM_INDEXES[id]
-    return {
-      ch: 0,
-      cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
-    }
-  } else {
-    return getParamMidiCc(id, pid, cid, op)
+    cc: cid * OP_PARAM_COUNT + index, // 40 - 99 range
   }
 }
 
@@ -221,17 +234,9 @@ const getParamBindingIndex = (
   id: Param,
   op: OperatorId,
 ): number | undefined => {
-  if (id === PatchParamEnum.LFO) {
-    return 2
-  }
-  if (isChannelParam(id)) {
-    return CH_BINDING_OFFSET + PARAM_INDEXES[id]
-  }
-  if (isOperatorParam(id) && id !== 'am' && id !== 'rs') {
-    return OP_BINDING_OFFSET + OP_PARAM_COUNT * op + PARAM_INDEXES[id]
-  }
-  // for any other non-boundable parameter it'll be undefined
-  return undefined
+  const base: number | undefined = PARAM_BINDING_INDEXES[id]
+  if (base === undefined) return undefined
+  return base + OP_PARAM_COUNT * op
 }
 
 const paramMax = Object.fromEntries(
@@ -256,7 +261,6 @@ export {
   isChannelParam,
   isOperatorParam,
   getParamMidiCc,
-  getPolyParamMidiCc,
   getParamBindingIndex,
   getParamMeta,
   getParamOptions,

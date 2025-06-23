@@ -17,9 +17,8 @@ import { PlayModeEnum } from './enums'
 import React, { MouseEventHandler, useCallback, useMemo } from 'react'
 import { useSnapshot } from 'valtio'
 import Channel from './channel'
-import { dispatch, instrumentName, state, useInstrumentName } from './context'
+import { dispatch, state, useInstrumentName } from './context'
 import Dropdown from './dropdown'
-import Poly from './poly'
 import Sequencer from './sequencer'
 import Slider from './slider'
 import { Stereo } from './stereo'
@@ -57,8 +56,8 @@ const Draggable = ({ index, text, active, onClick }: DraggableProps) => {
   })
   const style = transform
     ? {
-      transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
-    }
+        transform: `translate3d(${transform.x}px, ${30 + transform.y}px, 0)`,
+      }
     : undefined
 
   const setNodeRef = useCombinedRefs(setDroppableNodeRef, setDraggableNodeRef)
@@ -130,17 +129,17 @@ const Scene = () => {
 
   const handlePatchClick =
     (index: PatchId): MouseEventHandler =>
-      (ev) => {
-        ev.preventDefault()
-        state.patchIdx = index
-      }
+    (ev) => {
+      ev.preventDefault()
+      state.patchIdx = index
+    }
 
   const handleChannelClick =
     (index: ChannelId): MouseEventHandler =>
-      (ev) => {
-        ev.preventDefault()
-        state.channelIdx = index
-      }
+    (ev) => {
+      ev.preventDefault()
+      state.channelIdx = index
+    }
 
   const handlePatchDragEnd = useCallback((event: DragEndEvent) => {
     const drag = event.active?.data?.current
@@ -182,10 +181,11 @@ const Scene = () => {
       <div className="four-cols">
         <div className="col">
           <Dropdown id="pm" />
-          {snap.settings.pm === PlayModeEnum.POLY && <Dropdown id="rc" />}
+          <Dropdown id="rc" />
         </div>
         <div className="col">
           <Slider id="tr" />
+          <Slider id="vs" />
         </div>
         <div className="col">
           <Slider id="tu" />
@@ -197,65 +197,59 @@ const Scene = () => {
 
       {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
 
-      {snap.settings.pm === PlayModeEnum.POLY ? (
-        <Poly />
-      ) : (
-        <>
-          <div className="two-cols">
-            <div className="col">
-              <DndContext
-                onDragEnd={handlePatchDragEnd}
-                modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-                collisionDetection={pointerWithin}
-                sensors={sensors}
-              >
-                <nav>
-                  {['A', 'B', 'C', 'D'].map((item, i) => (
-                    <React.Fragment key={item}>
-                      <Droppable index={i} />
-                      <Draggable
-                        index={i}
-                        text={item}
-                        active={snap.patchIdx === i}
-                        onClick={handlePatchClick(i as PatchId)}
-                      />
-                    </React.Fragment>
-                  ))}
-                  <Droppable index={4} />
-                </nav>
-              </DndContext>
-              <h4>{instrumentName}</h4>
-            </div>
-            <div className="col">
-              <DndContext
-                modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-                collisionDetection={pointerWithin}
-                sensors={sensors}
-                onDragEnd={handleChannelDragEnd}
-              >
-                <nav>
-                  {['1', '2', '3', '4', '5', '6'].map((item, i) => (
-                    <React.Fragment key={item}>
-                      <Droppable index={i} />
-                      <Draggable
-                        index={i}
-                        text={item}
-                        active={snap.channelIdx === i}
-                        onClick={handleChannelClick(i as ChannelId)}
-                      />
-                    </React.Fragment>
-                  ))}
-                  <Droppable index={6} />
-                </nav>
-              </DndContext>
-              <Mixer />
-            </div>
-          </div>
-          <br />
+      <div className="two-cols">
+        <div className="col">
+          <DndContext
+            onDragEnd={handlePatchDragEnd}
+            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+            collisionDetection={pointerWithin}
+            sensors={sensors}
+          >
+            <nav>
+              {['A', 'B', 'C', 'D'].map((item, i) => (
+                <React.Fragment key={item}>
+                  <Droppable index={i} />
+                  <Draggable
+                    index={i}
+                    text={item}
+                    active={snap.patchIdx === i}
+                    onClick={handlePatchClick(i as PatchId)}
+                  />
+                </React.Fragment>
+              ))}
+              <Droppable index={4} />
+            </nav>
+          </DndContext>
+          <h4>{instrumentName}</h4>
+        </div>
+        <div className="col">
+          <DndContext
+            modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+            collisionDetection={pointerWithin}
+            sensors={sensors}
+            onDragEnd={handleChannelDragEnd}
+          >
+            <nav>
+              {['1', '2', '3', '4', '5', '6'].map((item, i) => (
+                <React.Fragment key={item}>
+                  <Droppable index={i} />
+                  <Draggable
+                    index={i}
+                    text={item}
+                    active={snap.channelIdx === i}
+                    onClick={handleChannelClick(i as ChannelId)}
+                  />
+                </React.Fragment>
+              ))}
+              <Droppable index={6} />
+            </nav>
+          </DndContext>
+          <Mixer />
+        </div>
+      </div>
+      <br />
 
-          <Channel />
-        </>
-      )}
+      <Channel />
     </>
   )
 }

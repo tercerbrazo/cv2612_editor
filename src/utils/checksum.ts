@@ -16,18 +16,15 @@ Settings layout: (settings_t)
 typedef struct {
   play_mode_t play_mode;
   midi_channel_t midi_recv_channel;
-  polyphony_t polyphony;
+  uint8_t transpose;
+  uint8_t tuning;
+  uint8_t led_brightness;
   uint16_t sequence[6];
-  uint8_t led_brightness : 7;
-  uint8_t quantize : 1;
-  uint8_t transpose : 7;
-  uint8_t legato : 1;
-  uint8_t tuning : 7;
-  uint8_t velocity : 1;
-  uint8_t portamento : 7;
-  uint8_t __RESERVED : 1;
-  uint8_t seq_steps : 4;
-  uint8_t __ALIGN : 4;
+  uint8_t sequence_steps;
+  uint8_t portamento;
+  uint8_t pitch_bend_up;
+  uint8_t pitch_bend_down;
+  uint8_t velocity_sensitivity;
 } settings_t;
 
 Bindings layout: (ch_bitmask_t)
@@ -233,10 +230,10 @@ const calculate_crc32 = (state: State) => {
     // ch_bitmask_t
     data.push(
       getBinding('lfo', 0) |
-      (getBinding('fb', 0) << 1) |
-      (getBinding('al', 0) << 2) |
-      (getBinding('ams', 0) << 3) |
-      (getBinding('fms', 0) << 4),
+        (getBinding('fb', 0) << 1) |
+        (getBinding('al', 0) << 2) |
+        (getBinding('ams', 0) << 3) |
+        (getBinding('fms', 0) << 4),
     )
 
     for (let i = 0; i < 4; i++) {
@@ -244,13 +241,13 @@ const calculate_crc32 = (state: State) => {
       // op_bitmask_t
       data.push(
         getBinding('ar', op) |
-        (getBinding('d1', op) << 1) |
-        (getBinding('sl', op) << 2) |
-        (getBinding('d2', op) << 3) |
-        (getBinding('tl', op) << 4) |
-        (getBinding('rr', op) << 5) |
-        (getBinding('det', op) << 6) |
-        (getBinding('mul', op) << 7),
+          (getBinding('d1', op) << 1) |
+          (getBinding('sl', op) << 2) |
+          (getBinding('d2', op) << 3) |
+          (getBinding('tl', op) << 4) |
+          (getBinding('rr', op) << 5) |
+          (getBinding('det', op) << 6) |
+          (getBinding('mul', op) << 7),
       )
     }
   })
@@ -258,12 +255,12 @@ const calculate_crc32 = (state: State) => {
   // SETTINGS
   // ========
   const settings = state.settings
-  // play mode
-  data.push(settings.pm)
-  // midi recv channel
-  data.push(settings.rc)
-  // polyphony
-  data.push(settings.polyphony)
+
+  data.push(settings.pm) // play mode
+  data.push(settings.rc) // midi recv channel
+  data.push(settings.tr) // transpose
+  data.push(settings.tu) // tuning
+  data.push(settings.lb) // led brightness
 
   // sequence
   for (let i = 0; i < 6; i++) {
@@ -276,17 +273,11 @@ const calculate_crc32 = (state: State) => {
     data.push(lower)
     data.push(upper)
   }
-
-  // led brightness + quantize
-  data.push(settings.lb | (settings.quantize << 7))
-  // transpose + legato
-  data.push(settings.tr | (settings.legato << 7))
-  // tuning + velocity
-  data.push(settings.tu | (settings.velocity << 7))
-  // portamento + RESERVED
-  data.push(settings.portamento)
-  // seq steps + __ALIGN
-  data.push(settings.stp)
+  data.push(settings.stp) // seq steps
+  data.push(settings.portamento) // portamento
+  data.push(settings.pbu) // pitch_bend_up;
+  data.push(settings.pbd) // pitch_bend_down;
+  data.push(settings.vs) // velocity_sensitivity;
 
   // calculate CRC 32 of the data
   let crc32 = 0
