@@ -2,85 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 import { instrumentName, state, syncCurrentChannel } from './context'
-import Envelope from './envelope'
 import { MenuDropdown } from './menu-dropdown'
 import { Stereo } from './stereo'
-import algorithmAscii from './utils/algorithmAscii'
-import { getParamMeta } from './utils/paramsHelpers'
 import { readDmp } from './utils/readDmp'
-
-type SliderProps = {
-  id: Param
-  value: number
-}
-const Slider = ({ id, value }: SliderProps) => {
-  const { max } = getParamMeta(id)
-
-  return (
-    <div className="slider">
-      <label>{id}</label>
-      <input disabled type="range" max={max} value={value} />
-      <span>{value}</span>
-    </div>
-  )
-}
-
-type OperatorProps = { op: Operator }
-const Operator = ({ op }: OperatorProps) => {
-  return (
-    <div className="operator">
-      <Slider id="ar" value={op.ar} />
-      <Slider id="d1" value={op.d1} />
-      <Slider id="sl" value={op.sl} />
-      <Slider id="d2" value={op.d2} />
-      <Slider id="rr" value={op.rr} />
-      <Slider id="tl" value={op.tl} />
-      <Envelope {...op} />
-      <Slider id="mul" value={op.mul} />
-      <Slider id="det" value={op.det} />
-      <Slider id="rs" value={op.rs} />
-      <Slider id="am" value={op.am} />
-    </div>
-  )
-}
-
-const InstrumentsPreview = () => {
-  const snap = useSnapshot(state)
-  const instrument = snap.patches[snap.patchIdx].channels[snap.channelIdx]
-
-  return (
-    <>
-      <div className="four-cols">
-        <div className="col"></div>
-        <div className="col">
-          <Slider id="ams" value={instrument.ams} />
-          <Slider id="fms" value={instrument.fms} />
-        </div>
-        <div className="col">
-          <Slider id="al" value={instrument.al} />
-          <Slider id="fb" value={instrument.fb} />
-        </div>
-        <div className="col">
-          <pre className="algorithm">{algorithmAscii(instrument.al)}</pre>
-        </div>
-      </div>
-      <div className="four-cols">
-        <div className="col">
-          <Operator op={instrument.operators[0]} />
-        </div>
-        <div className="col">
-          <Operator op={instrument.operators[1]} />
-        </div>
-        <div className="col">
-          <Operator op={instrument.operators[2]} />
-        </div>
-        <div className="col">
-          <Operator op={instrument.operators[3]} />
-        </div>
-      </div>
-    </>
-  )
-}
 
 const cloneInstrument = (val: number) => {
   state.patches[state.patchIdx].channels[state.channelIdx] = deepClone(
@@ -124,11 +48,6 @@ const InstrumentsBrowser = () => {
     cloneInstrument(val)
   }
 
-  const handleBackClick = (ev: React.MouseEvent<HTMLAnchorElement>) => {
-    ev.preventDefault()
-    state.instrumentsLoader = false
-  }
-
   return (
     <div className="previewer">
       <nav>
@@ -148,9 +67,6 @@ const InstrumentsBrowser = () => {
         </select>
         <a href="/" title="Next" onClick={handleNextClick}>
           {`>`}
-        </a>
-        <a href="/" title="Back to Editor" onClick={handleBackClick}>
-          EDITOR
         </a>
         <MenuDropdown
           title="More..."
@@ -218,7 +134,6 @@ const InstrumentsLoader = () => {
   return (
     <div className="instruments">
       <InstrumentsBrowser />
-      <h4>Instruments Matrix</h4>
       <table className="instruments-matrix">
         <thead>
           <tr>
@@ -256,14 +171,6 @@ const InstrumentsLoader = () => {
           ))}
         </tbody>
       </table>
-      <br />
-      <br />
-      <h4>
-        {'ABCD'[snap.patchIdx]}
-        {snap.channelIdx + 1} Preview:{' '}
-        {instrumentName(snap.patchIdx, snap.channelIdx)}
-      </h4>
-      <InstrumentsPreview />
     </div>
   )
 }

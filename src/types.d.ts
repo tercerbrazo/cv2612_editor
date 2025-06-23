@@ -76,7 +76,6 @@ declare global {
     bindingId?: BindingId
     // TODO: turn into views?
     calibrationStep: number
-    instrumentsLoader: boolean
 
     // instruments library
     library: Channel[]

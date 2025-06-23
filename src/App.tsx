@@ -13,14 +13,6 @@ const App = () => {
   const snap = useSnapshot(state)
 
   const renderView = useCallback(() => {
-    if (snap.instrumentsLoader) {
-      return (
-        <>
-          <Midi />
-          <InstrumentsLoader />
-        </>
-      )
-    }
     if (snap.calibrationStep > 0) {
       return <Calibration />
     }
@@ -29,10 +21,11 @@ const App = () => {
       <>
         <Midi />
         <Patch />
+        <InstrumentsLoader />
         <Scene />
       </>
     )
-  }, [snap.calibrationStep, snap.instrumentsLoader])
+  }, [snap.calibrationStep])
 
   return (
     <>

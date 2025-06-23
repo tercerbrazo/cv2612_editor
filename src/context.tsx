@@ -127,7 +127,6 @@ const initialState: State = {
   patchIdx: 0,
   channelIdx: 0,
   calibrationStep: 0,
-  instrumentsLoader: false,
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary as Channel[],

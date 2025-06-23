@@ -61,11 +61,6 @@ const downloadJSON = () => {
 const Patch = () => {
   const snap = useSnapshot(state)
 
-  const handlePresetsClick: MouseEventHandler<HTMLAnchorElement> = (ev) => {
-    ev.preventDefault()
-    state.instrumentsLoader = true
-  }
-
   const handleNameChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     (e) => {
       if (e.target.value.length >= 30) return
@@ -106,9 +101,6 @@ const Patch = () => {
       <span> </span>
       <span> </span>
       <span> </span>
-      <a href="/" title="Open Presets Matrix" onClick={handlePresetsClick}>
-        PRESETS
-      </a>
       <MenuDropdown
         title="More..."
         text="⋯"
