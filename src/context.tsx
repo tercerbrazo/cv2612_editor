@@ -112,20 +112,22 @@ const initialSettings = {
   tu: 64,
   rc: 0,
   stp: 7,
-  vs: 63,
+  vs: 8,
   portamento: 0,
   pbu: 2,
   pbd: 12,
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 4
+const CURRENT_VERSION = 7
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
   bindings: [[], [], []],
   patchIdx: 0,
+  patchIdxs: [0],
   channelIdx: 0,
+  channelIdxs: [0],
   calibrationStep: 0,
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,

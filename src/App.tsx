@@ -5,9 +5,13 @@ import { state } from './context'
 import logo from './logo.png'
 import Midi from './midi'
 import Patch from './patch'
-import Scene from './scene'
-import './styles.sass'
+import { PlayModeEnum } from './enums'
 import { useSnapshot } from 'valtio'
+import Channel from './channel'
+import Dropdown from './dropdown'
+import Sequencer from './sequencer'
+import Slider from './slider'
+import './styles.sass'
 
 const App = () => {
   const snap = useSnapshot(state)
@@ -20,12 +24,31 @@ const App = () => {
     return (
       <>
         <Midi />
+        <br />
+        <div className="four-cols">
+          <div className="col">
+            <Dropdown id="pm" />
+            <Dropdown id="rc" />
+          </div>
+          <div className="col">
+            <Slider id="tr" />
+            <Slider id="vs" />
+          </div>
+          <div className="col">
+            <Slider id="tu" />
+          </div>
+          <div className="col">
+            <Slider id="lb" />
+          </div>
+        </div>
+        {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
         <Patch />
         <InstrumentsLoader />
-        <Scene />
+        <br />
+        <Channel />
       </>
     )
-  }, [snap.calibrationStep])
+  }, [snap.calibrationStep, snap.settings.pm])
 
   return (
     <>

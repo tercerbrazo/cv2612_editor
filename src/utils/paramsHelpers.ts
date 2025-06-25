@@ -10,7 +10,7 @@ import {
 // NOTE: needs to be in sync with firmware
 const PARAM_BINDING_INDEXES = {
   lfo: 2,
-  // al: 10,
+  al: 10,
   fb: 11,
   ams: 12,
   fms: 13,
@@ -26,16 +26,16 @@ const PARAM_BINDING_INDEXES = {
 } as const
 
 const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
-  PLAY_MODE: 0xe0, // channel 14, CC 0
-  LED_BRIGHTNESS: 0xe1,
-  TRANSPOSE: 0xe2,
-  TUNNING: 0xe3,
-  MIDI_RECEIVE_CHANNEL: 0xe4,
-  SEQ_STEPS: 0xe5,
-  PORTAMENTO: 0xe6,
-  VELOCITY_SENSITIVITY: 0xe7,
-  PITCH_BEND_UP: 0xe8,
-  PITCH_BEND_DOWN: 0xe9,
+  PLAY_MODE: 20,
+  LED_BRIGHTNESS: 21,
+  TRANSPOSE: 22,
+  TUNNING: 23,
+  MIDI_RECEIVE_CHANNEL: 24,
+  SEQ_STEPS: 25,
+  PORTAMENTO: 26,
+  VELOCITY_SENSITIVITY: 27,
+  PITCH_BEND_UP: 28,
+  PITCH_BEND_DOWN: 29,
 }
 
 const PARAM_INDEXES: Record<
@@ -44,32 +44,28 @@ const PARAM_INDEXES: Record<
 > = {
   // patch indexes
   lfo: 9,
-
-  // channel indexes
-  al: 10,
-  fb: 11,
-  ams: 12,
-  fms: 13,
   // routing indexes
-  lr: 14,
-
+  lr: 10, // PAN
+  // channel indexes
+  al: 60,
+  fb: 61,
+  ams: 62,
+  fms: 63,
   // operator indexes
-  ar: 40,
-  d1: 41,
-  sl: 42,
-  d2: 43,
-  rr: 44,
-  tl: 45,
-  mul: 46,
-  det: 47,
-  rs: 48,
-  am: 49,
+  ar: 20,
+  d1: 21,
+  sl: 22,
+  d2: 23,
+  rr: 24,
+  tl: 25,
+  mul: 26,
+  det: 27,
+  rs: 28,
+  am: 29,
 }
 
 const CH_PARAM_COUNT = 5
 const OP_PARAM_COUNT = 10
-// special case, as 64 conflicts with sustain pedal
-const RR_CH2_MIDI_CC = 100
 
 const isSettingParam = (id: Param): id is SettingParam => {
   const keys: string[] = Object.values(SettingParamEnum)
@@ -180,41 +176,32 @@ const getParamMidiCc = (
 ): { ch: number; cc: number } => {
   if (isSettingParam(id)) {
     const key = settingKey(id)
-    const packed = SETTING_PARAM_MIDI_CC[key]
-    return { ch: packed >> 4, cc: packed & 0b1111 }
+    return { ch: 14, cc: SETTING_PARAM_MIDI_CC[key] }
   }
 
   const index = PARAM_INDEXES[id]
+
   if (id === 'lfo') {
-    return { ch: pid * 4, cc: index }
+    return { ch: pid, cc: index }
+  }
+  if (id === 'lr') {
+    return { ch: cid, cc: index } // PAN
   }
 
-  if (id === 'lr') {
-    return {
-      ch: 0,
-      cc: cid * CH_PARAM_COUNT + index,
-    }
-  }
+  const ch = cid + (pid < 2 ? 0 : 6)
+  const offset_cc = pid === 0 || pid === 2 ? 0 : 60
 
   if (isChannelParam(id)) {
     return {
-      ch: pid * 4,
-      cc: cid * CH_PARAM_COUNT + index, // 10-39 range
-    }
-  }
-
-  // special case, as 64 conflicts with sustain pedal
-  if (id === 'rr' && cid === 2) {
-    return {
-      ch: pid * 4 + op,
-      cc: RR_CH2_MIDI_CC,
+      ch,
+      cc: offset_cc + index, // 60-63 or 120-123
     }
   }
 
   // isOperatorParam
   return {
-    ch: pid * 4 + op,
-    cc: cid * OP_PARAM_COUNT + index, // 40 - 99 range
+    ch,
+    cc: offset_cc + op * OP_PARAM_COUNT + index,
   }
 }
 

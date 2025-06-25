@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
-import { instrumentName, state, syncCurrentChannel } from './context'
+import { instrumentName, state, syncCurrentChannel, syncMidi } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import { Stereo } from './stereo'
 import { readDmp } from './utils/readDmp'
 
 const cloneInstrument = (val: number) => {
-  state.patches[state.patchIdx].channels[state.channelIdx] = deepClone(
-    state.library[val],
-  )
-  syncCurrentChannel()
+  state.patchIdxs.forEach((p) => {
+    state.channelIdxs.forEach((c) => {
+      state.patches[p].channels[c] = deepClone(state.library[val])
+    })
+  })
+  syncMidi()
+  // syncCurrentChannel()
 }
 
 const InstrumentsBrowser = () => {
@@ -55,7 +58,7 @@ const InstrumentsBrowser = () => {
           {`<`}
         </a>
         <select onChange={handleChange} value={selected}>
-          <option value={-1} disabled selected={selected === -1}>
+          <option value={-1} disabled>
             Pick an instrument for {'ABCD'[snap.patchIdx]}
             {snap.channelIdx + 1}
           </option>
@@ -139,7 +142,23 @@ const InstrumentsLoader = () => {
           <tr>
             <th></th>
             {snap.patches[0].channels.map((_c, cid) => (
-              <th key={cid}>{cid + 1}</th>
+              <th
+                key={cid}
+                className={`${snap.channelIdxs.includes(cid as ChannelId) ? 'active' : ''}`}
+                onClick={() => {
+                  if (state.channelIdxs.includes(cid as ChannelId)) {
+                    if (state.channelIdxs.length === 1) return
+
+                    state.channelIdxs = state.channelIdxs.filter(
+                      (c) => c !== cid,
+                    )
+                  } else {
+                    state.channelIdxs.push(cid as ChannelId)
+                  }
+                }}
+              >
+                {cid + 1}
+              </th>
             ))}
           </tr>
         </thead>
@@ -147,18 +166,31 @@ const InstrumentsLoader = () => {
           <tr>
             <td>out</td>
             {snap.patches[0].channels.map((_c, cid) => (
-              <td>
+              <td key={cid}>
                 <Stereo cid={cid as ChannelId} />
               </td>
             ))}
           </tr>
           {snap.patches.map((p, pid) => (
             <tr key={pid}>
-              <td>{'ABCD'[pid]}</td>
+              <td
+                className={`${snap.patchIdxs.includes(pid as PatchId) ? 'active' : ''}`}
+                onClick={() => {
+                  if (state.patchIdxs.includes(pid as PatchId)) {
+                    if (state.patchIdxs.length === 1) return
+
+                    state.patchIdxs = state.patchIdxs.filter((p) => p !== pid)
+                  } else {
+                    state.patchIdxs.push(pid as PatchId)
+                  }
+                }}
+              >
+                {'ABCD'[pid]}
+              </td>
               {p.channels.map((_ch, cid) => (
                 <td
                   key={cid}
-                  className={`${snap.patchIdx === pid && snap.channelIdx === cid ? 'active' : ''}`}
+                  className={`${snap.patchIdxs.includes(pid as PatchId) && snap.channelIdxs.includes(cid as ChannelId) ? 'active' : ''}`}
                   onClick={() => {
                     state.patchIdx = pid as PatchId
                     state.channelIdx = cid as ChannelId

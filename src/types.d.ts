@@ -71,7 +71,9 @@ declare global {
 
     // current editor parameters page
     patchIdx: PatchId
+    patchIdxs: PatchId[]
     channelIdx: ChannelId
+    channelIdxs: ChannelId[]
     // mapping parameters?
     bindingId?: BindingId
     // TODO: turn into views?

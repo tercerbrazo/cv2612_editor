@@ -109,13 +109,13 @@ const sendCC = async (channel: number, number: number, value: number) => {
   const msg = [0xb0 + channel, number, value]
   const timeoutId = setTimeout(
     async () => {
+      // TODO: log inside an HTML element
+      // eslint-disable-next-line no-console
+      console.log(`CC ${channel}:${number} -> ${value}`, pendingCount)
       midiOut.send(msg)
       messageQueue.delete(key)
       pendingCount--
       pub('midiOutProgress', { done: pendingCount === 0 })
-      // TODO: log inside an HTML element
-      // eslint-disable-next-line no-console
-      console.log(`CC ${channel}:${number} -> ${value}`, pendingCount)
     },
     getInterval() * pendingCount + MINIMUM_THROTTLE,
   )
