@@ -5,6 +5,7 @@ import { instrumentName, state, syncCurrentChannel, syncMidi } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import { Stereo } from './stereo'
 import { readDmp } from './utils/readDmp'
+import Slider from './slider'
 
 const cloneInstrument = (val: number) => {
   state.patchIdxs.forEach((p) => {
@@ -141,9 +142,39 @@ const InstrumentsLoader = () => {
         <thead>
           <tr>
             <th></th>
-            {snap.patches[0].channels.map((_c, cid) => (
+            {snap.patches.map((_p, pid) => (
               <th
-                key={cid}
+                key={pid}
+                className={`${snap.patchIdxs.includes(pid as PatchId) ? 'active' : ''}`}
+                onClick={() => {
+                  if (state.patchIdxs.includes(pid as PatchId)) {
+                    if (state.patchIdxs.length === 1) return
+
+                    state.patchIdxs = state.patchIdxs.filter((p) => p !== pid)
+                  } else {
+                    state.patchIdxs.push(pid as PatchId)
+                  }
+                }}
+              >
+                {'ABCD'[pid]}
+              </th>
+            ))}
+            <th>OUTs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>LFOs</td>
+            {snap.patches.map((_p, pid) => (
+              <td key={pid}>
+                <Slider id="lfo" />
+              </td>
+            ))}
+            <td></td>
+          </tr>
+          {snap.patches[0].channels.map((_ch, cid) => (
+            <tr key={cid}>
+              <td
                 className={`${snap.channelIdxs.includes(cid as ChannelId) ? 'active' : ''}`}
                 onClick={() => {
                   if (state.channelIdxs.includes(cid as ChannelId)) {
@@ -158,38 +189,10 @@ const InstrumentsLoader = () => {
                 }}
               >
                 {cid + 1}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>out</td>
-            {snap.patches[0].channels.map((_c, cid) => (
-              <td key={cid}>
-                <Stereo cid={cid as ChannelId} />
               </td>
-            ))}
-          </tr>
-          {snap.patches.map((p, pid) => (
-            <tr key={pid}>
-              <td
-                className={`${snap.patchIdxs.includes(pid as PatchId) ? 'active' : ''}`}
-                onClick={() => {
-                  if (state.patchIdxs.includes(pid as PatchId)) {
-                    if (state.patchIdxs.length === 1) return
-
-                    state.patchIdxs = state.patchIdxs.filter((p) => p !== pid)
-                  } else {
-                    state.patchIdxs.push(pid as PatchId)
-                  }
-                }}
-              >
-                {'ABCD'[pid]}
-              </td>
-              {p.channels.map((_ch, cid) => (
+              {snap.patches.map((_p, pid) => (
                 <td
-                  key={cid}
+                  key={pid}
                   className={`${snap.patchIdxs.includes(pid as PatchId) && snap.channelIdxs.includes(cid as ChannelId) ? 'active' : ''}`}
                   onClick={() => {
                     state.patchIdx = pid as PatchId
@@ -199,6 +202,9 @@ const InstrumentsLoader = () => {
                   {instrumentName(pid, cid)}
                 </td>
               ))}
+              <td>
+                <Stereo cid={cid as ChannelId} />
+              </td>
             </tr>
           ))}
         </tbody>

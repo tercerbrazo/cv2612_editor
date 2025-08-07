@@ -4,9 +4,12 @@ import {
   useParamValue,
   useParamMidi,
   toggleParamBinding,
-  changeParam,
+  state,
+  setParamValue,
+  sendMidiParam,
 } from './context'
 import { getParamMeta } from './utils/paramsHelpers'
+import { useSnapshot } from 'valtio'
 
 type SliderProps = {
   id: Param
@@ -18,6 +21,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const { bindingIndex, boundTo, bindingId } = useBinding(id, op)
   const { ch, cc } = useParamMidi(id, op)
   const value = useParamValue(id, op)
+  const snap = useSnapshot(state)
 
   const learn = bindingIndex !== undefined && bindingId !== undefined
   const className = `slider ${learn ? 'learn' : ''}`
@@ -25,8 +29,10 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const onChange = (ev: ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-
-    changeParam(id, op, val)
+    const pid = state.patchIdx
+    const cid = state.channelIdx
+    setParamValue(id, pid, cid, op, val)
+    sendMidiParam(id, pid, cid, op, val)
   }
 
   const onClick: MouseEventHandler<HTMLDivElement> = (ev) => {

@@ -64,7 +64,6 @@ const PARAM_INDEXES: Record<
   am: 29,
 }
 
-const CH_PARAM_COUNT = 5
 const OP_PARAM_COUNT = 10
 
 const isSettingParam = (id: Param): id is SettingParam => {

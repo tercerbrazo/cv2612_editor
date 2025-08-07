@@ -119,7 +119,7 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 7
+const CURRENT_VERSION = 8
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
@@ -234,13 +234,6 @@ const sendMidiParam = (
   // sync midi cc
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
-}
-
-const changeParam = (id: Param, op: OperatorId, val: number) => {
-  const pid = state.patchIdx
-  const cid = state.channelIdx
-  setParamValue(id, pid, cid, op, val)
-  sendMidiParam(id, pid, cid, op, val)
 }
 
 const bindAll = (modulator?: number) => {
@@ -643,7 +636,7 @@ export {
   syncMidi,
   sendCrc32,
   saveState,
-  changeParam,
   resetChannel,
   resetOperator,
+  setParamValue,
 }
