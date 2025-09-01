@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { state, bindAll, saveState, sendCrc32, syncMidi } from './context'
+import { useSnapshot } from 'valtio'
+import { bindAll, saveState, sendCrc32, state, syncMidi } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
-import { useSnapshot } from 'valtio'
 
 const activityDuration = 80
 

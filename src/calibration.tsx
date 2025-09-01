@@ -89,44 +89,24 @@ const Calibration = () => {
     case 1:
       return <CalibrationStart />
     case 2:
-      return <Knob name="Main Knob" position="position A" />
-    case 3:
-      return <Knob name="Main Knob" position="position B" />
-    case 4:
-      return <Knob name="Main Knob" position="position C" />
-    case 5:
-      return <Knob name="Main Knob" position="position D" />
-    case 6:
-      return <Knob name="Attenuverter X" position="left position" />
-    case 7:
       return <Knob name="Attenuverter X" position="center position" />
-    case 8:
-      return <Knob name="Attenuverter X" position="right position" />
-    case 9:
-      return <Knob name="Attenuverter Y" position="left position" />
-    case 10:
+    case 3:
       return <Knob name="Attenuverter Y" position="center position" />
-    case 11:
-      return <Knob name="Attenuverter Y" position="right position" />
-    case 12:
-      return <Knob name="Attenuverter Z" position="left position" />
-    case 13:
+    case 4:
       return <Knob name="Attenuverter Z" position="center position" />
-    case 14:
-      return <Knob name="Attenuverter Z" position="right position" />
-    case 15:
+    case 5:
       return <Input name="Input X" signal="low voltage" />
-    case 16:
+    case 6:
       return <Input name="Input X" signal="high voltage" />
-    case 17:
+    case 7:
       return <Input name="Input Y" signal="low voltage" />
-    case 18:
+    case 8:
       return <Input name="Input Y" signal="high voltage" />
-    case 19:
+    case 9:
       return <Input name="Input Z" signal="low voltage" />
-    case 20:
+    case 10:
       return <Input name="Input Z" signal="high voltage" />
-    case 21:
+    case 11:
       return <CalibrationDone />
     default:
       return null

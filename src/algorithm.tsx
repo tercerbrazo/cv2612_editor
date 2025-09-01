@@ -1,7 +1,7 @@
 import React from 'react'
+import { useSnapshot } from 'valtio'
 import { resetChannel, state } from './context'
 import algorithmAscii from './utils/algorithmAscii'
-import { useSnapshot } from 'valtio'
 
 const Algorithm = () => {
   const snap = useSnapshot(state)

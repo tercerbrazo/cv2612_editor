@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
-import { getParamMeta } from './utils/paramsHelpers'
 import { calculateEnvelopePoints } from './utils/envelopePoints'
+import { getParamMeta } from './utils/paramsHelpers'
 
 type EnvelopeProps = Omit<
   Record<OperatorParam, number>,

@@ -1,15 +1,15 @@
 import React, { ChangeEvent, MouseEventHandler } from 'react'
+import { useSnapshot } from 'valtio'
 import {
-  useBinding,
-  useParamValue,
-  useParamMidi,
-  toggleParamBinding,
-  state,
-  setParamValue,
   sendMidiParam,
+  setParamValue,
+  state,
+  toggleParamBinding,
+  useBinding,
+  useParamMidi,
+  useParamValue,
 } from './context'
 import { getParamMeta } from './utils/paramsHelpers'
-import { useSnapshot } from 'valtio'
 
 type SliderProps = {
   id: Param

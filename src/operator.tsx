@@ -1,8 +1,8 @@
 import React from 'react'
+import { useSnapshot } from 'valtio'
 import { resetOperator, state } from './context'
 import Envelope from './envelope'
 import Slider from './slider'
-import { useSnapshot } from 'valtio'
 
 type OperatorProps = { op: OperatorId }
 const Operator = ({ op }: OperatorProps) => {

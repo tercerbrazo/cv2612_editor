@@ -1,6 +1,6 @@
 import React from 'react'
-import { state, useParamMidi, clearSequence, toggleSeqStep } from './context'
 import { useSnapshot } from 'valtio'
+import { clearSequence, state, toggleSeqStep, useParamMidi } from './context'
 import MidiIO from './midi-io'
 
 const Sequencer = () => {
@@ -31,8 +31,9 @@ const Sequencer = () => {
                     <div
                       onClick={() => handleHeaderClick(stepIndex)}
                       key={stepIndex}
-                      className={`seq-cell seq-header ${stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                        }`}
+                      className={`seq-cell seq-header ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
                     >
                       {stepIndex + 1}
                     </div>
@@ -44,8 +45,9 @@ const Sequencer = () => {
                 {voiceSteps.map((stepValue, stepIndex) => {
                   return (
                     <div
-                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${stepIndex <= snap.settings.stp ? 'active' : 'inactive'
-                        }`}
+                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
                       key={stepIndex}
                       onClick={() => toggleSeqStep(voiceIndex, stepIndex)}
                     />

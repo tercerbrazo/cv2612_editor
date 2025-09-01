@@ -291,11 +291,14 @@ const syncMidi = () => {
     relaxedSendParamMidiCc(id, 0, 0, 0, state.settings[id])
   })
 
+  // FIXME: add sequence
+
   // routing
   for (let cid = 0; cid < 6; cid++) {
     relaxedSendParamMidiCc('lr', 0, cid, 0, state.routing[cid])
   }
 
+  // patches
   for (let pid = 0; pid < 4; pid++) {
     const patch = state.patches[pid]
     relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)

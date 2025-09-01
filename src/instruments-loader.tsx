@@ -3,9 +3,9 @@ import { useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 import { instrumentName, state, syncCurrentChannel, syncMidi } from './context'
 import { MenuDropdown } from './menu-dropdown'
+import Slider from './slider'
 import { Stereo } from './stereo'
 import { readDmp } from './utils/readDmp'
-import Slider from './slider'
 
 const cloneInstrument = (val: number) => {
   state.patchIdxs.forEach((p) => {
