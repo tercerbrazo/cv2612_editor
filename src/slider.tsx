@@ -21,7 +21,6 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const { bindingIndex, boundTo, bindingId } = useBinding(id, op)
   const { ch, cc } = useParamMidi(id, op)
   const value = useParamValue(id, op)
-  const snap = useSnapshot(state)
 
   const learn = bindingIndex !== undefined && bindingId !== undefined
   const className = `slider ${learn ? 'learn' : ''}`

@@ -291,7 +291,15 @@ const syncMidi = () => {
     relaxedSendParamMidiCc(id, 0, 0, 0, state.settings[id])
   })
 
-  // FIXME: add sequence
+  // send sequence
+  sendMidiCmd(MidiCommands.CLEAR_SEQ)
+  state.settings.sequence.forEach((seq, voice) => {
+    seq.forEach((step_on, step_index) => {
+      if (step_on) {
+        sendMidiCmd(MidiCommands.SET_SEQ_STEP_ON, voice * 16 + step_index)
+      }
+    })
+  })
 
   // routing
   for (let cid = 0; cid < 6; cid++) {
