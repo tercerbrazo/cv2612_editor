@@ -31,37 +31,6 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
 }
 
-type Action =
-  | {
-      type: 'change-param'
-      id: Param
-      op: OperatorId
-      val: number
-    }
-  | {
-      type: 'move-patch'
-      index: PatchId
-      before: PatchId
-    }
-  | {
-      type: 'copy-patch'
-      source: PatchId
-      target: PatchId
-    }
-  | {
-      type: 'move-channel'
-      index: ChannelId
-      before: ChannelId
-    }
-  | {
-      type: 'copy-channel'
-      source: ChannelId
-      target: ChannelId
-    }
-  | {
-      type: 'toggle-debug'
-    }
-
 const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
 )
