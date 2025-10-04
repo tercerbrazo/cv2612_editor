@@ -278,6 +278,9 @@ const calculate_crc32 = (state: State) => {
   data.push(settings.pbu) // pitch_bend_up;
   data.push(settings.pbd) // pitch_bend_down;
   data.push(settings.vs) // velocity_sensitivity;
+  data.push(settings.mmx)
+  data.push(settings.mmy)
+  data.push(settings.mmz)
 
   // calculate CRC 32 of the data
   let crc32 = 0

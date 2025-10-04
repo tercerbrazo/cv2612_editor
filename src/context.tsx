@@ -91,7 +91,7 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 9
+const CURRENT_VERSION = 10
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
