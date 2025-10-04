@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { useSnapshot } from 'valtio'
 import { bindAll, saveState, sendCrc32, state, syncMidi } from './context'
-import { MenuDropdown } from './menu-dropdown'
+import { MenuDropdown, MenuDropdownOption } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
+import { getParamMidiCc } from './utils/paramsHelpers'
 
 const activityDuration = 80
 
@@ -12,7 +13,23 @@ const options = [
   { label: 'Bind All to X', value: 1 },
   { label: 'Bind All to Y', value: 2 },
   { label: 'Bind All to Z', value: 3 },
+  { label: 'X: Absolute', value: 10 },
+  { label: 'X: Linked Morph', value: 11 },
+  { label: 'X: Direct Morph', value: 12 },
+  { label: 'Y: Absolute', value: 13 },
+  { label: 'Y: Linked Morph', value: 14 },
+  { label: 'Y: Direct Morph', value: 15 },
+  { label: 'Z: Absolute', value: 16 },
+  { label: 'Z: Linked Morph', value: 17 },
+  { label: 'Z: Direct Morph', value: 18 },
 ]
+
+const modulation_mode_icons = ['🎯', '🔗', '⚡']
+/*
+ABSOLUTE → 🎯
+LINKED_MORPH → 🔗
+DIRECT_MORPH → ⚡
+*/
 
 const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
   { value: 'turbo', label: '🚀 Turbo' },
@@ -21,6 +38,12 @@ const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
   { value: 'slow', label: '🐢 Slow' },
   { value: 'shitty', label: '💩 Shitty' },
 ]
+
+const setModulationMode = (param: SettingParam, value: number) => {
+  const { ch, cc } = getParamMidiCc(param, 0, 0, 0)
+  state.settings[param] = value
+  MidiIO.sendCC(ch, cc, value)
+}
 
 const Midi = () => {
   const snap = useSnapshot(state)
@@ -46,6 +69,50 @@ const Midi = () => {
     setSpeed(speed)
     MidiIO.setSpeedPreset(speed)
     reactLocalStorage.set('speedPreset', speed)
+  }, [])
+
+  const handleOptionSelect = useCallback((option: MenuDropdownOption) => {
+    switch (option.value) {
+      case 0:
+        bindAll()
+        break
+      case 1:
+        bindAll(0)
+        break
+      case 2:
+        bindAll(1)
+        break
+      case 3:
+        bindAll(2)
+        break
+      case 10:
+        setModulationMode('mmx', 0)
+        break
+      case 11:
+        setModulationMode('mmx', 1)
+        break
+      case 12:
+        setModulationMode('mmx', 2)
+        break
+      case 13:
+        setModulationMode('mmy', 0)
+        break
+      case 14:
+        setModulationMode('mmy', 1)
+        break
+      case 15:
+        setModulationMode('mmy', 2)
+        break
+      case 16:
+        setModulationMode('mmz', 0)
+        break
+      case 17:
+        setModulationMode('mmz', 1)
+        break
+      case 18:
+        setModulationMode('mmz', 2)
+        break
+    }
   }, [])
 
   useEffect(() => {
@@ -117,28 +184,14 @@ const Midi = () => {
           key={i}
         >
           {'XYZ'[i]}
+          {modulation_mode_icons[snap.settings[`mm${'xyz'[i]}`]]}
         </a>
       ))}
       <MenuDropdown
         title="Bind all to..."
         text="⋯"
         options={options}
-        onSelect={(option) => {
-          switch (option.value) {
-            case 0:
-              bindAll()
-              break
-            case 1:
-              bindAll(0)
-              break
-            case 2:
-              bindAll(1)
-              break
-            case 3:
-              bindAll(2)
-              break
-          }
-        }}
+        onSelect={handleOptionSelect}
       />
       <span> </span>
       <span> </span>

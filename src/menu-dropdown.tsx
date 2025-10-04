@@ -1,12 +1,12 @@
 import React, { useState, FC } from 'react'
 
-type Option = { label: string; value: number }
+type MenuDropdownOption = { label: string; value: number | string }
 
 type MenuDropdownProps = {
   title: string
   text: string
-  options: Option[]
-  onSelect: (option: Option) => void
+  options: MenuDropdownOption[]
+  onSelect: (option: MenuDropdownOption) => void
 }
 
 const MenuDropdown: FC<MenuDropdownProps> = ({
@@ -44,4 +44,4 @@ const MenuDropdown: FC<MenuDropdownProps> = ({
   )
 }
 
-export { MenuDropdown }
+export { MenuDropdown, MenuDropdownOption }

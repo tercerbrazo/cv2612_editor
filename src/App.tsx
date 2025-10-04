@@ -5,7 +5,6 @@ import Channel from './channel'
 import { state } from './context'
 import Dropdown from './dropdown'
 import { PlayModeEnum } from './enums'
-import InstrumentsLoader from './instruments-loader'
 import logo from './logo.png'
 import Midi from './midi'
 import Patch from './patch'
@@ -43,7 +42,6 @@ const App = () => {
         </div>
         {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
         <Patch />
-        <InstrumentsLoader />
         <br />
         <Channel />
       </>

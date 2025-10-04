@@ -75,7 +75,7 @@ const initialPatch: Patch = {
 }
 
 const initialSettings = {
-  lb: 64,
+  lb: 5,
   tr: 32,
   pm: 0,
   tu: 64,
@@ -85,10 +85,13 @@ const initialSettings = {
   portamento: 0,
   pbu: 2,
   pbd: 12,
+  mmx: 2,
+  mmy: 2,
+  mmz: 2,
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 8
+const CURRENT_VERSION = 9
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',

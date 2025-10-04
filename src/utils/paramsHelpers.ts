@@ -36,6 +36,9 @@ const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
   VELOCITY_SENSITIVITY: 27,
   PITCH_BEND_UP: 28,
   PITCH_BEND_DOWN: 29,
+  MODULATION_MODE_X: 30,
+  MODULATION_MODE_Y: 31,
+  MODULATION_MODE_Z: 32,
 }
 
 const PARAM_INDEXES: Record<
@@ -97,6 +100,9 @@ const paramTitle: Record<Param, string> = {
   portamento: 'Portamento',
   pbu: 'Pitch Bend Up',
   pbd: 'Pitch Bend Down',
+  mmx: 'Modulation Mode X',
+  mmy: 'Modulation Mode Y',
+  mmz: 'Modulation Mode Z',
   lfo: 'Low Frequency Oscillator',
   lr: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
@@ -126,6 +132,9 @@ const paramBitness: Record<Param, number> = {
   portamento: 1,
   pbu: 4,
   pbd: 4,
+  mmx: 7,
+  mmy: 7,
+  mmz: 7,
   lfo: 3,
   lr: 2,
   ams: 2,

@@ -6,10 +6,13 @@ enum SettingParamEnum {
   TUNNING = 'tu',
   MIDI_RECEIVE_CHANNEL = 'rc',
   SEQ_STEPS = 'stp',
+  PORTAMENTO = 'portamento',
   VELOCITY_SENSITIVITY = 'vs',
   PITCH_BEND_UP = 'pbu',
   PITCH_BEND_DOWN = 'pbd',
-  PORTAMENTO = 'portamento',
+  MODULATION_MODE_X = 'mmx',
+  MODULATION_MODE_Y = 'mmy',
+  MODULATION_MODE_Z = 'mmz',
 }
 
 enum PatchParamEnum {
@@ -78,8 +81,6 @@ enum MidiChannelEnum {
   CH15 = 14,
   CH16 = 15,
   OMNI = 16,
-  FORWARD = 17,
-  MULTITRACK = 18,
 }
 
 export {
