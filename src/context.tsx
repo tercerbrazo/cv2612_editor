@@ -217,7 +217,9 @@ const bindAll = (modulator?: number) => {
   // if this was a "clear bindings" only cmd, then return
   if (modulator === undefined) return
 
-  const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
+  // FIXME!
+  // const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
+  const params: Param[] = ['al', 'fms', 'ams', 'fb']
   params.forEach((id) => {
     const bi = getParamBindingIndex(id, 0)
     if (bi) {
@@ -225,7 +227,7 @@ const bindAll = (modulator?: number) => {
     }
   })
 
-  const opParams: Param[] = Object.values(OperatorParamEnum)
+  const opParams: Param[] = ['ar', 'd1', 'sl', 'd2', 'rr', 'tl', 'mul', 'det']
   opParams.forEach((id) => {
     for (let o = 0; o < 4; o++) {
       const bi = getParamBindingIndex(id, o as OperatorId)

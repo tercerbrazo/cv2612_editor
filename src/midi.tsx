@@ -14,14 +14,14 @@ const options = [
   { label: 'Bind All to Y', value: 2 },
   { label: 'Bind All to Z', value: 3 },
   { label: 'X: Absolute', value: 10 },
-  { label: 'X: Linked Morph', value: 11 },
-  { label: 'X: Direct Morph', value: 12 },
+  { label: 'X: Direct Morph', value: 11 },
+  { label: 'X: Linked Morph', value: 12 },
   { label: 'Y: Absolute', value: 13 },
-  { label: 'Y: Linked Morph', value: 14 },
-  { label: 'Y: Direct Morph', value: 15 },
+  { label: 'Y: Direct Morph', value: 14 },
+  { label: 'Y: Linked Morph', value: 15 },
   { label: 'Z: Absolute', value: 16 },
-  { label: 'Z: Linked Morph', value: 17 },
-  { label: 'Z: Direct Morph', value: 18 },
+  { label: 'Z: Direct Morph', value: 17 },
+  { label: 'Z: Linked Morph', value: 18 },
 ]
 
 const modulation_mode_icons = ['🎯', '🔗', '⚡']
