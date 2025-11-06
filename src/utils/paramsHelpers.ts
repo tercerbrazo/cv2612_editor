@@ -7,24 +7,6 @@ import {
   SettingParamEnum,
 } from '../enums'
 
-// NOTE: needs to be in sync with firmware
-const PARAM_BINDING_INDEXES = {
-  lfo: 2,
-  al: 10,
-  fb: 11,
-  ams: 12,
-  fms: 13,
-  // operator indexes
-  ar: 20,
-  d1: 21,
-  sl: 22,
-  d2: 23,
-  rr: 24,
-  tl: 25,
-  mul: 26,
-  det: 27,
-} as const
-
 const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
   PLAY_MODE: 20,
   LED_BRIGHTNESS: 21,
@@ -41,33 +23,32 @@ const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
   MODULATION_MODE_Z: 32,
 }
 
-const PARAM_INDEXES: Record<
-  'lfo' | RoutingParam | ChannelParam | OperatorParam,
-  number
-> = {
+const PARAM_INDEXES = [
   // patch indexes
-  lfo: 9,
+  'lfo',
   // routing indexes
-  lr: 10, // PAN
+  'lr',
   // channel indexes
-  al: 60,
-  fb: 61,
-  ams: 62,
-  fms: 63,
+  'al',
+  'fb',
+  'ams',
+  'fms',
   // operator indexes
-  ar: 20,
-  d1: 21,
-  sl: 22,
-  d2: 23,
-  rr: 24,
-  tl: 25,
-  mul: 26,
-  det: 27,
-  rs: 28,
-  am: 29,
-}
+  'ar',
+  'd1',
+  'sl',
+  'd2',
+  'rr',
+  'tl',
+  'mul',
+  'det',
+  'rs',
+  'am',
+] as const
 
 const OP_PARAM_COUNT = 10
+
+const PARAM_CC_OFFSET = 9
 
 const isSettingParam = (id: Param): id is SettingParam => {
   const keys: string[] = Object.values(SettingParamEnum)
@@ -121,20 +102,7 @@ const paramTitle: Record<Param, string> = {
   am: 'Amplitude Modulation',
 }
 
-const paramBitness: Record<Param, number> = {
-  pm: 7,
-  lb: 7,
-  tr: 7,
-  tu: 7,
-  rc: 7,
-  stp: 7,
-  vs: 4,
-  portamento: 1,
-  pbu: 4,
-  pbd: 4,
-  mmx: 7,
-  mmy: 7,
-  mmz: 7,
+const paramBitness = {
   lfo: 3,
   lr: 2,
   ams: 2,
@@ -151,7 +119,7 @@ const paramBitness: Record<Param, number> = {
   det: 3,
   rs: 2,
   am: 1,
-}
+} as const
 
 const getParamOptions = (id: Param): string[] => {
   switch (id) {
@@ -187,41 +155,27 @@ const getParamMidiCc = (
     return { ch: 14, cc: SETTING_PARAM_MIDI_CC[key] }
   }
 
-  const index = PARAM_INDEXES[id]
-
-  if (id === 'lfo') {
-    return { ch: pid, cc: index }
-  }
-  if (id === 'lr') {
-    return { ch: cid, cc: index } // PAN
-  }
-
   const ch = cid + (pid < 2 ? 0 : 6)
-  const offset_cc = pid === 0 || pid === 2 ? 0 : 60
+  const patch_offset = pid === 0 || pid === 2 ? 0 : 64
+  const offset = PARAM_CC_OFFSET + patch_offset
 
-  if (isChannelParam(id)) {
-    return {
-      ch,
-      cc: offset_cc + index, // 60-63 or 120-123
-    }
-  }
+  const index = PARAM_INDEXES.indexOf(id)
 
-  // isOperatorParam
   return {
     ch,
-    cc: offset_cc + op * OP_PARAM_COUNT + index,
+    cc: offset + index + op * OP_PARAM_COUNT,
   }
 }
 
 /*
  * Binding index defines how a parameter can be bound to a modulator.
- * There is a maximum of 64 parameters that can be bound (but actually only
- * 47 are currently used) and depending on the action wanted (binding/unbinding)
+ * There is a maximum of 64 parameters that can be bound and
+ * depending on the action wanted (binding/unbinding)
  * the corresponding CC value will be shifted by 64.
  * Example:
- *   if LFO binding index is `2`, then:
- *    * to unbind, send CC value 2
- *    * to bind, send CC value 66 (64+2)
+ *   if LFO binding index is `0`, then:
+ *    * to unbind, send CC value 0
+ *    * to bind, send CC value 64 (64+0)
  * This needs to be mimicked in the module firmware.
  *
  * */
@@ -229,9 +183,11 @@ const getParamBindingIndex = (
   id: Param,
   op: OperatorId,
 ): number | undefined => {
-  const base: number | undefined = PARAM_BINDING_INDEXES[id]
-  if (base === undefined) return undefined
-  return base + OP_PARAM_COUNT * op
+  if (isSettingParam(id) || id === 'lr' || id === 'am' || id === 'rs') {
+    return undefined
+  }
+  const index = PARAM_INDEXES.indexOf(id)
+  return index + OP_PARAM_COUNT * op
 }
 
 const paramMax = Object.fromEntries(
@@ -239,7 +195,7 @@ const paramMax = Object.fromEntries(
 ) as typeof paramBitness
 
 const getParamMeta = (id: Param): ParamMeta => {
-  const bits = paramBitness[id]
+  const bits = isSettingParam(id) ? 7 : paramBitness[id]
   const title = paramTitle[id]
   const max = paramMax[id]
 

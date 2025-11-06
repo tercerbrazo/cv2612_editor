@@ -217,9 +217,7 @@ const bindAll = (modulator?: number) => {
   // if this was a "clear bindings" only cmd, then return
   if (modulator === undefined) return
 
-  // FIXME!
-  // const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
-  const params: Param[] = ['al', 'fms', 'ams', 'fb']
+  const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
   params.forEach((id) => {
     const bi = getParamBindingIndex(id, 0)
     if (bi) {
@@ -468,7 +466,6 @@ const useInstrumentName = () => {
   let changed = false
   if (index !== -1) {
     changed = JSON.stringify(ch) !== JSON.stringify(snap.library[index])
-    console.log(ch.operators[0], snap.library[index].operators[0])
   }
   return `${ch.name}${changed ? ' (*)' : ''}`
 }

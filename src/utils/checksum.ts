@@ -221,35 +221,15 @@ const calculate_crc32 = (state: State) => {
   // BINDINGS
   // ========
   state.bindings.forEach((bindings) => {
-    const getBinding = (id: Param, op: OperatorId) => {
-      const bi = getParamBindingIndex(id, op)
-      if (bi === undefined) return 0
-      return bindings.includes(bi) ? 1 : 0
+    const MASK_SIZE = 6
+    const mask = new Array(MASK_SIZE).fill(0)
+    for (const bi of bindings) {
+      const byteIndex = bi >> 3
+      const bitPos = bi & 7
+      mask[byteIndex] |= 1 << bitPos
     }
-
-    // ch_bitmask_t
-    data.push(
-      getBinding('lfo', 0) |
-        (getBinding('fb', 0) << 1) |
-        (getBinding('al', 0) << 2) |
-        (getBinding('ams', 0) << 3) |
-        (getBinding('fms', 0) << 4),
-    )
-
-    for (let i = 0; i < 4; i++) {
-      const op = i as OperatorId
-      // op_bitmask_t
-      data.push(
-        getBinding('ar', op) |
-          (getBinding('d1', op) << 1) |
-          (getBinding('sl', op) << 2) |
-          (getBinding('d2', op) << 3) |
-          (getBinding('tl', op) << 4) |
-          (getBinding('rr', op) << 5) |
-          (getBinding('det', op) << 6) |
-          (getBinding('mul', op) << 7),
-      )
-    }
+    // append it to the existing data
+    data.push(...mask)
   })
 
   // SETTINGS
@@ -278,9 +258,9 @@ const calculate_crc32 = (state: State) => {
   data.push(settings.pbu) // pitch_bend_up;
   data.push(settings.pbd) // pitch_bend_down;
   data.push(settings.vs) // velocity_sensitivity;
-  data.push(settings.mmx)
-  data.push(settings.mmy)
-  data.push(settings.mmz)
+  data.push(settings.mmx) // modulation mode x
+  data.push(settings.mmy) // modulation mode y
+  data.push(settings.mmz) // modulation mode z
 
   // calculate CRC 32 of the data
   let crc32 = 0
