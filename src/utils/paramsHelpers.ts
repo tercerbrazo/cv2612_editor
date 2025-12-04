@@ -197,7 +197,7 @@ const paramMax = Object.fromEntries(
 const getParamMeta = (id: Param): ParamMeta => {
   const bits = isSettingParam(id) ? 7 : paramBitness[id]
   const title = paramTitle[id]
-  const max = paramMax[id]
+  const max = isSettingParam(id) ? 127 : paramMax[id]
 
   return {
     title,
