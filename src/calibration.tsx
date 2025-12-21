@@ -107,8 +107,6 @@ const Calibration = () => {
     case 10:
       return <Input name="Input Z" signal="high voltage" />
     case 11:
-      return <Input name="Volt/Octave" signal="mid voltage" />
-    case 12:
       return <CalibrationDone />
     default:
       return null
