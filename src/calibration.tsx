@@ -50,16 +50,6 @@ const CalibrationStep = ({ name, children }) => {
   )
 }
 
-const Knob = ({ name, position }) => {
-  return (
-    <CalibrationStep name={name}>
-      <p>
-        Set the knob to <strong>{position}</strong>.
-      </p>
-    </CalibrationStep>
-  )
-}
-
 const Input = ({ name, signal }) => {
   return (
     <CalibrationStep name={name}>
