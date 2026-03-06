@@ -100,7 +100,6 @@ const initialState: State = {
   patchIdxs: [0],
   channelIdx: 0,
   channelIdxs: [0],
-  calibrationStep: 0,
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary as Channel[],
@@ -443,11 +442,6 @@ const useParamValue = (id: Param, op: OperatorId): number => {
   return value
 }
 
-const setCalibrationStep = (step: number) => {
-  sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, step)
-  state.calibrationStep = step
-}
-
 const instrumentName = (pid: number, cid: number) => {
   const ch = state.patches[pid].channels[cid]
   const index = state.library.findIndex((inst) => inst.name === ch.name)
@@ -474,7 +468,6 @@ export {
   state,
   instrumentName,
   useInstrumentName,
-  setCalibrationStep,
   useParamValue,
   useParamMidi,
   useBinding,

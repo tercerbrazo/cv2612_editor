@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react'
 import { useSnapshot } from 'valtio'
-import Calibration from './calibration'
 import Channel from './channel'
 import { state } from './context'
 import Dropdown from './dropdown'
@@ -16,10 +15,6 @@ const App = () => {
   const snap = useSnapshot(state)
 
   const renderView = useCallback(() => {
-    if (snap.calibrationStep > 0) {
-      return <Calibration />
-    }
-
     return (
       <>
         <Midi />
@@ -46,7 +41,7 @@ const App = () => {
         <Channel />
       </>
     )
-  }, [snap.calibrationStep, snap.settings.pm])
+  }, [snap.settings.pm])
 
   return (
     <>

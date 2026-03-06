@@ -76,8 +76,6 @@ declare global {
     channelIdxs: ChannelId[]
     // mapping parameters?
     bindingId?: BindingId
-    // TODO: turn into views?
-    calibrationStep: number
 
     // instruments library
     library: Channel[]

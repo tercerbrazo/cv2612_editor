@@ -74,7 +74,6 @@ const cloneInstrument = (val: number) => {
 }
 
 const dropdown_options = [
-  { label: 'Calibrate', value: 'calibrate' },
   { label: 'Load JSON', value: 'load_json' },
   { label: 'Download JSON', value: 'download_json' },
   { label: 'Add DMP', value: 'add_dmp' },
@@ -92,9 +91,6 @@ const InstrumentsBrowser = () => {
 
   const handleDropdownMenu = useCallback(({ value }) => {
     switch (value) {
-      case 'calibrate':
-        state.calibrationStep = 1
-        break
       case 'load_json':
         loadJSON()
         break

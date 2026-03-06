@@ -1,5 +1,4 @@
 import React, { ChangeEvent, MouseEventHandler } from 'react'
-import { useSnapshot } from 'valtio'
 import {
   sendMidiParam,
   setParamValue,
