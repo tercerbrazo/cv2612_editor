@@ -1,6 +1,5 @@
 import React from 'react'
-import { state, useParamMidi, useParamValue } from './context'
-import MidiIO from './midi-io'
+import { useParam, applyParam } from './context'
 import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {
@@ -9,19 +8,17 @@ type DropdownProps = {
 
 const Dropdown = ({ id }: DropdownProps) => {
   const options = getParamOptions(id)
-  const value = useParamValue(id, 0)
+  const { value, ccHint } = useParam(id, 0)
   const { title } = getParamMeta(id)
-  const { cc, ch } = useParamMidi(id, 0)
 
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-    state.settings[id] = val
-    MidiIO.sendCC(ch, cc, val)
+    applyParam(id, 0, val)
   }
 
   return (
-    <div className="dropdown" data-title={`${title} - CC ${ch}:${cc}`}>
+    <div className="dropdown" data-title={`${title} - ${ccHint}`}>
       <label>{id}</label>
       <select onChange={onChange} value={value}>
         {options.map((o, i) => (

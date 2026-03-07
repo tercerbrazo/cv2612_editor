@@ -1,11 +1,9 @@
 import React from 'react'
-import { useSnapshot } from 'valtio'
-import { resetChannel, state } from './context'
+import { resetChannel, useParam } from './context'
 import algorithmAscii from './utils/algorithmAscii'
 
 const Algorithm = () => {
-  const snap = useSnapshot(state)
-  const value = snap.patches[snap.patchIdx].channels[snap.channelIdx].al
+  const { value, mixed } = useParam('al', 0)
 
   const handleClick = (ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     ev.preventDefault()
@@ -14,7 +12,9 @@ const Algorithm = () => {
 
   return (
     <a href="!#" onClick={handleClick} style={{ textDecoration: 'none' }}>
-      <pre className="algorithm">{algorithmAscii(value)}</pre>
+      <pre className={`algorithm ${mixed ? 'mixed' : ''} `}>
+        {algorithmAscii(value)}
+      </pre>
     </a>
   )
 }

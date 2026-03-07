@@ -49,7 +49,7 @@ const initialOperator: Operator = {
 }
 
 const initialChannel: Channel = {
-  name: '---',
+  name: 'Init',
   al: 7,
   fb: 0,
   ams: 0,
@@ -91,15 +91,12 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 10
+const CURRENT_VERSION = 11
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
   bindings: [[], [], []],
-  patchIdx: 0,
-  patchIdxs: [0],
-  channelIdx: 0,
-  channelIdxs: [0],
+  selection: [{ pid: 0, cid: 0 }],
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary as Channel[],
@@ -107,7 +104,7 @@ const initialState: State = {
 }
 
 const getInitialState = () => {
-  const lastStateStr = localStorage.getItem('lastState')
+  const lastStateStr = null // localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {
@@ -191,6 +188,18 @@ const setParamValue = (
   } else if (isOperatorParam(id)) {
     state.patches[pid].channels[cid].operators[op][id] = value
   }
+}
+
+const applyParam = (id: Param, op: OperatorId, value: number) => {
+  state.selection.forEach((s) => {
+    setParamValue(id, s.pid, s.cid, op, value)
+    sendMidiParam(id, s.pid, s.cid, op, value)
+  })
+}
+
+const applyRouting = (cid: ChannelId, l: boolean, r: boolean) => {
+  state.routing[cid] = (((r ? 1 : 0) << 1) | (l ? 1 : 0)) as Routing
+  sendMidiParam('lr', 0, cid, 0, state.routing[cid])
 }
 
 const sendMidiParam = (
@@ -306,59 +315,31 @@ const syncMidi = () => {
   sendCrc32()
 }
 
-const syncCurrentChannel = () => {
-  const pid = state.patchIdx
-  const cid = state.channelIdx
-
-  const patch = state.patches[pid]
-  relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)
-  const ch = patch.channels[cid]
-
-  Object.values(ChannelParamEnum).forEach((id) => {
-    relaxedSendParamMidiCc(id, pid, cid, 0, ch[id])
-  })
-
-  for (let o = 0; o < 4; o++) {
-    Object.values(OperatorParamEnum).forEach((id) => {
-      relaxedSendParamMidiCc(id, pid, cid, o, ch.operators[o][id])
-    })
-  }
-}
-
 const resetOperator = (op: OperatorId) => {
-  const updateAndSync = (id: Param, val: number) => {
-    const pid = state.patchIdx
-    const cid = state.channelIdx
-    setParamValue(id, pid, cid, op, val)
-    sendMidiParam(id, pid, cid, op, val)
-  }
-
-  updateAndSync('ar', 31)
-  updateAndSync('d1', 0)
-  updateAndSync('sl', 0)
-  updateAndSync('d2', 0)
-  updateAndSync('rr', 15)
-  updateAndSync('tl', 0)
-  updateAndSync('mul', 3)
-  updateAndSync('det', 3)
-  updateAndSync('rs', 0)
-  updateAndSync('am', 0)
+  applyParam('ar', op, 31)
+  applyParam('d1', op, 0)
+  applyParam('sl', op, 0)
+  applyParam('d2', op, 0)
+  applyParam('rr', op, 15)
+  applyParam('tl', op, 0)
+  applyParam('mul', op, 3)
+  applyParam('det', op, 3)
+  applyParam('rs', op, 0)
+  applyParam('am', op, 0)
 }
 
 const resetChannel = () => {
-  const updateAndSync = (id: Param, val: number) => {
-    const pid = state.patchIdx
-    const cid = state.channelIdx
-    setParamValue(id, pid, cid, 0, val)
-    sendMidiParam(id, pid, cid, 0, val)
-  }
+  // reset name to Init
+  state.selection.forEach((s) => {
+    state.patches[s.pid].channels[s.cid].name = 'Init'
+  })
 
-  updateAndSync('lfo', 0)
-  updateAndSync('al', 7)
-  updateAndSync('fb', 0)
-  updateAndSync('ams', 0)
-  updateAndSync('fms', 0)
-  updateAndSync('lr', 3)
+  applyParam('lfo', 0, 0)
+  applyParam('al', 0, 7)
+  applyParam('fb', 0, 0)
+  applyParam('ams', 0, 0)
+  applyParam('fms', 0, 0)
+  applyParam('lr', 0, 3)
 
   resetOperator(0)
   resetOperator(1)
@@ -388,18 +369,6 @@ const clearSequence = () => {
   state.settings.sequence = deepClone(initialSequence)
 }
 
-const useParamMidi = (id: Param, op: OperatorId) => {
-  const snap = useSnapshot(state)
-  const pid = snap.patchIdx
-  const cid = snap.channelIdx
-  const { ch, cc } = getParamMidiCc(id, pid, cid, op)
-
-  return {
-    cc,
-    ch,
-  }
-}
-
 const useBinding = (id: Param, op: OperatorId) => {
   const snap = useSnapshot(state)
   const bindingIndex = getParamBindingIndex(id, op)
@@ -420,26 +389,39 @@ const useBinding = (id: Param, op: OperatorId) => {
   }
 }
 
-const useParamValue = (id: Param, op: OperatorId): number => {
+const useParam = (id: Param, op: OperatorId) => {
   const snap = useSnapshot(state)
-  const pid = snap.patchIdx
-  const cid = snap.channelIdx
 
-  let value = 0
+  let ccHint = 'mixed CCs'
+  if (snap.selection.length === 1) {
+    const { pid, cid } = snap.selection[0]
+    const { ch, cc } = getParamMidiCc(id, pid, cid, op)
+    ccHint = `CC ${ch}:${cc}`
+  }
+
+  const selectedChannels = snap.selection.map((s) => {
+    return snap.patches[s.pid].channels[s.cid]
+  })
+
   if (isSettingParam(id)) {
-    value = snap.settings[id]
+    const value = snap.settings[id]
+    return { ccHint, value, mixed: false }
+  } else if (isPatchParam(id)) {
+    const value = snap.patches[snap.selection[0].pid][id]
+    const mixed = snap.selection.some((s) => snap.patches[s.pid][id] !== value)
+    return { ccHint, value, mixed }
+  } else if (isChannelParam(id)) {
+    const value = selectedChannels[0][id]
+    const mixed = selectedChannels.some((c) => c[id] !== value)
+    return { ccHint, value, mixed }
+  } else if (isOperatorParam(id)) {
+    const value = selectedChannels[0].operators[op][id]
+    const mixed = selectedChannels.some((c) => c.operators[op][id] !== value)
+    return { ccHint, value, mixed }
+  } else {
+    console.error('routing cant use useParam hook')
+    return { ccHint: '', value: 0, mixed: false }
   }
-  if (isPatchParam(id)) {
-    value = snap.patches[pid][id]
-  }
-  if (isChannelParam(id)) {
-    value = snap.patches[pid].channels[cid][id]
-  }
-  if (isOperatorParam(id)) {
-    value = snap.patches[pid].channels[cid].operators[op][id]
-  }
-
-  return value
 }
 
 const instrumentName = (pid: number, cid: number) => {
@@ -452,35 +434,56 @@ const instrumentName = (pid: number, cid: number) => {
   return `${ch.name}${changed ? ' (*)' : ''}`
 }
 
-const useInstrumentName = () => {
-  const snap = useSnapshot(state)
+const cloneInstrument = (next: Channel) => {
+  state.selection.forEach((s) => {
+    const prev = state.patches[s.pid].channels[s.cid]
 
-  const ch = snap.patches[snap.patchIdx].channels[snap.channelIdx]
-  const index = snap.library.findIndex((inst) => inst.name === ch.name)
-  let changed = false
-  if (index !== -1) {
-    changed = JSON.stringify(ch) !== JSON.stringify(snap.library[index])
-  }
-  return `${ch.name}${changed ? ' (*)' : ''}`
+    // sync
+    Object.values(ChannelParamEnum).forEach((id) => {
+      if (prev[id] !== next[id]) {
+        relaxedSendParamMidiCc(id, s.pid, s.cid, 0, next[id])
+      }
+    })
+
+    for (let o = 0; o < 4; o++) {
+      Object.values(OperatorParamEnum).forEach((id) => {
+        if (prev.operators[o][id] !== next.operators[o][id]) {
+          relaxedSendParamMidiCc(id, s.pid, s.cid, o, next.operators[o][id])
+        }
+      })
+    }
+
+    //set
+    state.patches[s.pid].channels[s.cid] = next
+  })
+}
+
+const cloneFromLibrary = (index: number) => {
+  const next = deepClone(state.library[index])
+  cloneInstrument(next)
+}
+
+const cloneFromSibling = (pid: number, cid: number) => {
+  const next = deepClone(state.patches[pid].channels[cid])
+  cloneInstrument(next)
 }
 
 export {
   state,
   instrumentName,
-  useInstrumentName,
-  useParamValue,
-  useParamMidi,
+  useParam,
+  applyParam,
+  applyRouting,
   useBinding,
-  sendMidiParam,
-  syncCurrentChannel,
   clearSequence,
   toggleSeqStep,
   toggleParamBinding,
   bindAll,
+  cloneFromLibrary,
+  cloneFromSibling,
   syncMidi,
   sendCrc32,
   saveState,
   resetChannel,
   resetOperator,
-  setParamValue,
 }

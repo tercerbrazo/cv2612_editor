@@ -15,6 +15,11 @@ declare global {
   type OperatorId = 0 | 1 | 2 | 3
   type BindingId = 0 | 1 | 2 // x | y | z
 
+  type ChannelRef = {
+    pid: PatchId
+    cid: ChannelId
+  }
+
   type SettingParam = `${SettingParamEnum}`
   type RoutingParam = 'lr'
   type PatchParam = `${PatchParamEnum}`
@@ -69,11 +74,9 @@ declare global {
     bindings: [Bindings, Bindings, Bindings]
     routing: [Routing, Routing, Routing, Routing, Routing, Routing]
 
-    // current editor parameters page
-    patchIdx: PatchId
-    patchIdxs: PatchId[]
-    channelIdx: ChannelId
-    channelIdxs: ChannelId[]
+    // current patch/channels selection
+    selection: ChannelRef[]
+
     // mapping parameters?
     bindingId?: BindingId
 

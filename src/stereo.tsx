@@ -1,6 +1,6 @@
 import React, { FC } from 'react'
 import { useSnapshot } from 'valtio'
-import { sendMidiParam, state } from './context'
+import { applyRouting, state } from './context'
 
 type StereoProps = {
   cid: ChannelId
@@ -14,8 +14,7 @@ const Stereo: FC<StereoProps> = ({ cid }) => {
   const right = Boolean(value & 0b10)
 
   const updateRouting = (l: boolean, r: boolean) => {
-    state.routing[cid] = (((r ? 1 : 0) << 1) | (l ? 1 : 0)) as Routing
-    sendMidiParam('lr', 0, cid, 0, state.routing[cid])
+    applyRouting(cid, l, r)
   }
 
   const toggleLeft = () => updateRouting(!left, right)

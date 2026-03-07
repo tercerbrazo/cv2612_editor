@@ -1,16 +1,12 @@
 import React from 'react'
 import { useSnapshot } from 'valtio'
-import { clearSequence, state, toggleSeqStep, useParamMidi } from './context'
-import MidiIO from './midi-io'
+import { clearSequence, state, toggleSeqStep, applyParam } from './context'
 
 const Sequencer = () => {
   const snap = useSnapshot(state)
 
-  const { cc, ch } = useParamMidi('stp', 0)
-
   const handleHeaderClick = (val: number) => {
-    state.settings.stp = val
-    MidiIO.sendCC(ch, cc, val)
+    applyParam('stp', 0, val)
   }
 
   return (
