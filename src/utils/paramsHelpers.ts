@@ -122,9 +122,19 @@ const paramBitness = {
 } as const
 
 const getParamOptions = (id: Param): string[] => {
+  const playmodeOptions: Record<PlayModeEnum, string> = {
+    [PlayModeEnum.MONO]: '🔴 MONO',
+    [PlayModeEnum.DUO]: '🟠 DUO',
+    [PlayModeEnum.TRIO]: '🟡 TRIO',
+    [PlayModeEnum.CHORD]: '🟢 CHORD',
+    [PlayModeEnum.SEQ]: '🔵 SEQ',
+    [PlayModeEnum.RAND]: '🟣 RAND',
+    [PlayModeEnum.POLY]: '⚪ POLY',
+  }
+
   switch (id) {
     case 'pm':
-      return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
+      return Object.values(playmodeOptions)
     case 'rc':
       return Object.keys(MidiChannelEnum).filter((k) => isNaN(Number(k)))
     default:
