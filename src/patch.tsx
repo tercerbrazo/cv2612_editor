@@ -113,8 +113,6 @@ const InstrumentsBrowser = () => {
   ) => {
     ev.preventDefault()
     const [pid, cid] = ev.target.value.split(':').map(Number)
-
-    console.log(ev.target.value, pid, cid)
     cloneFromSibling(pid, cid)
   }
 

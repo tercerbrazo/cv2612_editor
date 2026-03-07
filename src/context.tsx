@@ -104,7 +104,7 @@ const initialState: State = {
 }
 
 const getInitialState = () => {
-  const lastStateStr = null // localStorage.getItem('lastState')
+  const lastStateStr = localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {
@@ -316,35 +316,14 @@ const syncMidi = () => {
 }
 
 const resetOperator = (op: OperatorId) => {
-  applyParam('ar', op, 31)
-  applyParam('d1', op, 0)
-  applyParam('sl', op, 0)
-  applyParam('d2', op, 0)
-  applyParam('rr', op, 15)
-  applyParam('tl', op, 0)
-  applyParam('mul', op, 3)
-  applyParam('det', op, 3)
-  applyParam('rs', op, 0)
-  applyParam('am', op, 0)
+  Object.entries(initialOperator).forEach(([k, v]) => {
+    applyParam(k as OperatorParam, op, v)
+  })
 }
 
 const resetChannel = () => {
-  // reset name to Init
-  state.selection.forEach((s) => {
-    state.patches[s.pid].channels[s.cid].name = 'Init'
-  })
-
-  applyParam('lfo', 0, 0)
-  applyParam('al', 0, 7)
-  applyParam('fb', 0, 0)
-  applyParam('ams', 0, 0)
-  applyParam('fms', 0, 0)
-  applyParam('lr', 0, 3)
-
-  resetOperator(0)
-  resetOperator(1)
-  resetOperator(2)
-  resetOperator(3)
+  const next = deepClone(initialChannel)
+  cloneInstrument(next)
 }
 
 // TODO: send crc32 checks periodically or after certain actions
