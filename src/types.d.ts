@@ -44,9 +44,17 @@ declare global {
 
   type Operator = Record<OperatorParam, number>
 
-  type Channel = Record<ChannelParam, number> & {
-    name: string
+  type InstrumentParams = Record<ChannelParam, number> & {
     operators: [Operator, Operator, Operator, Operator]
+  }
+
+  // NOTE: Channel and Instrument are currently treated as the same type,
+  // although Instrument has name, origin, system, and lacks of routing
+  type Channel = InstrumentParams & {
+    name: string
+    origin: number
+    hash: number
+    system: boolean
   }
 
   type Patch = {

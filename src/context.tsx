@@ -6,6 +6,7 @@ import {
 } from './enums'
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
+import { hashChannel } from './utils/hashing'
 import {
   getParamBindingIndex,
   getParamMeta,
@@ -16,9 +17,17 @@ import {
   isSettingParam,
 } from './utils/paramsHelpers'
 
-import { proxy, subscribe, useSnapshot } from 'valtio'
+import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
-import initialLibrary from './instruments.json'
+import initialLibraryJson from './instruments.json'
+
+const initialLibrary = initialLibraryJson as Channel[]
+
+initialLibrary.forEach((ch) => {
+  ch.hash = hashChannel(ch)
+  ch.origin = 0
+  ch.system = true
+})
 
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMDS = [
@@ -35,44 +44,12 @@ const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
 )
 
-const initialOperator: Operator = {
-  ar: 31,
-  d1: 0,
-  sl: 0,
-  d2: 0,
-  rr: 15,
-  tl: 0,
-  mul: 3,
-  det: 3,
-  am: 0,
-  rs: 0,
-}
-
-const initialChannel: Channel = {
-  name: 'Init',
-  al: 7,
-  fb: 0,
-  ams: 0,
-  fms: 0,
-  operators: [
-    initialOperator,
-    initialOperator,
-    initialOperator,
-    initialOperator,
-  ] as const,
-}
-
-const initialPatch: Patch = {
+const initialPatch = {
   lfo: 0,
-  channels: [
-    initialChannel,
-    initialChannel,
-    initialChannel,
-    initialChannel,
-    initialChannel,
-    initialChannel,
-  ],
-}
+  channels: Array(6).fill(initialLibrary[0]),
+} as Patch
+const initialChannel = initialPatch.channels[0]
+const initialOperator = initialChannel.operators[0]
 
 const initialSettings = {
   lb: 5,
@@ -91,7 +68,7 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 11
+const CURRENT_VERSION = 12
 const initialState: State = {
   version: CURRENT_VERSION,
   name: 'New Patch',
@@ -99,12 +76,12 @@ const initialState: State = {
   selection: [{ pid: 0, cid: 0 }],
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
-  library: initialLibrary as Channel[],
+  library: initialLibrary,
   patches: [initialPatch, initialPatch, initialPatch, initialPatch],
 }
 
 const getInitialState = () => {
-  const lastStateStr = localStorage.getItem('lastState')
+  const lastStateStr = null // localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {
@@ -403,15 +380,33 @@ const useParam = (id: Param, op: OperatorId) => {
   }
 }
 
-const instrumentName = (pid: number, cid: number) => {
-  const ch = state.patches[pid].channels[cid]
-  const index = state.library.findIndex((inst) => inst.name === ch.name)
-  let changed = false
-  if (index !== -1) {
-    changed = JSON.stringify(ch) !== JSON.stringify(state.library[index])
+function addToLibrary(ch: Channel, linkOrigin = false) {
+  const nextIndex = state.library.length
+
+  if (linkOrigin) {
+    ch.origin = nextIndex
+    ch.system = false
   }
-  return `${ch.name}${changed ? ' (*)' : ''}`
+
+  const copy = deepClone(ch)
+
+  // library entries do not need to track origin
+  copy.origin = 0
+
+  // user added instruments are not system instruments
+  copy.system = false
+
+  copy.hash = hashChannel(copy)
+
+  state.library.push(copy)
 }
+
+function isChannelDirty(ch: Snapshot<Channel>, lib: Snapshot<Channel[]>) {
+  return hashChannel(ch) !== lib[ch.origin].hash
+}
+
+const instrumentName = (ch: Snapshot<Channel>, lib: Snapshot<Channel[]>) =>
+  `${ch.name}${isChannelDirty(ch, lib) ? ' (*)' : ''}`
 
 const cloneInstrument = (next: Channel) => {
   state.selection.forEach((s) => {
@@ -439,6 +434,7 @@ const cloneInstrument = (next: Channel) => {
 
 const cloneFromLibrary = (index: number) => {
   const next = deepClone(state.library[index])
+  next.origin = index
   cloneInstrument(next)
 }
 
@@ -460,6 +456,8 @@ export {
   bindAll,
   cloneFromLibrary,
   cloneFromSibling,
+  addToLibrary,
+  isChannelDirty,
   syncMidi,
   sendCrc32,
   saveState,

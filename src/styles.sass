@@ -167,32 +167,32 @@ button
       &.dragging
         opacity: 0.8
         filter: drop-shadow(6px -6px 5px black)
-    .droppable
-      flex: 0
-      height: 2em
-      &.dragging
-        background: #ccc
-        flex: 0.3
-      &.over
-        background: $primary
+      &[disabled], &[disabled]:hover
+        background: #222
+        color: #666
+        &[title]:after
+          color: #666
 
-    a[title]:after
-      content: attr(title)
-      position: absolute
-      top: -32px
-      padding: 4px
-      height: 20px
-      right: 0
-      word-break: keep-all
-      width: 250px
-      border: 1px solid $white
-      background: $black
-      color: $primary
-      opacity: 0
-      transition: opacity 0.3s linear
-      pointer-events: none
-    a[title]:hover:after
-      opacity: 0.99
+
+    a, button
+      &[title]:after
+        content: attr(title)
+        position: absolute
+        top: -32px
+        padding: 4px
+        height: 20px
+        right: 0
+        word-break: keep-all
+        width: 250px
+        border: 1px solid $white
+        background: $black
+        color: $primary
+        opacity: 0
+        transition: opacity 0.3s linear
+        pointer-events: none
+      &[title]:hover:after
+        opacity: 0.99
+
     select
       flex-grow: 5
       font-size: 1em
@@ -215,7 +215,7 @@ button
         &.active
           animation: blinkLed 0.1s infinite
       select
-        max-width: 25%
+        max-width: 15%
         font-size: 0.8em
         &.speed
           flex-grow: 0.1
@@ -239,17 +239,21 @@ button
         border: 0
         font-family: inherit
         font-size: 0.9em
-        font-weight: bold
-        cursor: pointer
         background: $black
         color: $white
-        &:hover
-          text-decoration: underline
+        &[readonly]
+          pointer-events: none
         &:focus
           box-shadow: inset 0 0 0 3px $black
           background: $white
           color: $black
           outline: 0
+      .toolbar
+        margin: auto
+      button
+        width: 32px
+        height: 32px
+        border-radius: 50%
   .two-cols
     display: flex
     gap: 12px
@@ -405,14 +409,10 @@ button
           // filter: drop-shadow(0 0 5px $white)
 
   .instruments
-    padding-top: 20px
     table
       th, td
         &:first-child
-          width: 40px
-          text-align: center
-        &:last-child
-          width: 60px
+          width: 32px
           text-align: center
       .slider
         &, input
@@ -439,11 +439,13 @@ button
     width: 100%
     th, td
       border: 1px solid $white
-      height: 32px
+    td
+      height: 28px
 
   .instruments-matrix
     td,th
       cursor: pointer
+      text-align: center
       &.active
         background: $white
         color: $black

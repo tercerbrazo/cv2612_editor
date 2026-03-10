@@ -1,14 +1,19 @@
-import React, { ChangeEventHandler, useCallback } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useSnapshot } from 'valtio'
 import {
+  addToLibrary,
   cloneFromLibrary,
   cloneFromSibling,
   instrumentName,
+  isChannelDirty,
   state,
 } from './context'
 import { MenuDropdown } from './menu-dropdown'
 import { Stereo } from './stereo'
 import { readDmp } from './utils/readDmp'
+import { deepClone } from 'valtio/utils'
+import { hashChannel } from './utils/hashing'
+import { readVGI } from './utils/readVgi'
 
 const loadJSON = () => {
   const fileInput = document.createElement('input')
@@ -52,7 +57,7 @@ const downloadJSON = () => {
   // Create a download link
   var a = document.createElement('a')
   a.href = url
-  a.download = `${state.name}.json`
+  a.download = 'state.json'
 
   // Trigger the download
   a.click()
@@ -64,8 +69,124 @@ const downloadJSON = () => {
 const dropdown_options = [
   { label: 'Load JSON', value: 'load_json' },
   { label: 'Download JSON', value: 'download_json' },
-  { label: 'Add DMP', value: 'add_dmp' },
+  { label: 'Add Instruments', value: 'add_instruments' },
 ]
+
+const InstrumentEditor = () => {
+  const snap = useSnapshot(state)
+  const { pid, cid } = snap.selection[0]
+  const ch = snap.patches[pid].channels[cid]
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(ch.name)
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  const dirty = isChannelDirty(ch, snap.library)
+
+  const capabilities = {
+    save: !ch.system && dirty,
+    rename: !ch.system,
+    add: true,
+    clone: true,
+    restore: dirty,
+  }
+
+  useEffect(() => {
+    setName(ch.name)
+  }, [ch.name])
+
+  const commitRename = () => {
+    setRenaming(false)
+    state.patches[pid].channels[cid].name = name
+    state.library[ch.origin].name = name
+    nameRef.current?.blur()
+  }
+
+  const cancelRename = () => {
+    if (renaming) {
+      setRenaming(false)
+      setName(ch.name)
+      nameRef.current?.blur()
+    }
+  }
+
+  const cloneAction = () => {
+    addToLibrary(state.patches[pid].channels[cid], true)
+    renameAction()
+  }
+
+  const addAction = () => {
+    addToLibrary(state.library[0], true)
+    renameAction()
+  }
+
+  const saveAction = () => {
+    const copy = deepClone(state.patches[pid].channels[cid])
+    copy.origin = 0
+    copy.hash = hashChannel(copy)
+    state.library[ch.origin] = copy
+  }
+
+  const restoreAction = () => {
+    const index = ch.origin
+    state.patches[pid].channels[cid] = deepClone(state.library[index])
+    state.patches[pid].channels[cid].origin = index
+  }
+
+  const renameAction = () => {
+    setRenaming(true)
+    nameRef.current?.focus()
+    nameRef.current?.select()
+  }
+
+  if (snap.selection.length !== 1) return <span>Multi Edit</span>
+
+  return (
+    <>
+      <input
+        type="text"
+        ref={nameRef}
+        value={name}
+        readOnly={!renaming}
+        size={20}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={cancelRename}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commitRename()
+          if (e.key === 'Escape') cancelRename()
+        }}
+      />
+      <div className="toolbar">
+        <button
+          disabled={!capabilities.rename}
+          title="Rename"
+          onClick={renameAction}
+        >
+          ✎
+        </button>
+        <button disabled={!capabilities.save} title="Save" onClick={saveAction}>
+          ✔
+        </button>
+        <button
+          disabled={!capabilities.clone}
+          title="Clone"
+          onClick={cloneAction}
+        >
+          ⧉
+        </button>
+        <button
+          disabled={!capabilities.restore}
+          title="Restore"
+          onClick={restoreAction}
+        >
+          ↺
+        </button>
+        <button disabled={!capabilities.add} title="Add" onClick={addAction}>
+          ✚
+        </button>
+      </div>
+    </>
+  )
+}
 
 const InstrumentsBrowser = () => {
   const snap = useSnapshot(state)
@@ -78,27 +199,11 @@ const InstrumentsBrowser = () => {
       case 'download_json':
         downloadJSON()
         break
-      case 'add_dmp':
-        addDmpInstruments()
+      case 'add_instruments':
+        addInstruments()
         break
     }
   }, [])
-
-  const handleNameChange: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (e) => {
-      if (e.target.value.length >= 30) return
-
-      const name = e.target.value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric characters except spaces and hyphens
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/-+/g, '-') // Replace consecutive hyphens with a single hyphen
-        .replace(/^-+/g, '') // Remove leading hyphens
-
-      state.name = name
-    },
-    [],
-  )
 
   const handleLibraryChange: React.ChangeEventHandler<HTMLSelectElement> = (
     ev,
@@ -119,37 +224,30 @@ const InstrumentsBrowser = () => {
   return (
     <div className="previewer">
       <nav className="patch">
-        <input
-          placeholder="Patch Name"
-          type="text"
-          value={snap.name}
-          size={30}
-          onChange={handleNameChange}
-          onFocus={(e) => e.target.select()}
-        />
         <select onChange={handleLibraryChange} value={-1}>
           <option value={-1} disabled>
             From Library
           </option>
           {snap.library.map((inst, i) => (
-            <option key={inst.name} value={i}>
+            <option key={i} value={i}>
               {inst.name}
             </option>
           ))}
         </select>
         <select onChange={handleSiblingChange} value={-1}>
           <option value={-1} disabled>
-            From other channel
+            From Patch
           </option>
           {snap.patches.map((p, pid) =>
-            p.channels.map((c, cid) => (
+            p.channels.map((ch, cid) => (
               <option key={`${pid}:${cid}`} value={`${pid}:${cid}`}>
                 {'ABCD'[pid]}
-                {cid + 1} - {instrumentName(pid, cid)}
+                {cid + 1} - {instrumentName(ch, snap.library)}
               </option>
             )),
           )}
         </select>
+        <InstrumentEditor />
         <MenuDropdown
           title="More..."
           text="⋯"
@@ -162,42 +260,54 @@ const InstrumentsBrowser = () => {
   )
 }
 
-const addDmpInstruments = () => {
+const addInstruments = () => {
   const fileInput = document.createElement('input')
   fileInput.type = 'file'
-  fileInput.accept = '.dmp'
+  fileInput.accept = '.dmp,.vgi'
   fileInput.multiple = true
 
   fileInput.addEventListener('change', async (event) => {
     const { files } = event.target as HTMLInputElement
+    if (!files) return
 
-    if (files) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
 
-        const reader = new FileReader()
+      const reader = new FileReader()
 
-        reader.onload = (e) => {
-          if (e.target) {
-            const data = new Int8Array(e.target.result as ArrayBuffer)
-            const name = file.name.replace('.dmp', '')
-            const channel = readDmp(data, name)
-            if (channel) {
-              const index = state.library.findIndex(
-                (inst) => inst.name === name,
-              )
-              if (index !== -1) {
-                state.library[index] = channel
-              } else {
-                state.library.push(channel)
-                state.library.sort((a, b) => a.name.localeCompare(b.name))
-              }
-            }
-          }
+      reader.onload = (e) => {
+        if (!e.target) return
+
+        const data = new Uint8Array(e.target.result as ArrayBuffer)
+
+        const ext = file.name.split('.').pop()?.toLowerCase()
+        const name = file.name.replace(/\.(dmp|vgi)$/i, '')
+
+        let instrument: InstrumentParams | null = null
+
+        if (ext === 'dmp') {
+          instrument = readDmp(data)
+        } else if (ext === 'vgi') {
+          instrument = readVGI(data)
         }
 
-        reader.readAsArrayBuffer(file)
+        console.log(ext, instrument, data)
+
+        if (!instrument) return
+
+        const ch = {
+          ...instrument,
+          name,
+          system: false,
+          origin: 0,
+        } as Channel
+
+        ch.hash = hashChannel(ch)
+
+        addToLibrary(ch)
       }
+
+      reader.readAsArrayBuffer(file)
     }
   })
 
@@ -241,34 +351,33 @@ const Patch = () => {
         <thead>
           <tr>
             <th></th>
-            {snap.patches.map((_p, pid) => (
-              <th key={pid}>{'ABCD'[pid]}</th>
+            {snap.patches[0].channels.map((_ch, cid) => (
+              <th key={cid}>
+                <span>{cid + 1}</span>
+                <Stereo cid={cid as ChannelId} />
+              </th>
             ))}
-            <th>OUTs</th>
           </tr>
         </thead>
         <tbody>
-          {snap.patches[0].channels.map((_ch, cid) => (
-            <tr key={cid}>
-              <td>{cid + 1}</td>
-              {snap.patches.map((_p, pid) => {
+          {snap.patches.map((p, pid) => (
+            <tr key={pid}>
+              <td>{'ABCD'[pid]}</td>
+              {p.channels.map((ch, cid) => {
                 const active = snap.selection.some(
                   (s) => s.pid === pid && s.cid === cid,
                 )
 
                 return (
                   <td
-                    key={pid}
+                    key={cid}
                     className={active ? 'active' : ''}
                     onClick={handleCellClick(pid as PatchId, cid as PatchId)}
                   >
-                    {instrumentName(pid, cid)}
+                    {instrumentName(ch, snap.library)}
                   </td>
                 )
               })}
-              <td>
-                <Stereo cid={cid as ChannelId} />
-              </td>
             </tr>
           ))}
         </tbody>

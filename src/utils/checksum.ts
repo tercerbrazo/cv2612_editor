@@ -156,8 +156,6 @@ typedef struct {
 
 */
 
-import { getParamBindingIndex } from './paramsHelpers'
-
 const CRC32_POLY = 0x04c11db7
 
 // defined as cpp implementation
