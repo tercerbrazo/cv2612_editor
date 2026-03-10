@@ -44,18 +44,22 @@ declare global {
 
   type Operator = Record<OperatorParam, number>
 
-  type InstrumentParams = Record<ChannelParam, number> & {
+  type Instrument = Record<ChannelParam, number> & {
     operators: [Operator, Operator, Operator, Operator]
   }
 
-  // NOTE: Channel and Instrument are currently treated as the same type,
-  // although Instrument has name, origin, system, and lacks of routing
-  type Channel = InstrumentParams & {
-    name: string
+  type Channel = Instrument & {
     origin: number
+  }
+
+  type LibraryEntry = {
+    name: string
     hash: number
     system: boolean
+    instrument: Instrument
   }
+
+  type Library = LibraryEntry[]
 
   type Patch = {
     lfo: number
@@ -74,8 +78,6 @@ declare global {
     // a way to migrate old persisted states
     version: number
 
-    name: string
-
     // actual module state
     settings: Settings
     patches: [Patch, Patch, Patch, Patch]
@@ -89,6 +91,6 @@ declare global {
     bindingId?: BindingId
 
     // instruments library
-    library: Channel[]
+    library: Library
   }
 }

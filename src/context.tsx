@@ -6,7 +6,7 @@ import {
 } from './enums'
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
-import { hashChannel } from './utils/hashing'
+import { hashInstrument } from './utils/hashing'
 import {
   getParamBindingIndex,
   getParamMeta,
@@ -21,13 +21,15 @@ import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
 import { deepClone } from 'valtio/utils'
 import initialLibraryJson from './instruments.json'
 
-const initialLibrary = initialLibraryJson as Channel[]
-
-initialLibrary.forEach((ch) => {
-  ch.hash = hashChannel(ch)
-  ch.origin = 0
-  ch.system = true
-})
+// TODO: redo library format
+const initialLibrary = (
+  initialLibraryJson as unknown as (Instrument & { name: string })[]
+).map((i) => ({
+  instrument: i,
+  name: i.name,
+  system: true,
+  hash: hashInstrument(i),
+})) satisfies Library
 
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMDS = [
@@ -44,12 +46,11 @@ const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
 )
 
+const initialInstrument = initialLibrary[0].instrument
 const initialPatch = {
   lfo: 0,
-  channels: Array(6).fill(initialLibrary[0]),
+  channels: Array(6).fill({ ...initialInstrument, origin: 0 }),
 } as Patch
-const initialChannel = initialPatch.channels[0]
-const initialOperator = initialChannel.operators[0]
 
 const initialSettings = {
   lb: 5,
@@ -71,7 +72,6 @@ const initialSettings = {
 const CURRENT_VERSION = 12
 const initialState: State = {
   version: CURRENT_VERSION,
-  name: 'New Patch',
   bindings: [[], [], []],
   selection: [{ pid: 0, cid: 0 }],
   routing: [3, 3, 3, 3, 3, 3],
@@ -81,7 +81,7 @@ const initialState: State = {
 }
 
 const getInitialState = () => {
-  const lastStateStr = null // localStorage.getItem('lastState')
+  const lastStateStr = localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {
@@ -293,14 +293,13 @@ const syncMidi = () => {
 }
 
 const resetOperator = (op: OperatorId) => {
-  Object.entries(initialOperator).forEach(([k, v]) => {
+  Object.entries(initialInstrument.operators[0]).forEach(([k, v]) => {
     applyParam(k as OperatorParam, op, v)
   })
 }
 
 const resetChannel = () => {
-  const next = deepClone(initialChannel)
-  cloneInstrument(next)
+  assignInstrument(initialInstrument, 0)
 }
 
 // TODO: send crc32 checks periodically or after certain actions
@@ -380,72 +379,63 @@ const useParam = (id: Param, op: OperatorId) => {
   }
 }
 
-function addToLibrary(ch: Channel, linkOrigin = false) {
-  const nextIndex = state.library.length
+function addToLibrary(inst: Instrument, name = '') {
+  const instrument = deepClone(inst)
 
-  if (linkOrigin) {
-    ch.origin = nextIndex
-    ch.system = false
-  }
-
-  const copy = deepClone(ch)
-
-  // library entries do not need to track origin
-  copy.origin = 0
-
-  // user added instruments are not system instruments
-  copy.system = false
-
-  copy.hash = hashChannel(copy)
-
-  state.library.push(copy)
+  state.library.push({
+    instrument,
+    hash: hashInstrument(instrument),
+    system: false,
+    name,
+  })
 }
 
-function isChannelDirty(ch: Snapshot<Channel>, lib: Snapshot<Channel[]>) {
-  return hashChannel(ch) !== lib[ch.origin].hash
+function isChannelDirty(ch: Snapshot<Channel>, lib: Snapshot<Library>) {
+  return hashInstrument(ch) !== lib[ch.origin].hash
 }
 
-const instrumentName = (ch: Snapshot<Channel>, lib: Snapshot<Channel[]>) =>
-  `${ch.name}${isChannelDirty(ch, lib) ? ' (*)' : ''}`
+const channelName = (ch: Snapshot<Channel>, lib: Snapshot<Library>) =>
+  `${lib[ch.origin].name}${isChannelDirty(ch, lib) ? ' (*)' : ''}`
 
-const cloneInstrument = (next: Channel) => {
+const assignInstrument = (inst: Instrument, origin: number) => {
   state.selection.forEach((s) => {
     const prev = state.patches[s.pid].channels[s.cid]
 
     // sync
     Object.values(ChannelParamEnum).forEach((id) => {
-      if (prev[id] !== next[id]) {
-        relaxedSendParamMidiCc(id, s.pid, s.cid, 0, next[id])
+      if (prev[id] !== inst[id]) {
+        relaxedSendParamMidiCc(id, s.pid, s.cid, 0, inst[id])
       }
     })
 
     for (let o = 0; o < 4; o++) {
       Object.values(OperatorParamEnum).forEach((id) => {
-        if (prev.operators[o][id] !== next.operators[o][id]) {
-          relaxedSendParamMidiCc(id, s.pid, s.cid, o, next.operators[o][id])
+        if (prev.operators[o][id] !== inst.operators[o][id]) {
+          relaxedSendParamMidiCc(id, s.pid, s.cid, o, inst.operators[o][id])
         }
       })
     }
 
     //set
-    state.patches[s.pid].channels[s.cid] = next
+    state.patches[s.pid].channels[s.cid] = {
+      ...deepClone(inst),
+      origin,
+    }
   })
 }
 
 const cloneFromLibrary = (index: number) => {
-  const next = deepClone(state.library[index])
-  next.origin = index
-  cloneInstrument(next)
+  assignInstrument(state.library[index].instrument, index)
 }
 
 const cloneFromSibling = (pid: number, cid: number) => {
-  const next = deepClone(state.patches[pid].channels[cid])
-  cloneInstrument(next)
+  const ch = state.patches[pid].channels[cid]
+  assignInstrument(ch, ch.origin)
 }
 
 export {
   state,
-  instrumentName,
+  channelName,
   useParam,
   applyParam,
   applyRouting,

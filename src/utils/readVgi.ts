@@ -1,6 +1,4 @@
-const vgiOrder = [0, 2, 1, 3]
-
-const readVGI = (data: Uint8Array): InstrumentParams | null => {
+const readVGI = (data: Uint8Array): Instrument | null => {
   if (data.length < 43) return null
 
   const al = data[0]
@@ -49,7 +47,7 @@ const readVGI = (data: Uint8Array): InstrumentParams | null => {
     al,
     ams,
     operators,
-  } as InstrumentParams
+  } as Instrument
 }
 
 export { readVGI }

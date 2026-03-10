@@ -7,20 +7,20 @@ function fnv1a(h: number, v: number): number {
   return h >>> 0
 }
 
-function hashChannel(ch: Channel | Snapshot<Channel>): number {
+function hashInstrument(inst: Instrument | Snapshot<Instrument>): number {
   let h = 0x811c9dc5
 
   Object.values(ChannelParamEnum).forEach((key) => {
-    h = fnv1a(h, ch[key])
+    h = fnv1a(h, inst[key])
   })
 
   for (let o = 0; o < 4; o++) {
     Object.values(OperatorParamEnum).forEach((key) => {
-      h = fnv1a(h, ch.operators[o][key])
+      h = fnv1a(h, inst.operators[o][key])
     })
   }
 
   return h >>> 0
 }
 
-export { hashChannel }
+export { hashInstrument }

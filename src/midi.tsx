@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { useSnapshot } from 'valtio'
 import { bindAll, saveState, sendCrc32, state, syncMidi } from './context'
-import { MenuDropdown, MenuDropdownOption } from './menu-dropdown'
+import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
 import { getParamMidiCc } from './utils/paramsHelpers'
 
@@ -69,50 +69,6 @@ const Midi = () => {
     setSpeed(speed)
     MidiIO.setSpeedPreset(speed)
     reactLocalStorage.set('speedPreset', speed)
-  }, [])
-
-  const handleOptionSelect = useCallback((option: MenuDropdownOption) => {
-    switch (option.value) {
-      case 0:
-        bindAll()
-        break
-      case 1:
-        bindAll(0)
-        break
-      case 2:
-        bindAll(1)
-        break
-      case 3:
-        bindAll(2)
-        break
-      case 10:
-        setModulationMode('mmx', 0)
-        break
-      case 11:
-        setModulationMode('mmx', 1)
-        break
-      case 12:
-        setModulationMode('mmx', 2)
-        break
-      case 13:
-        setModulationMode('mmy', 0)
-        break
-      case 14:
-        setModulationMode('mmy', 1)
-        break
-      case 15:
-        setModulationMode('mmy', 2)
-        break
-      case 16:
-        setModulationMode('mmz', 0)
-        break
-      case 17:
-        setModulationMode('mmz', 1)
-        break
-      case 18:
-        setModulationMode('mmz', 2)
-        break
-    }
   }, [])
 
   useEffect(() => {
@@ -191,7 +147,49 @@ const Midi = () => {
         title="Bind all to..."
         text="⋯"
         options={options}
-        onSelect={handleOptionSelect}
+        onSelect={(opt) => {
+          switch (opt) {
+            case 0:
+              bindAll()
+              break
+            case 1:
+              bindAll(0)
+              break
+            case 2:
+              bindAll(1)
+              break
+            case 3:
+              bindAll(2)
+              break
+            case 10:
+              setModulationMode('mmx', 0)
+              break
+            case 11:
+              setModulationMode('mmx', 1)
+              break
+            case 12:
+              setModulationMode('mmx', 2)
+              break
+            case 13:
+              setModulationMode('mmy', 0)
+              break
+            case 14:
+              setModulationMode('mmy', 1)
+              break
+            case 15:
+              setModulationMode('mmy', 2)
+              break
+            case 16:
+              setModulationMode('mmz', 0)
+              break
+            case 17:
+              setModulationMode('mmz', 1)
+              break
+            case 18:
+              setModulationMode('mmz', 2)
+              break
+          }
+        }}
       />
       <span> </span>
       <span> </span>

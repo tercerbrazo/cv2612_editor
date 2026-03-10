@@ -106,7 +106,7 @@ button
         padding: 0
         list-style: none
         position: absolute
-        width: 200px
+        width: 250px
         background: $black
         z-index: 999
         border-top: 1px solid $white
@@ -139,6 +139,12 @@ button
       height: 1em
       pointer-events: none
       text-align: center
+      &.instrument-name
+        overflow: hidden
+        white-space: nowrap
+        text-overflow: ellipsis
+        width: 220px
+        flex: none
     a
       flex-grow: 1
       text-decoration: none
@@ -446,6 +452,12 @@ button
     td,th
       cursor: pointer
       text-align: center
+      font-size: .8em
+      overflow: hidden
+      white-space: nowrap
+      text-overflow: ellipsis
+      // width: 180px;
+      // flex: none;
       &.active
         background: $white
         color: $black

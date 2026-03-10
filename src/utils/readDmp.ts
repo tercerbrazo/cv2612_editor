@@ -1,4 +1,4 @@
-const readDmp = (data: Uint8Array): InstrumentParams | null => {
+const readDmp = (data: Uint8Array): Instrument | null => {
   const version = data[0]
 
   switch (version) {
@@ -44,7 +44,7 @@ const readDmp = (data: Uint8Array): InstrumentParams | null => {
     al,
     ams,
     operators,
-  } as InstrumentParams
+  } as Instrument
 }
 
 export { readDmp }

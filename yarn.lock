@@ -1341,6 +1341,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@zip.js/zip.js@npm:^2.8.23":
+  version: 2.8.23
+  resolution: "@zip.js/zip.js@npm:2.8.23"
+  checksum: 10c0/ed7902089da87aad301b24904a40b4ca6d6d55397d24533d9fc0db122cff69fd60ec62e47c32c62c5e1c78cbe3002748d59e604c4c477991c4d0ff3d1ef8a63f
+  languageName: node
+  linkType: hard
+
 "abbrev@npm:^2.0.0":
   version: 2.0.0
   resolution: "abbrev@npm:2.0.0"
@@ -1787,6 +1794,7 @@ __metadata:
     "@types/react-dom": "npm:^18.3.0"
     "@types/reactjs-localstorage": "npm:^1.0.2"
     "@types/webmidi": "npm:^2.1.0"
+    "@zip.js/zip.js": "npm:^2.8.23"
     buffer: "npm:^6.0.3"
     events: "npm:^3.3.0"
     husky: "npm:^9.0.11"

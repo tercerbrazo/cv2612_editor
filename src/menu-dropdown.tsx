@@ -1,20 +1,23 @@
-import React, { useState, FC } from 'react'
+import React, { useState } from 'react'
 
-type MenuDropdownOption = { label: string; value: number | string }
-
-type MenuDropdownProps = {
-  title: string
-  text: string
-  options: MenuDropdownOption[]
-  onSelect: (option: MenuDropdownOption) => void
+type MenuDropdownOption<T extends string | number> = {
+  label: string
+  value: T
 }
 
-const MenuDropdown: FC<MenuDropdownProps> = ({
+type MenuDropdownProps<T extends string | number> = {
+  title: string
+  text: string
+  options: ReadonlyArray<MenuDropdownOption<T>>
+  onSelect: (value: T) => void
+}
+
+const MenuDropdown = <T extends string | number>({
   title,
   text,
   options,
   onSelect,
-}) => {
+}: MenuDropdownProps<T>) => {
   const [open, setOpen] = useState(false)
 
   return (
@@ -33,7 +36,7 @@ const MenuDropdown: FC<MenuDropdownProps> = ({
         {open && (
           <ul>
             {options.map((o) => (
-              <li key={o.value} onClick={() => onSelect(o)}>
+              <li key={o.value} onClick={() => onSelect(o.value)}>
                 {o.label}
               </li>
             ))}
