@@ -13,7 +13,7 @@ import {
   getParamMidiCc,
   isChannelParam,
   isOperatorParam,
-  isPatchParam,
+  isSceneParam,
   isSettingParam,
 } from './utils/paramsHelpers'
 
@@ -47,10 +47,10 @@ const initialSequence = Array.from({ length: 6 }).map((_) =>
 )
 
 const initialInstrument = initialLibrary[0].instrument
-const initialPatch = {
+const initialScene = {
   lfo: 0,
   channels: Array(6).fill({ ...initialInstrument, origin: 0 }),
-} as Patch
+} as Scene
 
 const initialSettings = {
   lb: 5,
@@ -73,11 +73,11 @@ const CURRENT_VERSION = 12
 const initialState: State = {
   version: CURRENT_VERSION,
   bindings: [[], [], []],
-  selection: [{ pid: 0, cid: 0 }],
+  selection: [{ sid: 0, cid: 0 }],
   routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary,
-  patches: [initialPatch, initialPatch, initialPatch, initialPatch],
+  scenes: [initialScene, initialScene, initialScene, initialScene],
 }
 
 const getInitialState = () => {
@@ -98,6 +98,7 @@ const getInitialState = () => {
 
 const state = proxy(getInitialState())
 
+// TODO: sync midi here
 subscribe(state, () => {
   localStorage.setItem('lastState', JSON.stringify(state))
 })
@@ -151,26 +152,26 @@ const toggleSeqStep = (voice: number, step: number) => {
 
 const setParamValue = (
   id: Param,
-  pid: PatchId,
+  sid: SceneId,
   cid: ChannelId,
   op: OperatorId,
   value: number,
 ) => {
   if (isSettingParam(id)) {
     state.settings[id] = value
-  } else if (isPatchParam(id)) {
-    state.patches[pid][id] = value
+  } else if (isSceneParam(id)) {
+    state.scenes[sid][id] = value
   } else if (isChannelParam(id)) {
-    state.patches[pid].channels[cid][id] = value
+    state.scenes[sid].channels[cid][id] = value
   } else if (isOperatorParam(id)) {
-    state.patches[pid].channels[cid].operators[op][id] = value
+    state.scenes[sid].channels[cid].operators[op][id] = value
   }
 }
 
 const applyParam = (id: Param, op: OperatorId, value: number) => {
   state.selection.forEach((s) => {
-    setParamValue(id, s.pid, s.cid, op, value)
-    sendMidiParam(id, s.pid, s.cid, op, value)
+    setParamValue(id, s.sid, s.cid, op, value)
+    sendMidiParam(id, s.sid, s.cid, op, value)
   })
 }
 
@@ -181,13 +182,13 @@ const applyRouting = (cid: ChannelId, l: boolean, r: boolean) => {
 
 const sendMidiParam = (
   id: Param,
-  pid: PatchId,
+  sid: SceneId,
   cid: ChannelId,
   op: OperatorId,
   val: number,
 ) => {
   const { bits } = getParamMeta(id)
-  const { ch, cc } = getParamMidiCc(id, pid, cid, op)
+  const { ch, cc } = getParamMidiCc(id, sid, cid, op)
   // sync midi cc
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
@@ -231,12 +232,12 @@ const bindAll = (modulator?: number) => {
 // for convenience, as iterators are numbers
 const relaxedSendParamMidiCc = (
   id: Param,
-  pid: number,
+  sid: number,
   cid: number,
   op: number,
   val: number,
 ) => {
-  sendMidiParam(id, pid as PatchId, cid as ChannelId, op as OperatorId, val)
+  sendMidiParam(id, sid as SceneId, cid as ChannelId, op as OperatorId, val)
 }
 
 const syncMidi = () => {
@@ -263,20 +264,20 @@ const syncMidi = () => {
     relaxedSendParamMidiCc('lr', 0, cid, 0, state.routing[cid])
   }
 
-  // patches
-  for (let pid = 0; pid < 4; pid++) {
-    const patch = state.patches[pid]
-    relaxedSendParamMidiCc('lfo', pid, 0, 0, patch.lfo)
+  // scenes
+  for (let sid = 0; sid < 4; sid++) {
+    const scene = state.scenes[sid]
+    relaxedSendParamMidiCc('lfo', sid, 0, 0, scene.lfo)
     for (let cid = 0; cid < 6; cid++) {
-      const ch = patch.channels[cid]
+      const ch = scene.channels[cid]
 
       Object.values(ChannelParamEnum).forEach((id) => {
-        relaxedSendParamMidiCc(id, pid, cid, 0, ch[id])
+        relaxedSendParamMidiCc(id, sid, cid, 0, ch[id])
       })
 
       for (let o = 0; o < 4; o++) {
         Object.values(OperatorParamEnum).forEach((id) => {
-          relaxedSendParamMidiCc(id, pid, cid, o, ch.operators[o][id])
+          relaxedSendParamMidiCc(id, sid, cid, o, ch.operators[o][id])
         })
       }
     }
@@ -349,21 +350,21 @@ const useParam = (id: Param, op: OperatorId) => {
 
   let ccHint = 'mixed CCs'
   if (snap.selection.length === 1) {
-    const { pid, cid } = snap.selection[0]
-    const { ch, cc } = getParamMidiCc(id, pid, cid, op)
+    const { sid, cid } = snap.selection[0]
+    const { ch, cc } = getParamMidiCc(id, sid, cid, op)
     ccHint = `CC ${ch}:${cc}`
   }
 
   const selectedChannels = snap.selection.map((s) => {
-    return snap.patches[s.pid].channels[s.cid]
+    return snap.scenes[s.sid].channels[s.cid]
   })
 
   if (isSettingParam(id)) {
     const value = snap.settings[id]
     return { ccHint, value, mixed: false }
-  } else if (isPatchParam(id)) {
-    const value = snap.patches[snap.selection[0].pid][id]
-    const mixed = snap.selection.some((s) => snap.patches[s.pid][id] !== value)
+  } else if (isSceneParam(id)) {
+    const value = snap.scenes[snap.selection[0].sid][id]
+    const mixed = snap.selection.some((s) => snap.scenes[s.sid][id] !== value)
     return { ccHint, value, mixed }
   } else if (isChannelParam(id)) {
     const value = selectedChannels[0][id]
@@ -399,25 +400,25 @@ const channelName = (ch: Snapshot<Channel>, lib: Snapshot<Library>) =>
 
 const assignInstrument = (inst: Instrument, origin: number) => {
   state.selection.forEach((s) => {
-    const prev = state.patches[s.pid].channels[s.cid]
+    const prev = state.scenes[s.sid].channels[s.cid]
 
     // sync
     Object.values(ChannelParamEnum).forEach((id) => {
       if (prev[id] !== inst[id]) {
-        relaxedSendParamMidiCc(id, s.pid, s.cid, 0, inst[id])
+        relaxedSendParamMidiCc(id, s.sid, s.cid, 0, inst[id])
       }
     })
 
     for (let o = 0; o < 4; o++) {
       Object.values(OperatorParamEnum).forEach((id) => {
         if (prev.operators[o][id] !== inst.operators[o][id]) {
-          relaxedSendParamMidiCc(id, s.pid, s.cid, o, inst.operators[o][id])
+          relaxedSendParamMidiCc(id, s.sid, s.cid, o, inst.operators[o][id])
         }
       })
     }
 
     //set
-    state.patches[s.pid].channels[s.cid] = {
+    state.scenes[s.sid].channels[s.cid] = {
       ...deepClone(inst),
       origin,
     }
@@ -428,8 +429,8 @@ const cloneFromLibrary = (index: number) => {
   assignInstrument(state.library[index].instrument, index)
 }
 
-const cloneFromSibling = (pid: number, cid: number) => {
-  const ch = state.patches[pid].channels[cid]
+const cloneFromSibling = (sid: number, cid: number) => {
+  const ch = state.scenes[sid].channels[cid]
   assignInstrument(ch, ch.origin)
 }
 

@@ -146,8 +146,8 @@ const dropdown_options = [
 
 const InstrumentEditor = () => {
   const snap = useSnapshot(state)
-  const { pid, cid } = snap.selection[0]
-  const ch = snap.patches[pid].channels[cid]
+  const { sid, cid } = snap.selection[0]
+  const ch = snap.scenes[sid].channels[cid]
   const origin = snap.library[ch.origin]
 
   const dirty = isChannelDirty(ch, snap.library)
@@ -161,7 +161,7 @@ const InstrumentEditor = () => {
   }
 
   const duplicateAction = () => {
-    const ch = state.patches[pid].channels[cid]
+    const ch = state.scenes[sid].channels[cid]
 
     const name = prompt('Instrument name:', snap.library[ch.origin].name)
     if (!name) {
@@ -181,18 +181,18 @@ const InstrumentEditor = () => {
 
     const nextIndex = state.library.length
     addToLibrary(state.library[0].instrument, name)
-    state.patches[pid].channels[cid].origin = nextIndex
+    state.scenes[sid].channels[cid].origin = nextIndex
   }
 
   const saveAction = () => {
-    const copy = deepClone(state.patches[pid].channels[cid])
+    const copy = deepClone(state.scenes[sid].channels[cid])
     state.library[ch.origin].instrument = copy
     state.library[ch.origin].hash = hashInstrument(copy)
   }
 
   const restoreAction = () => {
     const index = ch.origin
-    state.patches[pid].channels[cid] = {
+    state.scenes[sid].channels[cid] = {
       ...deepClone(state.library[index].instrument),
       origin: index,
     }
@@ -272,8 +272,8 @@ const InstrumentsBrowser = () => {
     ev,
   ) => {
     ev.preventDefault()
-    const [pid, cid] = ev.target.value.split(':').map(Number)
-    cloneFromSibling(pid, cid)
+    const [sid, cid] = ev.target.value.split(':').map(Number)
+    cloneFromSibling(sid, cid)
   }
 
   return (
@@ -294,10 +294,10 @@ const InstrumentsBrowser = () => {
           <option value={-1} disabled>
             From Patch
           </option>
-          {snap.patches.map((p, pid) =>
+          {snap.scenes.map((p, sid) =>
             p.channels.map((ch, cid) => (
-              <option key={`${pid}:${cid}`} value={`${pid}:${cid}`}>
-                {'ABCD'[pid]}
+              <option key={`${sid}:${cid}`} value={`${sid}:${cid}`}>
+                {'ABCD'[sid]}
                 {cid + 1} - {channelName(ch, snap.library)}
               </option>
             )),
@@ -376,18 +376,18 @@ const loadInstruments = () => {
 }
 
 const sameChannelRef = (a: ChannelRef, b: ChannelRef) => {
-  return a.pid === b.pid && a.cid === b.cid
+  return a.sid === b.sid && a.cid === b.cid
 }
 
 const Patch = () => {
   const snap = useSnapshot(state)
 
-  const handleCellClick = (pid: PatchId, cid: ChannelId) => {
+  const handleCellClick = (sid: SceneId, cid: ChannelId) => {
     return (ev) => {
       const multi = ev.ctrlKey || ev.metaKey
       const sel = state.selection
 
-      const ref = { pid, cid }
+      const ref = { sid, cid }
 
       if (!multi) {
         state.selection = [ref]
@@ -412,7 +412,7 @@ const Patch = () => {
         <thead>
           <tr>
             <th></th>
-            {snap.patches[0].channels.map((_ch, cid) => (
+            {snap.scenes[0].channels.map((_ch, cid) => (
               <th key={cid}>
                 <span>{cid + 1}</span>
                 <Stereo cid={cid as ChannelId} />
@@ -421,19 +421,19 @@ const Patch = () => {
           </tr>
         </thead>
         <tbody>
-          {snap.patches.map((p, pid) => (
-            <tr key={pid}>
-              <td>{'ABCD'[pid]}</td>
+          {snap.scenes.map((p, sid) => (
+            <tr key={sid}>
+              <td>{'ABCD'[sid]}</td>
               {p.channels.map((ch, cid) => {
                 const active = snap.selection.some(
-                  (s) => s.pid === pid && s.cid === cid,
+                  (s) => s.sid === sid && s.cid === cid,
                 )
 
                 return (
                   <td
                     key={cid}
                     className={active ? 'active' : ''}
-                    onClick={handleCellClick(pid as PatchId, cid as PatchId)}
+                    onClick={handleCellClick(sid as SceneId, cid as SceneId)}
                   >
                     {channelName(ch, snap.library)}
                   </td>

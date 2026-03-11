@@ -8,7 +8,7 @@ the module state in a linear array of bytes matching the module layout.
 The module layout is as follows:
  * settings (1)
  * bindings (3)
- * patches (4)
+ * scenes (4)
   
 Settings layout: (settings_t)
 =============================
@@ -50,7 +50,7 @@ typedef struct {
   op_bitmask_t ops[4];
 } ch_bitmask_t;
 
-Patch layout: (patch_t)
+Scene layout: (scene_t)
 ========================
 typedef union {
   uint8_t REG;
@@ -151,7 +151,7 @@ typedef union {
 typedef struct {
   lfo_t LFO;
   channel_t channels[6]; // 26*6 bytes
-} patch_t;               // 157 bytes
+} scene_t;               // 157 bytes
 
 
 */
@@ -179,18 +179,18 @@ const crc32_push = (crc: number, data: number[]) => {
 }
 
 const calculate_crc32 = (state: State) => {
-  // patches + bindings + settings
+  // scenes + bindings + settings
   const data: number[] = []
 
-  // PATCHES
+  // SCENES
   // =======
-  for (let pid = 0; pid < 4; pid++) {
-    const patch = state.patches[pid]
+  for (let sid = 0; sid < 4; sid++) {
+    const scene = state.scenes[sid]
     // lfo_t
-    data.push(patch.lfo === 0 ? 0 : patch.lfo | (1 << 3))
+    data.push(scene.lfo === 0 ? 0 : scene.lfo | (1 << 3))
 
     for (let cid = 0; cid < 6; cid++) {
-      const ch = patch.channels[cid]
+      const ch = scene.channels[cid]
 
       // ch_fb_alg_t
       data.push(ch.al | (ch.fb << 3))

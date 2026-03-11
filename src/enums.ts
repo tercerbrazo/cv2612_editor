@@ -15,7 +15,7 @@ enum SettingParamEnum {
   MODULATION_MODE_Z = 'mmz',
 }
 
-enum PatchParamEnum {
+enum SceneParamEnum {
   LFO = 'lfo',
 }
 
@@ -85,7 +85,7 @@ enum MidiChannelEnum {
 
 export {
   SettingParamEnum,
-  PatchParamEnum,
+  SceneParamEnum,
   ChannelParamEnum,
   OperatorParamEnum,
   MidiCommands,

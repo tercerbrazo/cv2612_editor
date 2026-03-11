@@ -2,7 +2,7 @@ import {
   ChannelParamEnum,
   MidiChannelEnum,
   OperatorParamEnum,
-  PatchParamEnum,
+  SceneParamEnum,
   PlayModeEnum,
   SettingParamEnum,
 } from '../enums'
@@ -24,7 +24,7 @@ const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
 }
 
 const PARAM_INDEXES = [
-  // patch indexes
+  // scene indexes
   'lfo',
   // routing indexes
   'lr',
@@ -55,8 +55,8 @@ const isSettingParam = (id: Param): id is SettingParam => {
   return keys.includes(id)
 }
 
-const isPatchParam = (id: Param): id is PatchParam => {
-  const keys: string[] = Object.values(PatchParamEnum)
+const isSceneParam = (id: Param): id is SceneParam => {
+  const keys: string[] = Object.values(SceneParamEnum)
   return keys.includes(id)
 }
 
@@ -150,13 +150,12 @@ const settingKey = (id: SettingParam) => {
 
 /*
  * This is how Module parameters are mapped to Midi channel/control_change
- * for a particular id-patch-channel-operator combination.
  * This needs to be mimicked in the module firmware.
  *
  * */
 const getParamMidiCc = (
   id: Param,
-  pid: PatchId,
+  sid: SceneId,
   cid: ChannelId,
   op: OperatorId,
 ): { ch: number; cc: number } => {
@@ -165,9 +164,9 @@ const getParamMidiCc = (
     return { ch: 14, cc: SETTING_PARAM_MIDI_CC[key] }
   }
 
-  const ch = cid + (pid < 2 ? 0 : 6)
-  const patch_offset = pid === 0 || pid === 2 ? 0 : 64
-  const offset = PARAM_CC_OFFSET + patch_offset
+  const ch = cid + (sid < 2 ? 0 : 6)
+  const scene_offset = sid === 0 || sid === 2 ? 0 : 64
+  const offset = PARAM_CC_OFFSET + scene_offset
 
   const index = PARAM_INDEXES.indexOf(id)
 
@@ -218,7 +217,7 @@ const getParamMeta = (id: Param): ParamMeta => {
 
 export {
   isSettingParam,
-  isPatchParam,
+  isSceneParam,
   isChannelParam,
   isOperatorParam,
   getParamMidiCc,

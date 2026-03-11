@@ -3,32 +3,32 @@ import type {
   MidiChannelEnum,
   MidiCommands,
   OperatorParamEnum,
-  PatchParamEnum,
+  SceneParamEnum,
   PlayModeEnum,
   SettingParamEnum,
 } from './enums'
 import Operator from './operator'
 
 declare global {
-  type PatchId = 0 | 1 | 2 | 3
+  type SceneId = 0 | 1 | 2 | 3
   type ChannelId = 0 | 1 | 2 | 3 | 4 | 5
   type OperatorId = 0 | 1 | 2 | 3
   type BindingId = 0 | 1 | 2 // x | y | z
 
   type ChannelRef = {
-    pid: PatchId
+    sid: SceneId
     cid: ChannelId
   }
 
   type SettingParam = `${SettingParamEnum}`
   type RoutingParam = 'lr'
-  type PatchParam = `${PatchParamEnum}`
+  type SceneParam = `${SceneParamEnum}`
   type ChannelParam = `${ChannelParamEnum}`
   type OperatorParam = `${OperatorParamEnum}`
   type Param =
     | SettingParam
     | RoutingParam
-    | PatchParam
+    | SceneParam
     | ChannelParam
     | OperatorParam
 
@@ -61,7 +61,7 @@ declare global {
 
   type Library = LibraryEntry[]
 
-  type Patch = {
+  type Scene = {
     lfo: number
     channels: [Channel, Channel, Channel, Channel, Channel, Channel]
   }
@@ -80,11 +80,11 @@ declare global {
 
     // actual module state
     settings: Settings
-    patches: [Patch, Patch, Patch, Patch]
+    scenes: [Scene, Scene, Scene, Scene]
     bindings: [Bindings, Bindings, Bindings]
     routing: [Routing, Routing, Routing, Routing, Routing, Routing]
 
-    // current patch/channels selection
+    // current scenes/channels selection
     selection: ChannelRef[]
 
     // mapping parameters?
