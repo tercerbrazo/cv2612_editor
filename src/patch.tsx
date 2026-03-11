@@ -19,7 +19,7 @@ import { readVGI } from './utils/readVgi'
 import { readFui } from './utils/readFui'
 import { BlobWriter, Uint8ArrayReader } from '@zip.js/zip.js'
 
-const loadJSON = () => {
+const restoreBackup = () => {
   const fileInput = document.createElement('input')
   fileInput.type = 'file'
   fileInput.accept = '.json'
@@ -48,7 +48,7 @@ const loadJSON = () => {
   fileInput.click()
 }
 
-const downloadJSON = () => {
+const downloadBackup = () => {
   // Convert the object to a JSON string
   var jsonData = JSON.stringify(state)
 
@@ -61,7 +61,8 @@ const downloadJSON = () => {
   // Create a download link
   var a = document.createElement('a')
   a.href = url
-  a.download = 'state.json'
+  const date = new Date().toISOString().slice(0, 10)
+  a.download = `backup-${date}.json`
 
   // Trigger the download
   a.click()
@@ -138,9 +139,9 @@ const getDmpBytes = (inst: Instrument) => {
 }
 
 const dropdown_options = [
-  { label: 'Load JSON', value: 'load_json' },
-  { label: 'Download JSON', value: 'download_json' },
-  { label: 'Load Instruments', value: 'load_instruments' },
+  { label: 'Download Backup', value: 'download_backup' },
+  { label: 'Restore Backup', value: 'restore_backup' },
+  { label: 'Import Instruments', value: 'import_instruments' },
   { label: 'Export Instruments', value: 'export_instruments' },
 ] as const
 
@@ -309,14 +310,14 @@ const InstrumentsBrowser = () => {
           options={dropdown_options}
           onSelect={(opt) => {
             switch (opt) {
-              case 'load_json':
-                loadJSON()
+              case 'restore_backup':
+                restoreBackup()
                 break
-              case 'download_json':
-                downloadJSON()
+              case 'download_backup':
+                downloadBackup()
                 break
-              case 'load_instruments':
-                loadInstruments()
+              case 'import_instruments':
+                importInstruments()
                 break
               case 'export_instruments':
                 exportInstruments()
@@ -330,7 +331,7 @@ const InstrumentsBrowser = () => {
   )
 }
 
-const loadInstruments = () => {
+const importInstruments = () => {
   const fileInput = document.createElement('input')
   fileInput.type = 'file'
   fileInput.accept = '.dmp,.vgi,.fui'

@@ -69,7 +69,7 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 12
+const CURRENT_VERSION = 13
 const initialState: State = {
   version: CURRENT_VERSION,
   bindings: [[], [], []],
