@@ -1,5 +1,10 @@
 import React, { ChangeEvent, MouseEventHandler } from 'react'
-import { applyParam, toggleParamBinding, useBinding, useParam } from './context'
+import {
+  updateParam,
+  toggleParamBinding,
+  useBinding,
+  useParam,
+} from './context'
 import { getParamMeta } from './utils/paramsHelpers'
 
 type SliderProps = {
@@ -18,7 +23,7 @@ const Slider = ({ id, op = 0 }: SliderProps) => {
   const onChange = (ev: ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-    applyParam(id, op, val)
+    updateParam(id, op, val)
   }
 
   const onClick: MouseEventHandler<HTMLDivElement> = (ev) => {

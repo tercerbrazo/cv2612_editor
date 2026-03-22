@@ -3,6 +3,8 @@ import Algorithm from './algorithm'
 import Operator from './operator'
 import Slider from './slider'
 
+const operatorsOrder = [0, 2, 1, 3] as const
+
 const Channel = () => {
   return (
     <>
@@ -23,18 +25,11 @@ const Channel = () => {
         </div>
       </div>
       <div className="four-cols">
-        <div className="col">
-          <Operator op={0} />
-        </div>
-        <div className="col">
-          <Operator op={1} />
-        </div>
-        <div className="col">
-          <Operator op={2} />
-        </div>
-        <div className="col">
-          <Operator op={3} />
-        </div>
+        {operatorsOrder.map((o) => (
+          <div key={o} className="col">
+            <Operator op={o} />
+          </div>
+        ))}
       </div>
     </>
   )

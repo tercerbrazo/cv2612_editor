@@ -1,5 +1,5 @@
 import React from 'react'
-import { useParam, applyParam } from './context'
+import { useParam, updateParam } from './context'
 import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {
@@ -14,7 +14,7 @@ const Dropdown = ({ id }: DropdownProps) => {
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-    applyParam(id, 0, val)
+    updateParam(id, 0, val)
   }
 
   return (

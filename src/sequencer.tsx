@@ -1,12 +1,12 @@
 import React from 'react'
 import { useSnapshot } from 'valtio'
-import { clearSequence, state, toggleSeqStep, applyParam } from './context'
+import { clearSequence, state, updateParam } from './context'
 
 const Sequencer = () => {
   const snap = useSnapshot(state)
 
   const handleHeaderClick = (val: number) => {
-    applyParam('stp', 0, val)
+    updateParam('stp', 0, val)
   }
 
   return (
@@ -45,7 +45,9 @@ const Sequencer = () => {
                         stepIndex <= snap.settings.stp ? 'active' : 'inactive'
                       }`}
                       key={stepIndex}
-                      onClick={() => toggleSeqStep(voiceIndex, stepIndex)}
+                      onClick={() => {
+                        state.settings.sequence[voiceIndex][stepIndex] ^= 0b01
+                      }}
                     />
                   )
                 })}

@@ -185,7 +185,7 @@ const calculate_crc32 = (state: State) => {
   // SCENES
   // =======
   for (let sid = 0; sid < 4; sid++) {
-    const scene = state.scenes[sid]
+    const scene = state.patches[state.pid].scenes[sid]
     // lfo_t
     data.push(scene.lfo === 0 ? 0 : scene.lfo | (1 << 3))
 
@@ -195,7 +195,9 @@ const calculate_crc32 = (state: State) => {
       // ch_fb_alg_t
       data.push(ch.al | (ch.fb << 3))
       // ch_lr_ams_fms_t
-      data.push(ch.fms | (ch.ams << 3) | (state.routing[cid] << 6))
+      data.push(
+        ch.fms | (ch.ams << 3) | (state.patches[state.pid].routing[cid] << 6),
+      )
 
       for (let o = 0; o < 4; o++) {
         const op = ch.operators[o]

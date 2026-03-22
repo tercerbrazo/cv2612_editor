@@ -100,7 +100,6 @@ const Midi = () => {
         MIDI Out
         <i className={midiOutActivity ? 'active' : ''} />
       </span>
-      {/* eslint-disable-next-line jsx-a11y/no-onchange */}
       <select
         className="out"
         value={midiOutId}
@@ -126,8 +125,6 @@ const Midi = () => {
           </option>
         ))}
       </select>
-      <span> </span>
-      <span> </span>
       {([0, 1, 2] as const).map((i) => (
         <a
           href="/"
@@ -191,8 +188,6 @@ const Midi = () => {
           }
         }}
       />
-      <span> </span>
-      <span> </span>
       <a
         href="/"
         title="Sync Midi"

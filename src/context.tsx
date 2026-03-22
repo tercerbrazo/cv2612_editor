@@ -18,18 +18,36 @@ import {
 } from './utils/paramsHelpers'
 
 import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
+import { subscribe as vanillaSubscribe } from 'valtio/vanilla'
 import { deepClone } from 'valtio/utils'
 import initialLibraryJson from './instruments.json'
+const INIT_INSTRUMENT_ID = 'sys_init'
 
-// TODO: redo library format
-const initialLibrary = (
-  initialLibraryJson as unknown as (Instrument & { name: string })[]
-).map((i) => ({
-  instrument: i,
-  name: i.name,
-  system: true,
-  hash: hashInstrument(i),
-})) satisfies Library
+const SC_IDXS = [0, 1, 2, 3] as const
+const CH_IDXS = [0, 1, 2, 3, 4, 5] as const
+const OP_IDXS = [0, 1, 2, 3] as const
+const SETTING_PARAMS = Object.values(SettingParamEnum)
+const CHANNEL_PARAMS = Object.values(ChannelParamEnum)
+const OPERATOR_PARAMS = Object.values(OperatorParamEnum)
+
+//todo: redo library json with new data shape
+const initialLibrary: Library = Object.fromEntries(
+  (initialLibraryJson as unknown as (Instrument & { name: string })[]).map(
+    ({ name, ...instrument }) => {
+      const id = name === 'Init' ? INIT_INSTRUMENT_ID : crypto.randomUUID()
+
+      const entry: LibraryEntry = {
+        id,
+        instrument,
+        name,
+        system: true,
+        hash: hashInstrument(instrument),
+      }
+
+      return [id, entry]
+    },
+  ),
+)
 
 // TODO: simplify binding commands in the firm and update this logic
 const BINDING_CMDS = [
@@ -46,10 +64,10 @@ const initialSequence = Array.from({ length: 6 }).map((_) =>
   Array.from({ length: 16 }).map((_) => 0),
 )
 
-const initialInstrument = initialLibrary[0].instrument
+const initialInstrument = initialLibrary[INIT_INSTRUMENT_ID].instrument
 const initialScene = {
   lfo: 0,
-  channels: Array(6).fill({ ...initialInstrument, origin: 0 }),
+  channels: Array(6).fill({ ...initialInstrument, origin: INIT_INSTRUMENT_ID }),
 } as Scene
 
 const initialSettings = {
@@ -69,15 +87,32 @@ const initialSettings = {
   sequence: initialSequence,
 }
 
-const CURRENT_VERSION = 13
+const createPatch = (name: string) => {
+  const id = crypto.randomUUID()
+  return {
+    id,
+    name,
+    routing: [3, 3, 3, 3, 3, 3],
+    scenes: [initialScene, initialScene, initialScene, initialScene],
+  } as Patch
+}
+
+const initialPatch = createPatch('Init')
+
+const initialPatches = {
+  [initialPatch.id]: initialPatch,
+}
+
+const CURRENT_VERSION = 14
 const initialState: State = {
   version: CURRENT_VERSION,
   bindings: [[], [], []],
-  selection: [{ sid: 0, cid: 0 }],
-  routing: [3, 3, 3, 3, 3, 3],
   settings: initialSettings,
   library: initialLibrary,
-  scenes: [initialScene, initialScene, initialScene, initialScene],
+  patches: initialPatches,
+  pid: initialPatch.id,
+  selection: [{ sid: 0, cid: 0 }],
+  showBrowser: false,
 }
 
 const getInitialState = () => {
@@ -98,9 +133,138 @@ const getInitialState = () => {
 
 const state = proxy(getInitialState())
 
-// TODO: sync midi here
 subscribe(state, () => {
   localStorage.setItem('lastState', JSON.stringify(state))
+})
+
+const syncInstrument = (
+  sid: SceneId,
+  cid: ChannelId,
+  inst: Instrument,
+  prevInst: Instrument,
+) => {
+  for (const id of CHANNEL_PARAMS) {
+    if (inst[id] === prevInst[id]) continue
+    sendMidiParam(id, sid, cid, 0, inst[id])
+  }
+  for (const oid of OP_IDXS) {
+    const operator = inst.operators[oid]
+    const prevOperator = prevInst.operators[oid]
+    for (const id of OPERATOR_PARAMS) {
+      if (operator[id] === prevOperator[id]) continue
+      sendMidiParam(id, sid, cid, oid, operator[id])
+    }
+  }
+}
+
+vanillaSubscribe(state, (ops) => {
+  ops.forEach((op) => {
+    const [type, oppath, value, prev] = op
+    const path = oppath as string[]
+
+    if (type !== 'set') {
+      return
+    }
+    console.log(path, value, prev)
+
+    if (path[0] === 'settings') {
+      if (path[1] === 'sequence') {
+        // the clear sequence is already handled
+        if (path.length !== 4) return
+
+        const voice = Number(path[2])
+        const step = Number(path[3])
+
+        const val = voice * 16 + step
+
+        sendMidiCmd(
+          prev === 0
+            ? MidiCommands.SET_SEQ_STEP_ON
+            : MidiCommands.SET_SEQ_STEP_OFF,
+          val,
+        )
+      } else {
+        const param = path[1] as SettingParam
+        sendMidiParam(param, 0, 0, 0, value as number)
+      }
+    }
+
+    if (path[0] === 'patches') {
+      switch (path.length) {
+        case 4:
+          {
+            const cid = Number(path[3]) as SceneId
+            const newRouting = value as Routing
+            if (newRouting !== prev) {
+              sendMidiParam('lr', 0, cid, 0, newRouting)
+            }
+          }
+          break
+        case 5:
+          {
+            const cid = Number(path[3]) as SceneId
+            if (value !== prev) {
+              sendMidiParam('lfo', 0, cid, 0, value as number)
+            }
+          }
+          break
+        case 6:
+          {
+            const sid = Number(path[3]) as SceneId
+            const cid = Number(path[5]) as ChannelId
+            const channel = value as Instrument
+            const prevChannel = prev as Instrument
+            syncInstrument(sid, cid, channel, prevChannel)
+          }
+          break
+        case 7:
+          {
+            const sid = Number(path[3]) as SceneId
+            const cid = Number(path[5]) as ChannelId
+            const id = path[6] as ChannelParam
+            if (value !== prev) {
+              sendMidiParam(id, sid, cid, 0, value as number)
+            }
+          }
+          break
+        case 9:
+          {
+            const sid = Number(path[3]) as SceneId
+            const cid = Number(path[5]) as ChannelId
+            const oid = Number(path[7]) as OperatorId
+            const id = path[8] as ChannelParam
+            console.log(sid, cid, oid, id, value, prev)
+            if (value !== prev) {
+              sendMidiParam(id, sid, cid, oid, value as number)
+            }
+          }
+          break
+        default:
+          break
+      }
+    }
+
+    if (path[0] === 'pid') {
+      const patch = state.patches[value as string]
+      const prevPatch = state.patches[prev as string]
+      for (const cid of CH_IDXS) {
+        if (patch.routing[cid] === prevPatch.routing[cid]) continue
+        sendMidiParam('lr', 0, cid, 0, patch.routing[cid])
+      }
+      for (const sid of SC_IDXS) {
+        const scene = patch.scenes[sid]
+        const prevScene = prevPatch.scenes[sid]
+        if (scene.lfo !== prevScene.lfo) {
+          sendMidiParam('lfo', sid, 0, 0, scene.lfo)
+        }
+        for (const cid of CH_IDXS) {
+          const channel = scene.channels[cid]
+          const prevChannel = prevScene.channels[cid]
+          syncInstrument(sid, cid, channel, prevChannel)
+        }
+      }
+    }
+  })
 })
 
 const toggleParamBinding = (id: Param, op: OperatorId) => {
@@ -138,18 +302,6 @@ const toggleParamBinding = (id: Param, op: OperatorId) => {
   })
 }
 
-const toggleSeqStep = (voice: number, step: number) => {
-  const prev = state.settings.sequence[voice][step]
-  const val = voice * 16 + step
-
-  state.settings.sequence[voice][step] = prev === 0 ? 1 : 0
-
-  sendMidiCmd(
-    prev === 0 ? MidiCommands.SET_SEQ_STEP_ON : MidiCommands.SET_SEQ_STEP_OFF,
-    val,
-  )
-}
-
 const setParamValue = (
   id: Param,
   sid: SceneId,
@@ -157,27 +309,22 @@ const setParamValue = (
   op: OperatorId,
   value: number,
 ) => {
+  const scene = state.patches[state.pid].scenes[sid]
   if (isSettingParam(id)) {
     state.settings[id] = value
   } else if (isSceneParam(id)) {
-    state.scenes[sid][id] = value
+    scene[id] = value
   } else if (isChannelParam(id)) {
-    state.scenes[sid].channels[cid][id] = value
+    scene.channels[cid][id] = value
   } else if (isOperatorParam(id)) {
-    state.scenes[sid].channels[cid].operators[op][id] = value
+    scene.channels[cid].operators[op][id] = value
   }
 }
 
-const applyParam = (id: Param, op: OperatorId, value: number) => {
+const updateParam = (id: Param, op: OperatorId, value: number) => {
   state.selection.forEach((s) => {
     setParamValue(id, s.sid, s.cid, op, value)
-    sendMidiParam(id, s.sid, s.cid, op, value)
   })
-}
-
-const applyRouting = (cid: ChannelId, l: boolean, r: boolean) => {
-  state.routing[cid] = (((r ? 1 : 0) << 1) | (l ? 1 : 0)) as Routing
-  sendMidiParam('lr', 0, cid, 0, state.routing[cid])
 }
 
 const sendMidiParam = (
@@ -192,6 +339,7 @@ const sendMidiParam = (
   // sync midi cc
   const ccVal = val << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
+  console.log('sending ', ch, cc, ccVal)
 }
 
 const bindAll = (modulator?: number) => {
@@ -229,25 +377,14 @@ const bindAll = (modulator?: number) => {
   })
 }
 
-// for convenience, as iterators are numbers
-const relaxedSendParamMidiCc = (
-  id: Param,
-  sid: number,
-  cid: number,
-  op: number,
-  val: number,
-) => {
-  sendMidiParam(id, sid as SceneId, cid as ChannelId, op as OperatorId, val)
-}
-
 const syncMidi = () => {
   // clear all bindings first
   sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
 
   // settings
-  Object.values(SettingParamEnum).forEach((id) => {
-    relaxedSendParamMidiCc(id, 0, 0, 0, state.settings[id])
-  })
+  for (const id of SETTING_PARAMS) {
+    sendMidiParam(id, 0, 0, 0, state.settings[id])
+  }
 
   // send sequence
   sendMidiCmd(MidiCommands.CLEAR_SEQ)
@@ -260,25 +397,25 @@ const syncMidi = () => {
   })
 
   // routing
-  for (let cid = 0; cid < 6; cid++) {
-    relaxedSendParamMidiCc('lr', 0, cid, 0, state.routing[cid])
+  for (const cid of CH_IDXS) {
+    sendMidiParam('lr', 0, cid, 0, state.patches[state.pid].routing[cid])
   }
 
   // scenes
-  for (let sid = 0; sid < 4; sid++) {
-    const scene = state.scenes[sid]
-    relaxedSendParamMidiCc('lfo', sid, 0, 0, scene.lfo)
-    for (let cid = 0; cid < 6; cid++) {
+  for (const sid of SC_IDXS) {
+    const scene = state.patches[state.pid].scenes[sid]
+    sendMidiParam('lfo', sid, 0, 0, scene.lfo)
+    for (const cid of CH_IDXS) {
       const ch = scene.channels[cid]
 
-      Object.values(ChannelParamEnum).forEach((id) => {
-        relaxedSendParamMidiCc(id, sid, cid, 0, ch[id])
-      })
+      for (const id of CHANNEL_PARAMS) {
+        sendMidiParam(id, sid, cid, 0, ch[id])
+      }
 
-      for (let o = 0; o < 4; o++) {
-        Object.values(OperatorParamEnum).forEach((id) => {
-          relaxedSendParamMidiCc(id, sid, cid, o, ch.operators[o][id])
-        })
+      for (const o of OP_IDXS) {
+        for (const id of OPERATOR_PARAMS) {
+          sendMidiParam(id, sid, cid, o, ch.operators[o][id])
+        }
       }
     }
   }
@@ -295,12 +432,12 @@ const syncMidi = () => {
 
 const resetOperator = (op: OperatorId) => {
   Object.entries(initialInstrument.operators[0]).forEach(([k, v]) => {
-    applyParam(k as OperatorParam, op, v)
+    updateParam(k as OperatorParam, op, v)
   })
 }
 
 const resetChannel = () => {
-  assignInstrument(initialInstrument, 0)
+  assignFromLibrary(INIT_INSTRUMENT_ID)
 }
 
 // TODO: send crc32 checks periodically or after certain actions
@@ -356,15 +493,17 @@ const useParam = (id: Param, op: OperatorId) => {
   }
 
   const selectedChannels = snap.selection.map((s) => {
-    return snap.scenes[s.sid].channels[s.cid]
+    return snap.patches[snap.pid].scenes[s.sid].channels[s.cid]
   })
 
   if (isSettingParam(id)) {
     const value = snap.settings[id]
     return { ccHint, value, mixed: false }
   } else if (isSceneParam(id)) {
-    const value = snap.scenes[snap.selection[0].sid][id]
-    const mixed = snap.selection.some((s) => snap.scenes[s.sid][id] !== value)
+    const value = snap.patches[state.pid].scenes[snap.selection[0].sid][id]
+    const mixed = snap.selection.some(
+      (s) => snap.patches[state.pid].scenes[s.sid][id] !== value,
+    )
     return { ccHint, value, mixed }
   } else if (isChannelParam(id)) {
     const value = selectedChannels[0][id]
@@ -380,15 +519,19 @@ const useParam = (id: Param, op: OperatorId) => {
   }
 }
 
-function addToLibrary(inst: Instrument, name = '') {
-  const instrument = deepClone(inst)
+function addToLibrary(name: string, inst?: Instrument) {
+  const instrument = deepClone(inst ? inst : initialInstrument)
+  const id = crypto.randomUUID()
 
-  state.library.push({
+  state.library[id] = {
+    id,
     instrument,
     hash: hashInstrument(instrument),
     system: false,
     name,
-  })
+  }
+
+  return id
 }
 
 function isChannelDirty(ch: Snapshot<Channel>, lib: Snapshot<Library>) {
@@ -398,55 +541,34 @@ function isChannelDirty(ch: Snapshot<Channel>, lib: Snapshot<Library>) {
 const channelName = (ch: Snapshot<Channel>, lib: Snapshot<Library>) =>
   `${lib[ch.origin].name}${isChannelDirty(ch, lib) ? ' (*)' : ''}`
 
-const assignInstrument = (inst: Instrument, origin: number) => {
+const assignFromLibrary = (id: string) => {
+  const inst = state.library[id].instrument
   state.selection.forEach((s) => {
-    const prev = state.scenes[s.sid].channels[s.cid]
-
-    // sync
-    Object.values(ChannelParamEnum).forEach((id) => {
-      if (prev[id] !== inst[id]) {
-        relaxedSendParamMidiCc(id, s.sid, s.cid, 0, inst[id])
-      }
-    })
-
-    for (let o = 0; o < 4; o++) {
-      Object.values(OperatorParamEnum).forEach((id) => {
-        if (prev.operators[o][id] !== inst.operators[o][id]) {
-          relaxedSendParamMidiCc(id, s.sid, s.cid, o, inst.operators[o][id])
-        }
-      })
-    }
-
-    //set
-    state.scenes[s.sid].channels[s.cid] = {
+    state.patches[state.pid].scenes[s.sid].channels[s.cid] = {
       ...deepClone(inst),
-      origin,
+      origin: id,
     }
   })
 }
 
-const cloneFromLibrary = (index: number) => {
-  assignInstrument(state.library[index].instrument, index)
-}
-
-const cloneFromSibling = (sid: number, cid: number) => {
-  const ch = state.scenes[sid].channels[cid]
-  assignInstrument(ch, ch.origin)
+const assignFromChannel = (sid: number, cid: number) => {
+  const ch = state.patches[state.pid].scenes[sid].channels[cid]
+  state.selection.forEach((s) => {
+    state.patches[state.pid].scenes[s.sid].channels[s.cid] = deepClone(ch)
+  })
 }
 
 export {
   state,
   channelName,
   useParam,
-  applyParam,
-  applyRouting,
+  updateParam,
   useBinding,
   clearSequence,
-  toggleSeqStep,
   toggleParamBinding,
   bindAll,
-  cloneFromLibrary,
-  cloneFromSibling,
+  assignFromLibrary,
+  assignFromChannel,
   addToLibrary,
   isChannelDirty,
   syncMidi,
@@ -454,4 +576,5 @@ export {
   saveState,
   resetChannel,
   resetOperator,
+  createPatch,
 }

@@ -38,10 +38,6 @@ declare global {
     bits: number
   }
 
-  type ParamData = ParamMeta & {
-    value: number
-  }
-
   type Operator = Record<OperatorParam, number>
 
   type Instrument = Record<ChannelParam, number> & {
@@ -49,17 +45,18 @@ declare global {
   }
 
   type Channel = Instrument & {
-    origin: number
+    origin: string
   }
 
   type LibraryEntry = {
+    id: string
     name: string
     hash: number
     system: boolean
     instrument: Instrument
   }
 
-  type Library = LibraryEntry[]
+  type Library = Record<string, LibraryEntry>
 
   type Scene = {
     lfo: number
@@ -74,18 +71,28 @@ declare global {
 
   type Routing = 0b00 | 0b01 | 0b10 | 0b11
 
+  type Patch = {
+    id: string
+    name: string
+    scenes: [Scene, Scene, Scene, Scene]
+    routing: [Routing, Routing, Routing, Routing, Routing, Routing]
+  }
+
   type State = {
     // a way to migrate old persisted states
     version: number
 
     // actual module state
     settings: Settings
-    scenes: [Scene, Scene, Scene, Scene]
     bindings: [Bindings, Bindings, Bindings]
-    routing: [Routing, Routing, Routing, Routing, Routing, Routing]
+    patches: Record<string, Patch>
+
+    // currently selected patch id
+    pid: string
 
     // current scenes/channels selection
     selection: ChannelRef[]
+    showBrowser: boolean
 
     // mapping parameters?
     bindingId?: BindingId
