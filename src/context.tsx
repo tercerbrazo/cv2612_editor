@@ -103,7 +103,7 @@ const initialPatches = {
   [initialPatch.id]: initialPatch,
 }
 
-const CURRENT_VERSION = 14
+const CURRENT_VERSION = 15
 const initialState: State = {
   version: CURRENT_VERSION,
   bindings: [[], [], []],
@@ -118,7 +118,7 @@ const initialState: State = {
 }
 
 const getInitialState = () => {
-  const lastStateStr = null // localStorage.getItem('lastState')
+  const lastStateStr = localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {
