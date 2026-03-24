@@ -1,3 +1,5 @@
+@use "sass:color"
+
 $black: #222
 $white: #ddd
 $primary: #3ed107
@@ -322,7 +324,7 @@ p
     height: 26px
     margin-bottom: 4px
     &.learn
-      background: lighten( $black, 10%)
+      background: color.adjust($black, $lightness: 10%)
       &:hover
         cursor: pointer
         border: 2px dashed $primary
@@ -412,8 +414,8 @@ p
         &:first-child
           width: 32px
           text-align: center
-    th
-      border-top: none
+    // th
+    //   border-top: none
 
   table
     border-collapse: collapse
@@ -445,7 +447,7 @@ p
     border: 4px solid $black
     box-sizing: border-box
     text-align: center
-    background: lighten($black, 25%)
+    background: color.adjust($black, $lightness: 25%)
     color: $black
     display: block
     float: left
@@ -492,7 +494,7 @@ p
   from
     background-color: $primary
   50%
-    background-color: lighten($primary, 50%)
-    box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset lighten($primary, 20%) 0 -1px 9px, lighten($primary, 40%) 0 2px 14px
+    background-color: color.adjust($primary, $lightness: 50%)
+    box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset color.adjust($primary, $lightness: 20%) 0 -1px 9px, color.adjust($primary, $lightness: 40%) 0 2px 14px
   to
     background-color: $primary

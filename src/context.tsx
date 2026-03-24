@@ -30,7 +30,7 @@ const SETTING_PARAMS = Object.values(SettingParamEnum)
 const CHANNEL_PARAMS = Object.values(ChannelParamEnum)
 const OPERATOR_PARAMS = Object.values(OperatorParamEnum)
 
-//todo: redo library json with new data shape
+//TODO: redo library json with new data shape
 const initialLibrary: Library = Object.fromEntries(
   (initialLibraryJson as unknown as (Instrument & { name: string })[]).map(
     ({ name, ...instrument }) => {
@@ -112,11 +112,13 @@ const initialState: State = {
   patches: initialPatches,
   pid: initialPatch.id,
   selection: [{ sid: 0, cid: 0 }],
-  showBrowser: false,
+  browserOn: false,
+  browserCategory: '',
+  browserType: 'library',
 }
 
 const getInitialState = () => {
-  const lastStateStr = localStorage.getItem('lastState')
+  const lastStateStr = null // localStorage.getItem('lastState')
   if (lastStateStr !== null) {
     const lastState = JSON.parse(lastStateStr)
     if (lastState.version === CURRENT_VERSION) {

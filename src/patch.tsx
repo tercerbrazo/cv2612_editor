@@ -13,6 +13,7 @@ import {
 } from './context'
 import { Stereo } from './stereo'
 import { readDmp } from './utils/readDmp'
+import { previewInstrument } from './utils/vgm'
 import { deepClone } from 'valtio/utils'
 import { hashInstrument } from './utils/hashing'
 import { readVGI } from './utils/readVgi'
@@ -142,49 +143,8 @@ const getDmpBytes = (inst: Instrument) => {
   return bytes
 }
 
-const Browser = () => {
+const LibraryBrowser = () => {
   const snap = useSnapshot(state)
-
-  const handlePatchChange: React.ChangeEventHandler<HTMLSelectElement> = (
-    ev,
-  ) => {
-    ev.preventDefault()
-    state.pid = ev.target.value
-  }
-
-  const handleSiblingChange: React.ChangeEventHandler<HTMLSelectElement> = (
-    ev,
-  ) => {
-    ev.preventDefault()
-    const [sid, cid] = ev.target.value.split(':').map(Number)
-    assignFromChannel(sid, cid)
-  }
-
-  const createAction = () => {
-    const name = prompt('Patch name:')
-    if (!name) {
-      return
-    }
-
-    const patch = createPatch(name)
-
-    state.patches[patch.id] = deepClone(patch)
-    state.pid = patch.id
-  }
-
-  const renameAction = () => {
-    const name = prompt('Patch name:', snap.patches[state.pid].name)
-    if (!name) {
-      return
-    }
-    state.patches[state.pid].name = name
-  }
-
-  const closeAction = () => {
-    state.showBrowser = false
-  }
-
-  if (!snap.showBrowser) return null
 
   const cols = 4
   const items = Object.values(snap.library)
@@ -194,25 +154,169 @@ const Browser = () => {
   )
 
   return (
+    <div className="four-cols instruments-list">
+      {columns.map((col, i) => (
+        <div className="col" key={i}>
+          {col.map((inst) => (
+            <nav className="instrument-entry" key={inst.id}>
+              <a
+                href="#"
+                onClick={(ev) => {
+                  ev.preventDefault()
+                  assignFromLibrary(inst.id)
+                  state.browserOn = false
+                }}
+              >
+                {inst.name}
+              </a>
+              <div className="toolbar">
+                {!inst.system && (
+                  <button
+                    title="Rename"
+                    onClick={() => {
+                      const name = prompt(
+                        'Instrument name:',
+                        snap.library[inst.id].name,
+                      )
+                      if (!name) {
+                        return
+                      }
+                      state.library[inst.id].name = name
+                    }}
+                  >
+                    ✎
+                  </button>
+                )}
+                <button
+                  title="Preview"
+                  onClick={() => {
+                    previewInstrument(inst.instrument, String(inst.hash))
+                  }}
+                >
+                  ▶
+                </button>
+              </div>
+            </nav>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const PatchBrowser = () => {
+  const snap = useSnapshot(state)
+
+  return (
+    <table className="instruments-matrix">
+      <thead>
+        <tr>
+          <th></th>
+          {snap.patches[snap.pid].scenes[0].channels.map((_ch, cid) => (
+            <th key={cid}>
+              <span>{cid + 1}</span>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {snap.patches[snap.pid].scenes.map((p, sid) => (
+          <tr key={sid}>
+            <td>{'ABCD'[sid]}</td>
+            {p.channels.map((ch, cid) => {
+              return (
+                <td
+                  key={cid}
+                  className={`cell`}
+                  onClick={() => {
+                    assignFromChannel(sid, cid)
+                    state.browserOn = false
+                  }}
+                >
+                  {channelName(ch, snap.library)}
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+const categories = [
+  'ALL',
+  'ARP',
+  'BASS',
+  'BELL',
+  'BRASS',
+  'DRONE',
+  'DRUM',
+  'KEYS',
+  'LEAD',
+  'METAL',
+  'NOISE',
+  'ORG',
+  'PAD',
+  'PLUCK',
+  'SFX',
+  'STR',
+  'USER',
+]
+
+const Browser = () => {
+  const snap = useSnapshot(state)
+
+  const closeAction = () => {
+    state.browserOn = false
+  }
+
+  if (!snap.browserOn) return null
+
+  return (
     <div className="modal">
       <div className="modal-content">
         <div id="browser">
           <nav>
-            <span>Change patch:</span>
-            <select onChange={handlePatchChange} value={snap.pid}>
-              {Object.values(snap.patches).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            {snap.browserType === 'library' ? (
+              <>
+                <span>Category:</span>
+                <select
+                  onChange={(ev) => {
+                    state.browserCategory = ev.target.value
+                  }}
+                  value={snap.browserCategory}
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  title="Patch Browser"
+                  onClick={() => {
+                    state.browserType = 'patch'
+                  }}
+                >
+                  Copy from Patch
+                </button>
+              </>
+            ) : (
+              <>
+                <span>Copy from Patch</span>
+                <button
+                  title="Library Browser"
+                  onClick={() => {
+                    state.browserType = 'library'
+                  }}
+                >
+                  Pick from Library
+                </button>
+              </>
+            )}
+
             <div className="toolbar">
-              <button title="Rename Patch" onClick={renameAction}>
-                ✎
-              </button>
-              <button title="New Patch" onClick={createAction}>
-                ✚
-              </button>
               <button title="Save Backup" onClick={downloadBackup}>
                 💾
               </button>
@@ -231,62 +335,11 @@ const Browser = () => {
             </div>
           </nav>
           <br />
-          <nav>
-            <span>Assign instruments:</span>
-            <select onChange={handleSiblingChange} value={-1}>
-              <option value={-1} disabled>
-                From Patch
-              </option>
-              {snap.patches[snap.pid].scenes.map((p, sid) =>
-                p.channels.map((ch, cid) => (
-                  <option key={`${sid}:${cid}`} value={`${sid}:${cid}`}>
-                    {'ABCD'[sid]}
-                    {cid + 1} - {channelName(ch, snap.library)}
-                  </option>
-                )),
-              )}
-            </select>
-          </nav>
-          <br />
-          <div className="four-cols instruments-list">
-            {columns.map((col, i) => (
-              <div className="col" key={i}>
-                {col.map((inst) => (
-                  <nav className="instrument-entry" key={inst.id}>
-                    <a
-                      href="#"
-                      onClick={(ev) => {
-                        ev.preventDefault()
-                        assignFromLibrary(inst.id)
-                        state.showBrowser = false
-                      }}
-                    >
-                      {inst.name}
-                    </a>
-                    <div className="toolbar">
-                      {!inst.system && (
-                        <button
-                          title="Rename"
-                          onClick={() => {
-                            const name = prompt(
-                              'Instrument name:',
-                              snap.library[inst.id].name,
-                            )
-                            if (!name) {
-                              return
-                            }
-                            state.library[inst.id].name = name
-                          }}
-                        >
-                          ✎
-                        </button>
-                      )}
-                    </div>
-                  </nav>
-                ))}
-              </div>
-            ))}
-          </div>
+          {snap.browserType === 'library' ? (
+            <LibraryBrowser />
+          ) : (
+            <PatchBrowser />
+          )}
         </div>
       </div>
     </div>
@@ -348,38 +401,84 @@ const NavBar = () => {
   }
 
   const browseAction = () => {
-    state.showBrowser = true
+    state.browserOn = true
+  }
+
+  const handlePatchChange: React.ChangeEventHandler<HTMLSelectElement> = (
+    ev,
+  ) => {
+    ev.preventDefault()
+    state.pid = ev.target.value
+  }
+
+  const createPatchAction = () => {
+    const name = prompt('Patch name:')
+    if (!name) {
+      return
+    }
+
+    const patch = createPatch(name)
+
+    state.patches[patch.id] = deepClone(patch)
+    state.pid = patch.id
+  }
+
+  const renamePatchAction = () => {
+    const name = prompt('Patch name:', snap.patches[state.pid].name)
+    if (!name) {
+      return
+    }
+    state.patches[state.pid].name = name
   }
 
   return (
     <nav>
-      <span>Patch: {snap.patches[snap.pid].name}</span>
+      <span>Patch:</span>
+      <select onChange={handlePatchChange} value={snap.pid}>
+        {Object.values(snap.patches).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
       <div className="toolbar">
-        <button disabled={!capabilities.save} title="Save" onClick={saveAction}>
+        <button title="Rename Patch" onClick={renamePatchAction}>
+          ✎
+        </button>
+        <button title="Create New Patch" onClick={createPatchAction}>
+          ✚
+        </button>
+
+        <span> | </span>
+        <button
+          disabled={!capabilities.save}
+          title="Save Instrument"
+          onClick={saveAction}
+        >
           ✔
         </button>
         <button
           disabled={!capabilities.duplicate}
-          title="Save as new"
+          title="Save as New Instrument"
           onClick={duplicateAction}
         >
           ⧉
         </button>
         <button
           disabled={!capabilities.restore}
-          title="Restore"
+          title="Restore from Instrument"
           onClick={restoreAction}
         >
           ↺
         </button>
         <button
           disabled={!capabilities.create}
-          title="Create new"
+          title="Create New Instrument"
           onClick={createAction}
         >
           ✚
         </button>
-        <button title="Browse" onClick={browseAction}>
+        <button title="Browse Instruments" onClick={browseAction}>
           ≡
         </button>
       </div>
@@ -430,10 +529,6 @@ const importInstruments = () => {
   })
 
   fileInput.click()
-}
-
-const sameChannelRef = (a: ChannelRef, b: ChannelRef) => {
-  return a.sid === b.sid && a.cid === b.cid
 }
 
 function getRange(a: ChannelRef, b: ChannelRef) {
@@ -529,7 +624,7 @@ const Patch = () => {
 
                       if (isClick) {
                         if (active) {
-                          state.showBrowser = true
+                          state.browserOn = true
                         } else {
                           // select single cell on click
 

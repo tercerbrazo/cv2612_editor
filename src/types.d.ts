@@ -92,7 +92,9 @@ declare global {
 
     // current scenes/channels selection
     selection: ChannelRef[]
-    showBrowser: boolean
+    browserOn: boolean
+    browserType: 'library' | 'patch'
+    browserCategory: string
 
     // mapping parameters?
     bindingId?: BindingId
