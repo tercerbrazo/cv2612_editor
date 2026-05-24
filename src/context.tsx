@@ -18,9 +18,15 @@ import {
 } from './utils/paramsHelpers'
 
 import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
-import { subscribe as vanillaSubscribe } from 'valtio/vanilla'
+import {
+  subscribe as vanillaSubscribe,
+  unstable_enableOp,
+} from 'valtio/vanilla'
 import { deepClone } from 'valtio/utils'
 import initialLibraryJson from './instruments.json'
+
+// valtio v2: subscribe ops are opt-in
+unstable_enableOp()
 const INIT_INSTRUMENT_ID = 'sys_init'
 
 const SC_IDXS = [0, 1, 2, 3] as const
