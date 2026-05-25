@@ -1,24 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react'
 import * as zip from '@zip.js/zip.js'
-
+import { BlobWriter, Uint8ArrayReader } from '@zip.js/zip.js'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSnapshot } from 'valtio'
+import { deepClone } from 'valtio/utils'
 import {
   addToLibrary,
-  assignFromLibrary,
   assignFromChannel,
+  assignFromLibrary,
   channelName,
   createPatch,
   isChannelDirty,
   state,
 } from './context'
 import { Stereo } from './stereo'
-import { readDmp } from './utils/readDmp'
-import { previewInstrument } from './utils/vgm'
-import { deepClone } from 'valtio/utils'
 import { hashInstrument } from './utils/hashing'
-import { readVGI } from './utils/readVgi'
+import { readDmp } from './utils/readDmp'
 import { readFui } from './utils/readFui'
-import { BlobWriter, Uint8ArrayReader } from '@zip.js/zip.js'
+import { readVGI } from './utils/readVgi'
+import { previewInstrument } from './utils/vgm'
 
 const applyNewState = async () => {}
 

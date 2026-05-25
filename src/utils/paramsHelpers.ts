@@ -2,8 +2,8 @@ import {
   ChannelParamEnum,
   MidiChannelEnum,
   OperatorParamEnum,
-  SceneParamEnum,
   PlayModeEnum,
+  SceneParamEnum,
   SettingParamEnum,
 } from '../enums'
 
@@ -216,12 +216,12 @@ const getParamMeta = (id: Param): ParamMeta => {
 }
 
 export {
-  isSettingParam,
-  isSceneParam,
-  isChannelParam,
-  isOperatorParam,
-  getParamMidiCc,
   getParamBindingIndex,
   getParamMeta,
+  getParamMidiCc,
   getParamOptions,
+  isChannelParam,
+  isOperatorParam,
+  isSceneParam,
+  isSettingParam,
 }

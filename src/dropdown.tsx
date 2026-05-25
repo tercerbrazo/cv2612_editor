@@ -1,5 +1,5 @@
 import React from 'react'
-import { useParam, updateParam } from './context'
+import { updateParam, useParam } from './context'
 import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {

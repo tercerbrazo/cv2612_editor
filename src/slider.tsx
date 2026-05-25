@@ -1,7 +1,7 @@
 import React, { ChangeEvent, MouseEventHandler } from 'react'
 import {
-  updateParam,
   toggleParamBinding,
+  updateParam,
   useBinding,
   useParam,
 } from './context'

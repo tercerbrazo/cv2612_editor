@@ -84,11 +84,11 @@ enum MidiChannelEnum {
 }
 
 export {
-  SettingParamEnum,
-  SceneParamEnum,
   ChannelParamEnum,
-  OperatorParamEnum,
-  MidiCommands,
-  PlayModeEnum,
   MidiChannelEnum,
+  MidiCommands,
+  OperatorParamEnum,
+  PlayModeEnum,
+  SceneParamEnum,
+  SettingParamEnum,
 }

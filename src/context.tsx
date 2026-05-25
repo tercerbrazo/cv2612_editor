@@ -1,9 +1,16 @@
+import { proxy, Snapshot, subscribe, useSnapshot } from 'valtio'
+import { deepClone } from 'valtio/utils'
+import {
+  unstable_enableOp,
+  subscribe as vanillaSubscribe,
+} from 'valtio/vanilla'
 import {
   ChannelParamEnum,
   MidiCommands,
   OperatorParamEnum,
   SettingParamEnum,
 } from './enums'
+import initialLibraryJson from './instruments.json'
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
 import { hashInstrument } from './utils/hashing'
@@ -17,11 +24,9 @@ import {
   isSettingParam,
 } from './utils/paramsHelpers'
 
-import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
-import { subscribe as vanillaSubscribe } from 'valtio/vanilla'
-import { deepClone } from 'valtio/utils'
-import initialLibraryJson from './instruments.json'
 const INIT_INSTRUMENT_ID = 'sys_init'
+
+unstable_enableOp(true)
 
 const SC_IDXS = [0, 1, 2, 3] as const
 const CH_IDXS = [0, 1, 2, 3, 4, 5] as const
@@ -561,22 +566,22 @@ const assignFromChannel = (sid: number, cid: number) => {
 }
 
 export {
-  state,
-  channelName,
-  useParam,
-  updateParam,
-  useBinding,
-  clearSequence,
-  toggleParamBinding,
-  bindAll,
-  assignFromLibrary,
-  assignFromChannel,
   addToLibrary,
+  assignFromChannel,
+  assignFromLibrary,
+  bindAll,
+  channelName,
+  clearSequence,
+  createPatch,
   isChannelDirty,
-  syncMidi,
-  sendCrc32,
-  saveState,
   resetChannel,
   resetOperator,
-  createPatch,
+  saveState,
+  sendCrc32,
+  state,
+  syncMidi,
+  toggleParamBinding,
+  updateParam,
+  useBinding,
+  useParam,
 }
