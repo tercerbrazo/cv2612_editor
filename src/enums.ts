@@ -6,15 +6,17 @@ enum SettingParamEnum {
   TUNNING = 'tu',
   MIDI_RECEIVE_CHANNEL = 'rc',
   SEQ_STEPS = 'stp',
-  // not used in the editor yet:
-  QUANTIZE = 'quantize',
-  LEGATO = 'legato',
-  VELOCITY = 'velocity',
   PORTAMENTO = 'portamento',
-  POLYPHONY = 'polyphony',
+  VELOCITY_SENSITIVITY = 'vs',
+  PITCH_BEND_UP = 'pbu',
+  PITCH_BEND_DOWN = 'pbd',
+  MODULATION_MODE_X = 'mmx',
+  MODULATION_MODE_Y = 'mmy',
+  MODULATION_MODE_Z = 'mmz',
+  QUANTIZE = 'qz',
 }
 
-enum PatchParamEnum {
+enum SceneParamEnum {
   LFO = 'lfo',
 }
 
@@ -23,7 +25,6 @@ enum ChannelParamEnum {
   FB = 'fb',
   AMS = 'ams',
   FMS = 'fms',
-  ST = 'st',
 }
 
 enum OperatorParamEnum {
@@ -43,10 +44,6 @@ enum MidiCommands {
   BIND_X = 101,
   BIND_Y = 102,
   BIND_Z = 103,
-  COPY_PATCH = 104,
-  MOVE_PATCH = 105,
-  COPY_CHANNEL = 106,
-  MOVE_CHANNEL = 107,
   SET_SEQ_STEP_ON = 108,
   SET_SEQ_STEP_OFF = 109,
   SAVE_STATE = 110,
@@ -85,16 +82,14 @@ enum MidiChannelEnum {
   CH15 = 14,
   CH16 = 15,
   OMNI = 16,
-  FORWARD = 17,
-  MULTITRACK = 18,
 }
 
 export {
-  SettingParamEnum,
-  PatchParamEnum,
   ChannelParamEnum,
-  OperatorParamEnum,
-  MidiCommands,
-  PlayModeEnum,
   MidiChannelEnum,
+  MidiCommands,
+  OperatorParamEnum,
+  PlayModeEnum,
+  SceneParamEnum,
+  SettingParamEnum,
 }

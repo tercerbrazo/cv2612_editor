@@ -2,13 +2,13 @@
 
 This util calculates the checksum of the module state, to be sent to the module
 
-The checksum is a CRC14 of the whole module state, but we first need to layout
+The checksum is a CRC32 of the whole module state, but we first need to layout
 the module state in a linear array of bytes matching the module layout.
 
-The module layout is as follows:
- * settings (1)
+The module layout is as follows (hashed in this order):
+ * scenes (4)
  * bindings (3)
- * patches (4)
+ * settings (1)
   
 Settings layout: (settings_t)
 =============================
@@ -16,19 +16,21 @@ Settings layout: (settings_t)
 typedef struct {
   play_mode_t play_mode;
   midi_channel_t midi_recv_channel;
-  polyphony_t polyphony;
+  uint8_t transpose;
+  uint8_t tuning;
+  uint8_t led_brightness;
   uint16_t sequence[6];
-  uint8_t led_brightness : 7;
-  uint8_t quantize : 1;
-  uint8_t transpose : 7;
-  uint8_t legato : 1;
-  uint8_t tuning : 7;
-  uint8_t velocity : 1;
-  uint8_t portamento : 7;
-  uint8_t __RESERVED : 1;
-  uint8_t seq_steps : 4;
-  uint8_t __ALIGN : 4;
-} settings_t;
+  uint8_t sequence_steps;
+  uint8_t portamento;
+  uint8_t pitch_bend_up;
+  uint8_t pitch_bend_down;
+  uint8_t velocity_sensitivity;
+  modulation_mode_t modulation_mode_x;
+  modulation_mode_t modulation_mode_y;
+  modulation_mode_t modulation_mode_z;
+  uint8_t quantize_cv;
+} settings_t; // 26 bytes (avr packs everything byte-aligned)
+
 
 Bindings layout: (ch_bitmask_t)
 ===============================
@@ -41,23 +43,19 @@ typedef struct {
   uint8_t RR : 1;
   uint8_t DT1 : 1;
   uint8_t MUL : 1;
-  uint8_t RS : 1;
-  uint8_t AM : 1;
-  uint8_t __ALIGN : 6;
 } op_bitmask_t;
 
 typedef struct {
   uint8_t LFO : 1;
-  uint8_t LR : 1;
   uint8_t FB : 1;
   uint8_t ALG : 1;
   uint8_t AMS : 1;
   uint8_t FMS : 1;
-  uint8_t __ALIGN : 2;
+  uint8_t __ALIGN : 3;
   op_bitmask_t ops[4];
 } ch_bitmask_t;
 
-Patch layout: (patch_t)
+Scene layout: (scene_t)
 ========================
 typedef union {
   uint8_t REG;
@@ -158,12 +156,10 @@ typedef union {
 typedef struct {
   lfo_t LFO;
   channel_t channels[6]; // 26*6 bytes
-} patch_t;               // 157 bytes
+} scene_t;               // 157 bytes
 
 
 */
-
-import { encodeKey, getParamMeta } from './paramsHelpers'
 
 const CRC32_POLY = 0x04c11db7
 
@@ -188,123 +184,94 @@ const crc32_push = (crc: number, data: number[]) => {
 }
 
 const calculate_crc32 = (state: State) => {
-  const get = (id: Param, pid: number, cid: number, op: number) =>
-    state.moduleState[
-      encodeKey(id, pid as PatchId, cid as ChannelId, op as OperatorId)
-    ]
-  const getBinding = (binding: BindingKey, param: Param, op: OperatorId) => {
-    const { bi } = getParamMeta(param, state, op)
-    if (bi === undefined) return 0
-    return state.bindings[binding].includes(bi) ? 1 : 0
-  }
-
-  // patches + bindings + settings
+  // scenes + bindings + settings
   const data: number[] = []
 
-  // PATCHES
+  // SCENES
   // =======
-  for (let pid = 0; pid < 4; pid++) {
-    // for each patch
-
-    const lfo = get('lfo', pid, 0, 0)
+  for (let sid = 0; sid < 4; sid++) {
+    const scene = state.patches[state.pid].scenes[sid]
     // lfo_t
-    data.push(lfo === 0 ? 0 : lfo | (1 << 3))
+    data.push(scene.lfo === 0 ? 0 : scene.lfo | (1 << 3))
 
     for (let cid = 0; cid < 6; cid++) {
-      // for each channel
+      const ch = scene.channels[cid]
 
       // ch_fb_alg_t
-      data.push(get('al', pid, cid, 0) | (get('fb', pid, cid, 0) << 3))
+      data.push(ch.al | (ch.fb << 3))
       // ch_lr_ams_fms_t
       data.push(
-        get('fms', pid, cid, 0) |
-          (get('ams', pid, cid, 0) << 3) |
-          (get('st', pid, cid, 0) << 6),
+        ch.fms | (ch.ams << 3) | (state.patches[state.pid].routing[cid] << 6),
       )
 
-      for (let op = 0; op < 4; op++) {
-        // for each operator
+      for (let o = 0; o < 4; o++) {
+        const op = ch.operators[o]
 
         // op_dt1_mul_t;
-        data.push(get('mul', pid, cid, op) | (get('det', pid, cid, op) << 4))
+        data.push(op.mul | (op.det << 4))
         // op_tl_t;
-        data.push(get('tl', pid, cid, op))
+        data.push(op.tl)
         // op_rs_ar_t;
-        data.push(get('ar', pid, cid, op) | (get('rs', pid, cid, op) << 6))
+        data.push(op.ar | (op.rs << 6))
         // op_am_d1r_t;
-        data.push(get('d1', pid, cid, op) | (get('am', pid, cid, op) << 7))
+        data.push(op.d1 | (op.am << 7))
         // op_d2r_t;
-        data.push(get('d2', pid, cid, op))
+        data.push(op.d2)
         // op_d1l_rr_t;
-        data.push(get('rr', pid, cid, op) | (get('sl', pid, cid, op) << 4))
+        data.push(op.rr | (op.sl << 4))
       }
     }
   }
 
   // BINDINGS
   // ========
-  const bindings = Object.keys(state.bindings) as BindingKey[]
-  // ch_bitmask_t
-  for (let i = 0; i < bindings.length; i++) {
-    const key = bindings[i]
-    data.push(
-      getBinding(key, 'lfo', 0) |
-        (getBinding(key, 'st', 0) << 1) |
-        (getBinding(key, 'fb', 0) << 2) |
-        (getBinding(key, 'al', 0) << 3) |
-        (getBinding(key, 'ams', 0) << 4) |
-        (getBinding(key, 'fms', 0) << 5) |
-        0,
-    )
-    for (let i = 0; i < 4; i++) {
-      const op = i as OperatorId
-      // op_bitmask_t
-      data.push(
-        getBinding(key, 'ar', op) |
-          (getBinding(key, 'd1', op) << 1) |
-          (getBinding(key, 'sl', op) << 2) |
-          (getBinding(key, 'd2', op) << 3) |
-          (getBinding(key, 'tl', op) << 4) |
-          (getBinding(key, 'rr', op) << 5) |
-          (getBinding(key, 'det', op) << 6) |
-          (getBinding(key, 'mul', op) << 7),
-      )
-      data.push(getBinding(key, 'rs', op) | (getBinding(key, 'am', op) << 1))
+  state.bindings.forEach((bindings) => {
+    const MASK_SIZE = 6
+    const mask = new Array(MASK_SIZE).fill(0)
+    for (const bi of bindings) {
+      const byteIndex = bi >> 3
+      const bitPos = bi & 7
+      mask[byteIndex] |= 1 << bitPos
     }
-  }
+    // append it to the existing data
+    data.push(...mask)
+  })
 
   // SETTINGS
   // ========
-  // play mode
-  data.push(get('pm', 0, 0, 0))
-  // midi recv channel
-  data.push(get('rc', 0, 0, 0))
-  // polyphony
-  data.push(get('polyphony', 0, 0, 0))
+  const settings = state.settings
+
+  data.push(settings.pm) // play mode
+  data.push(settings.rc) // midi recv channel
+  data.push(settings.tr) // transpose
+  data.push(settings.tu) // tuning
+  data.push(settings.lb) // led brightness
 
   // sequence
   for (let i = 0; i < 6; i++) {
-    const seq = state.sequence[i]
+    const seq = state.settings.sequence[i]
     // Convert 16-bit array into a number using reduce
     const value = seq.reduce((acc, bit, j) => acc | ((bit ? 1 : 0) << j), 0)
     // Split into two uint8_t
     const lower = value & 0xff
     const upper = (value >> 8) & 0xff
-    console.log('seq', i, lower, upper)
     data.push(lower)
     data.push(upper)
   }
+  data.push(settings.stp) // seq steps
+  data.push(settings.portamento) // portamento
+  data.push(settings.pbu) // pitch_bend_up;
+  data.push(settings.pbd) // pitch_bend_down;
+  data.push(settings.vs) // velocity_sensitivity;
+  data.push(settings.mmx) // modulation mode x
+  data.push(settings.mmy) // modulation mode y
+  data.push(settings.mmz) // modulation mode z
 
-  // led brightness + quantize
-  data.push(get('lb', 0, 0, 0) | (get('quantize', 0, 0, 0) << 7))
-  // transpose + legato
-  data.push(get('tr', 0, 0, 0) | (get('legato', 0, 0, 0) << 7))
-  // tuning + velocity
-  data.push(get('tu', 0, 0, 0) | (get('velocity', 0, 0, 0) << 7))
-  // portamento + RESERVED
-  data.push(get('portamento', 0, 0, 0))
-  // seq steps + __ALIGN
-  data.push(get('stp', 0, 0, 0))
+  // Completes settings_t at 26 bytes. The firmware used to checksum
+  // `sizeof(settings) - 1` to match an editor that had no quantize field;
+  // both sides dropped that exclusion in the scales release, so a module on
+  // older firmware hashes 25 bytes and will mismatch until reflashed.
+  data.push(settings.qz) // quantize_cv
 
   // calculate CRC 32 of the data
   let crc32 = 0

@@ -2,64 +2,62 @@ import {
   ChannelParamEnum,
   MidiChannelEnum,
   OperatorParamEnum,
-  PatchParamEnum,
+  SceneParamEnum,
   PlayModeEnum,
   SettingParamEnum,
-} from '../enums'
+} from '../enums.ts'
 
-// NOTE: needs to be in sync with firmware
-const SETTINGS_PARAM_INDEXES: Record<SettingParam, number> = {
-  quantize: 0,
-  legato: 1,
-  velocity: 2,
-  pm: 3,
-  lb: 4,
-  tr: 5,
-  tu: 6,
-  rc: 7,
-  portamento: 8,
-  // FIXME: need to make room for polyphony
-  // probably spread over 2 or more channels
-  polyphony: 8,
-  stp: 9,
+const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
+  PLAY_MODE: 20,
+  LED_BRIGHTNESS: 21,
+  TRANSPOSE: 22,
+  TUNNING: 23,
+  MIDI_RECEIVE_CHANNEL: 24,
+  SEQ_STEPS: 25,
+  PORTAMENTO: 26,
+  VELOCITY_SENSITIVITY: 27,
+  PITCH_BEND_UP: 28,
+  PITCH_BEND_DOWN: 29,
+  MODULATION_MODE_X: 30,
+  MODULATION_MODE_Y: 31,
+  MODULATION_MODE_Z: 32,
+  QUANTIZE: 34, // 33 was never assigned; 34 is what both sides ship
 }
 
-const CHANNEL_PARAM_INDEXES = {
-  al: 0,
-  fb: 1,
-  ams: 2,
-  fms: 3,
-  st: 4,
-}
+const PARAM_INDEXES = [
+  // scene indexes
+  'lfo',
+  // routing indexes
+  'lr',
+  // channel indexes
+  'al',
+  'fb',
+  'ams',
+  'fms',
+  // operator indexes
+  'ar',
+  'd1',
+  'sl',
+  'd2',
+  'rr',
+  'tl',
+  'mul',
+  'det',
+  'rs',
+  'am',
+] as const
 
-const OPERATOR_PARAM_INDEXES = {
-  ar: 0,
-  d1: 1,
-  sl: 2,
-  d2: 3,
-  rr: 4,
-  tl: 5,
-  mul: 6,
-  det: 7,
-  rs: 8,
-  am: 9,
-}
-
-const LFO_CC = 9
-const CH_PARAM_OFFSET = 10
-const CH_PARAM_COUNT = 5
-const OP_PARAM_OFFSET = 40
 const OP_PARAM_COUNT = 10
-const CH_BINDING_OFFSET = 10
-const OP_BINDING_OFFSET = 20
+
+const PARAM_CC_OFFSET = 9
 
 const isSettingParam = (id: Param): id is SettingParam => {
   const keys: string[] = Object.values(SettingParamEnum)
   return keys.includes(id)
 }
 
-const isPatchParam = (id: Param): id is PatchParam => {
-  const keys: string[] = Object.values(PatchParamEnum)
+const isSceneParam = (id: Param): id is SceneParam => {
+  const keys: string[] = Object.values(SceneParamEnum)
   return keys.includes(id)
 }
 
@@ -73,20 +71,23 @@ const isOperatorParam = (id: Param): id is OperatorParam => {
   return keys.includes(id)
 }
 
-const paramTitles: Record<Param, string> = {
+const paramTitle: Record<Param, string> = {
   pm: 'Play Mode',
   lb: 'Led Brightness',
   tr: 'Transpose',
   tu: 'Tunning',
   rc: 'Midi Receive Channel',
   stp: 'Seq Mode steps',
-  quantize: 'Quantize',
-  legato: 'Legato',
-  velocity: 'Velocity',
+  vs: 'Velocity Sensitivity',
   portamento: 'Portamento',
-  polyphony: 'Polyphony',
+  pbu: 'Pitch Bend Up',
+  pbd: 'Pitch Bend Down',
+  mmx: 'Modulation Mode X',
+  mmy: 'Modulation Mode Y',
+  mmz: 'Modulation Mode Z',
+  qz: 'Quantize',
   lfo: 'Low Frequency Oscillator',
-  st: 'Stereo Mode',
+  lr: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
   fms: 'Frequency Modulation Sensitivity',
   al: 'Algorithm',
@@ -103,20 +104,9 @@ const paramTitles: Record<Param, string> = {
   am: 'Amplitude Modulation',
 }
 
-const paramBitness: Record<Param, number> = {
-  pm: 7,
-  lb: 7,
-  tr: 7,
-  tu: 7,
-  rc: 7,
-  stp: 7,
-  quantize: 1,
-  legato: 1,
-  velocity: 1,
-  portamento: 1,
-  polyphony: 7,
+const paramBitness = {
   lfo: 3,
-  st: 2,
+  lr: 2,
   ams: 2,
   fms: 3,
   al: 3,
@@ -131,78 +121,87 @@ const paramBitness: Record<Param, number> = {
   det: 3,
   rs: 2,
   am: 1,
-}
+} as const
 
 const getParamOptions = (id: Param): string[] => {
+  const playmodeOptions: Record<PlayModeEnum, string> = {
+    [PlayModeEnum.MONO]: '🔴 MONO',
+    [PlayModeEnum.DUO]: '🟠 DUO',
+    [PlayModeEnum.TRIO]: '🟡 TRIO',
+    [PlayModeEnum.CHORD]: '🟢 CHORD',
+    [PlayModeEnum.SEQ]: '🔵 SEQ',
+    [PlayModeEnum.RAND]: '🟣 RAND',
+    [PlayModeEnum.POLY]: '⚪ POLY',
+  }
+
+  // CV quantizer scales, indexed by the value sent to the module.
+  // The module clamps anything above the last entry.
+  const quantizeOptions = [
+    'Off',
+    'Chromatic',
+    'Major',
+    'Natural minor',
+    'Harmonic minor',
+    'Dorian',
+    'Pentatonic major',
+    'Pentatonic minor',
+  ]
+
   switch (id) {
     case 'pm':
-      return Object.keys(PlayModeEnum).filter((k) => isNaN(Number(k)))
+      return Object.values(playmodeOptions)
     case 'rc':
       return Object.keys(MidiChannelEnum).filter((k) => isNaN(Number(k)))
-    case 'stp':
-      return Array.from({ length: 16 }, (_, i) => (i + 1).toString())
+    case 'qz':
+      return quantizeOptions
     default:
       return []
   }
 }
 
+const settingKey = (id: SettingParam) => {
+  return (
+    Object.keys(SettingParamEnum) as (keyof typeof SettingParamEnum)[]
+  ).find((k) => SettingParamEnum[k] === id) as keyof typeof SettingParamEnum
+}
+
 /*
  * This is how Module parameters are mapped to Midi channel/control_change
- * for a particular id-patch-channel-operator combination.
  * This needs to be mimicked in the module firmware.
  *
  * */
 const getParamMidiCc = (
   id: Param,
-  state: State,
+  sid: SceneId,
+  cid: ChannelId,
   op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
 ): { ch: number; cc: number } => {
   if (isSettingParam(id)) {
-    const index = SETTINGS_PARAM_INDEXES[id]
-    return { ch: 15, cc: 0 + index }
+    const key = settingKey(id)
+    return { ch: 14, cc: SETTING_PARAM_MIDI_CC[key] }
   }
 
-  if (isPatchParam(id)) {
-    // LFO case
-    return {
-      ch: pid * 4,
-      cc: LFO_CC,
-    }
-  }
+  const ch = cid + (sid < 2 ? 0 : 6)
+  const scene_offset = sid === 0 || sid === 2 ? 0 : 64
+  const offset = PARAM_CC_OFFSET + scene_offset
 
-  if (isChannelParam(id)) {
-    const index = CHANNEL_PARAM_INDEXES[id]
-    return {
-      ch: pid * 4,
-      cc: CH_PARAM_OFFSET + cid * CH_PARAM_COUNT + index, // 10-39 range
-    }
-  }
-  // isOperatorParam
-  const index = OPERATOR_PARAM_INDEXES[id]
-  if ((state.moduleState['pm-0-0-0'] as PlayModeEnum) === PlayModeEnum.POLY) {
-    return {
-      ch: 0,
-      cc: OP_PARAM_OFFSET + op * OP_PARAM_COUNT + index, // 40 - 79 range
-    }
-  } else {
-    return {
-      ch: pid * 4 + op,
-      cc: OP_PARAM_OFFSET + cid * OP_PARAM_COUNT + index, // 40 - 99 range
-    }
+  const index = PARAM_INDEXES.indexOf(id)
+
+  return {
+    ch,
+    cc: offset + index + op * OP_PARAM_COUNT,
   }
 }
 
 /*
  * Binding index defines how a parameter can be bound to a modulator.
- * There is a maximum of 64 parameters that can be bound (but actually only
- * 47 are currently used) and depending on the action wanted (binding/unbinding)
+ * There is a maximum of 64 parameters that can be bound and
+ * depending on the action wanted (binding/unbinding)
  * the corresponding CC value will be shifted by 64.
  * Example:
- *   if LFO binding index is `2`, then:
- *    * to unbind, send CC value 2
- *    * to bind, send CC value 66 (64+2)
+ *   if LFO binding index is `0`, then:
+ *    * to unbind, send CC value 0
+ *    * to bind, send CC value 64 (64+0)
  * This needs to be mimicked in the module firmware.
  *
  * */
@@ -210,91 +209,36 @@ const getParamBindingIndex = (
   id: Param,
   op: OperatorId,
 ): number | undefined => {
-  if (id === PatchParamEnum.LFO) {
-    return 2
+  if (isSettingParam(id) || id === 'lr' || id === 'am' || id === 'rs') {
+    return undefined
   }
-  if (isChannelParam(id)) {
-    const values: ChannelParam[] = Object.values(ChannelParamEnum)
-    const index = values.indexOf(id)
-    return CH_BINDING_OFFSET + index
-  }
-  if (isOperatorParam(id)) {
-    const values: OperatorParam[] = Object.values(OperatorParamEnum)
-    const index = values.indexOf(id)
-    return OP_BINDING_OFFSET + values.length * op + index
-  }
-  // for any other non-boundable parameter it'll be undefined
-  return undefined
+  const index = PARAM_INDEXES.indexOf(id)
+  return index + OP_PARAM_COUNT * op
 }
 
-const encodeKey = (
-  id: Param,
-  pid: PatchId,
-  cid: ChannelId,
-  op: OperatorId,
-): string => {
-  if (isSettingParam(id)) {
-    return `${id}-0-0-0`
-  }
-  if (isPatchParam(id)) {
-    return `${id}-${pid}-0-0`
-  }
-  if (isChannelParam(id)) {
-    return `${id}-${pid}-${cid}-0`
-  }
-  // isOperatorParam
-  return `${id}-${pid}-${cid}-${op}`
-}
+const paramMax = Object.fromEntries(
+  Object.entries(paramBitness).map(([k, b]) => [k, 2 ** b - 1]),
+) as typeof paramBitness
 
-const decodeKey = (key: string) => {
-  const parts = key.split('-')
-
-  return {
-    id: parts[0] as Param,
-    pid: parseInt(parts[1], 10) as PatchId,
-    cid: parseInt(parts[2], 10) as ChannelId,
-    op: parseInt(parts[3], 10) as OperatorId,
-  }
-}
-
-const getParamMeta = (
-  id: Param,
-  state: State,
-  op: OperatorId,
-  pid = state.patchIdx,
-  cid = state.channelIdx,
-): ParamMeta => {
-  const key = encodeKey(id, pid, cid, op)
-  const { ch, cc } = getParamMidiCc(id, state, op, pid, cid)
-  const label: string = id
-  const bits = paramBitness[id]
-  const title = paramTitles[id]
-  const options = getParamOptions(id)
-  const bi = getParamBindingIndex(id, op)
-  const max = 127 >> (7 - bits)
+const getParamMeta = (id: Param): ParamMeta => {
+  const bits = isSettingParam(id) ? 7 : paramBitness[id]
+  const title = paramTitle[id]
+  const max = isSettingParam(id) ? 127 : paramMax[id]
 
   return {
     title,
-    label,
-    bi,
-    cc,
-    ch,
     max,
     bits,
-    options,
-    key,
   }
 }
 
 export {
   isSettingParam,
-  isPatchParam,
+  isSceneParam,
   isChannelParam,
   isOperatorParam,
   getParamMidiCc,
   getParamBindingIndex,
-  encodeKey,
-  decodeKey,
   getParamMeta,
   getParamOptions,
 }
