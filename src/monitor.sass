@@ -1,0 +1,401 @@
+@use "theme" as *
+
+#app
+  .monitor
+    // tabular figures so the live numbers don't jitter column-to-column
+    font-variant-numeric: tabular-nums
+    nav.monitor-bar
+      margin-bottom: 12px
+      align-items: center
+      flex-wrap: wrap
+      gap: 3px 6px
+      button
+        flex: none
+        padding: 0 1em
+        border-right: 1px solid #444
+        &.active
+          background: $primary
+          color: $black
+        &[disabled], &[disabled]:hover
+          color: #666
+          opacity: 1
+          cursor: default
+      span
+        font-size: 0.75em
+        text-align: left
+        white-space: nowrap
+        padding: 2px 8px 2px 0
+        &.status
+          min-width: 150px
+          padding-left: 8px
+          &.connected
+            color: $primary
+          &.error
+            color: #ff5252
+        // quantize badge: always visible so silent hardware toggles show up
+        &.q-badge
+          border: 1px solid #777
+          padding: 0 7px
+          font-weight: bold
+          color: #999
+          &.on
+            color: $black
+            background: #ff9800
+            border-color: #ff9800
+
+    .hint
+      font-size: 0.75em
+      color: #e8b23a
+      margin: 8px 0
+
+    // every monitor panel — plain (h5 header) or collapsible (summary
+    // header) — shares this box so they read as one family
+    .stimuli, .checklist, .voices, details.rest-cal, details.patch-live
+      border: 1px solid #333
+      border-radius: 4px
+      padding: 8px 10px
+      margin-bottom: 12px
+      box-sizing: border-box
+      text-align: left
+      font-size: 0.75em
+      // an h5 and a summary are the same thing to the reader: the panel title
+      h5, summary
+        text-align: left
+        margin: 0
+        color: $primary
+        font-weight: bold
+        font-size: 1em
+      h5
+        margin: 0 0 8px
+      summary
+        cursor: pointer
+      // collapsed panels keep the title flush; expanded ones get the gap back
+      &[open] > summary
+        margin-bottom: 8px
+      .row-btns
+        display: flex
+        gap: 10px
+        flex-wrap: wrap
+        align-items: center
+      button
+        background: $black
+        color: $white
+        border: 1px solid #555
+        font-size: 1em
+        font-family: inherit
+        padding: 4px 10px
+        cursor: pointer
+        &:hover
+          background: $white
+          color: $black
+        &.active
+          background: $primary
+          color: $black
+          border-color: $primary
+        &[disabled], &[disabled]:hover
+          background: $black
+          color: #666
+          border-color: #333
+          cursor: default
+      label
+        display: inline-flex
+        align-items: center
+        gap: 6px
+        color: #888
+      input.note
+        width: 3.2em
+        background: $black
+        color: $white
+        border: 1px solid #555
+        font-size: 1em
+        font-family: inherit
+        padding: 3px 4px
+      .note-name
+        color: $primary
+        min-width: 2.4em
+      .out-hint
+        color: #888
+        margin-left: auto
+
+    .checklist
+      ol.steps
+        list-style: none
+        margin: 0 0 8px
+        padding: 0
+        li
+          line-height: 2
+          display: flex
+          gap: 8px
+          align-items: baseline
+          flex-wrap: wrap
+          .st
+            display: inline-block
+            width: 1.4em
+            text-align: center
+          .name
+            min-width: 6.5em
+          .instruction
+            color: #e8b23a
+          .count
+            color: $primary
+          .detail
+            color: #888
+          &.pending
+            color: #555
+          &.fail .detail
+            color: #ff5252
+      .verdict
+        font-weight: bold
+        &.pass
+          color: $primary
+        &.fail
+          color: #ff5252
+
+    .voices
+      .cells
+        display: flex
+        gap: 8px
+      .cell
+        border: 1px solid #333
+        border-radius: 3px
+        padding: 3px 10px 4px
+        min-width: 4.5em
+        text-align: center
+        box-sizing: border-box
+        color: #555
+        .vn
+          display: block
+          font-size: 0.8em
+          color: #555
+        .nn
+          display: block
+          font-weight: bold
+        .hz
+          display: block
+          font-size: 0.85em
+          color: #777
+        // cents offset = non-MIDI pitch shift; amber when |c| >= 3
+        .cents
+          display: block
+          font-size: 0.85em
+          color: #555
+          &.shift
+            color: #ff9800
+        &.lit
+          color: $black
+          background: $primary
+          border-color: $primary
+          .vn
+            color: rgba(0, 0, 0, 0.55)
+          .hz, .cents
+            color: rgba(0, 0, 0, 0.65)
+          .cents.shift
+            color: #7a3500
+            font-weight: bold
+      .decomp
+        margin-top: 8px
+        color: #999
+        .lbl
+          color: #555
+
+    // live channel_t snapshots from the rotating 'P' frames (~1 ch/s)
+    details.patch-live
+      .rows
+        display: grid
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+        gap: 3px 18px
+      .pch
+        white-space: pre
+        overflow-x: auto
+        color: #ccc
+        .idx
+          color: #888
+        // no 'P' frame in >10s: the stream stopped or drifted — dim the row
+        &.stale
+          color: #4a4a4a
+          .idx
+            color: #4a4a4a
+        &.empty
+          color: #555
+          .idx
+            color: #555
+
+    // guided rest calibration (shares chrome with .stimuli/.checklist)
+    details.rest-cal
+      .cal-hint
+        color: #888
+        margin: 6px 0
+      .cal-checks
+        margin: 6px 0 8px
+      .cal-check
+        display: flex
+        gap: 8px
+        line-height: 1.8
+        .st
+          display: inline-block
+          width: 1.4em
+          text-align: center
+        .name
+          min-width: 16em
+        .val
+          color: #888
+        &.ok .st
+          color: $primary
+        &.bad
+          .st, .val
+            color: #ff5252
+      .cal-result
+        margin-top: 8px
+        display: flex
+        gap: 16px
+        flex-wrap: wrap
+        color: #ccc
+        .after
+          color: #888
+          &.ok
+            color: $primary
+          &.warn
+            color: #e8b23a
+
+    .monitor-body
+      display: flex
+      gap: 12px
+      align-items: flex-start
+
+    .charts
+      flex: 1
+      min-width: 0
+      .chart
+        margin-bottom: 12px
+        h5
+          text-align: left
+          margin: 2px 0
+          font-size: 0.7em
+          font-weight: normal
+          color: #999
+        canvas
+          width: 100%
+          height: 110px
+          display: block
+          border: 1px solid #333
+          border-radius: 4px
+          box-sizing: border-box
+        .legend
+          display: flex
+          gap: 16px
+          font-size: 0.7em
+          margin-top: 2px
+          span
+            display: inline-flex
+            align-items: center
+            gap: 5px
+            white-space: pre
+            // jack-aware chips: .on = connected (bold, series color set
+            // inline), .off = disconnected (greyed out)
+            &.on
+              font-weight: bold
+            &.off
+              color: #555
+          i
+            width: 10px
+            height: 10px
+            display: inline-block
+            flex: none
+        .stats
+          display: flex
+          gap: 14px
+          flex-wrap: wrap
+          font-size: 0.62em
+          color: #888
+          margin-top: 2px
+          span
+            white-space: pre
+            &.off
+              color: #4a4a4a
+              b
+                color: #4a4a4a
+          b
+            font-weight: normal
+            color: #bbb
+
+    .live
+      width: 290px
+      flex: none
+      font-size: 0.72em
+      border: 1px solid #333
+      border-radius: 4px
+      padding: 8px 10px
+      box-sizing: border-box
+      overflow: hidden
+      h5
+        text-align: left
+        margin: 6px 0 4px
+        color: $primary
+        &:first-child
+          margin-top: 0
+      .row
+        display: flex
+        justify-content: space-between
+        line-height: 1.5
+        .k
+          color: #888
+          display: inline-flex
+          align-items: center
+          .dot
+            width: 6px
+            height: 6px
+            border-radius: 50%
+            background: #333
+            margin-right: 6px
+            flex: none
+            transition: background-color 0.15s
+            &.on
+              background: $primary
+        .v
+          white-space: pre
+          .led
+            display: inline-block
+            width: 8px
+            height: 8px
+            border-radius: 50%
+            background: #333
+            border: 1px solid #555
+            margin-right: 5px
+            vertical-align: middle
+            transition: background-color 0.1s
+            &.on
+              background: $primary
+              border-color: $primary
+      .swatch
+        display: inline-block
+        width: 12px
+        height: 12px
+        border: 1px solid #555
+        vertical-align: middle
+      .hint
+        margin: 4px 0
+      // RAM row: min-free health, semantic colors from the palette
+      .ram
+        &.ok
+          color: $primary
+        &.warn
+          color: #e8b23a
+        &.crit
+          color: #ff5252
+
+    .event-log
+      margin-top: 4px
+      border: 1px solid #333
+      border-radius: 4px
+      height: 190px
+      overflow-y: auto
+      font-size: 0.7em
+      line-height: 1.45
+      padding: 4px 8px
+      .t
+        color: #666
+        display: inline-block
+        min-width: 64px
+        margin-right: 8px
+      .hint
+        margin: 4px 0
