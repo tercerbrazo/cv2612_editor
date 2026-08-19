@@ -1,0 +1,63 @@
+import React from 'react'
+import { useSnapshot } from 'valtio'
+import { clearSequence, state, updateParam } from './context'
+
+const Sequencer = () => {
+  const snap = useSnapshot(state)
+
+  const handleHeaderClick = (val: number) => {
+    updateParam('stp', 0, val)
+  }
+
+  return (
+    <div className="four-cols">
+      <div className="col">
+        <button className={`btn`} onClick={() => clearSequence()}>
+          CLEAR SEQ
+        </button>
+      </div>
+      <div className="tcol">
+        <div className="seq">
+          {snap.settings.sequence.map((voiceSteps, voiceIndex) => (
+            <React.Fragment key={voiceIndex}>
+              {voiceIndex === 0 && (
+                <div className="seq-row">
+                  <div className="seq-cell seq-header" />
+                  {voiceSteps.map((_step, stepIndex) => (
+                    <div
+                      onClick={() => handleHeaderClick(stepIndex)}
+                      key={stepIndex}
+                      className={`seq-cell seq-header ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
+                    >
+                      {stepIndex + 1}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="seq-row">
+                <div className="seq-cell seq-header">{voiceIndex + 1}</div>
+                {voiceSteps.map((stepValue, stepIndex) => {
+                  return (
+                    <div
+                      className={`seq-cell ${stepValue ? 'step-on' : ''} ${
+                        stepIndex <= snap.settings.stp ? 'active' : 'inactive'
+                      }`}
+                      key={stepIndex}
+                      onClick={() => {
+                        state.settings.sequence[voiceIndex][stepIndex] ^= 0b01
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Sequencer

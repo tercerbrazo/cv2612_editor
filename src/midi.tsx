@@ -1,8 +1,17 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
-import { CV2612Context } from './context'
+import { useSnapshot } from 'valtio'
+import {
+  bindAll,
+  calibrateRests,
+  saveState,
+  sendCrc32,
+  state,
+  syncMidi,
+} from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
+import { getParamMidiCc } from './utils/paramsHelpers'
 
 const activityDuration = 80
 
@@ -11,26 +20,47 @@ const options = [
   { label: 'Bind All to X', value: 1 },
   { label: 'Bind All to Y', value: 2 },
   { label: 'Bind All to Z', value: 3 },
+  { label: 'X: Absolute', value: 10 },
+  { label: 'X: Direct Morph', value: 11 },
+  { label: 'X: Linked Morph', value: 12 },
+  { label: 'Y: Absolute', value: 13 },
+  { label: 'Y: Direct Morph', value: 14 },
+  { label: 'Y: Linked Morph', value: 15 },
+  { label: 'Z: Absolute', value: 16 },
+  { label: 'Z: Direct Morph', value: 17 },
+  { label: 'Z: Linked Morph', value: 18 },
 ]
 
+// indexed by mode value: ABSOLUTE=0 🎯, DIRECT_MORPH=1 ⚡, LINKED_MORPH=2 🔗
+const modulation_mode_icons = ['🎯', '⚡', '🔗']
+
 const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
+  { value: 'turbo', label: '🚀 Turbo' },
   { value: 'fast', label: '🐇 Fast' },
   { value: 'normal', label: '🐕 Normal' },
   { value: 'slow', label: '🐢 Slow' },
   { value: 'shitty', label: '💩 Shitty' },
 ]
 
-const Midi = () => {
-  const { state, dispatch } = useContext(CV2612Context)
+const setModulationMode = (param: SettingParam, value: number) => {
+  const { ch, cc } = getParamMidiCc(param, 0, 0, 0)
+  state.settings[param] = value
+  MidiIO.sendCC(ch, cc, value)
+}
 
+const Midi = () => {
+  const snap = useSnapshot(state)
   const [speed, setSpeed] = useState('normal')
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
+  const knownOutIdsRef = useRef('')
   const [midiOutActivity, setMidiOutActivity] = useState(false)
 
   useEffect(() => {
     if (midiOutId !== '-') {
-      reactLocalStorage.set('midiOutId', midiOutId)
+      // never persist the empty selection: a statechange while the saved
+      // device is briefly absent would otherwise erase it for good
+      if (midiOutId !== '') reactLocalStorage.set('midiOutId', midiOutId)
       MidiIO.setMidiOutId(midiOutId)
     }
   }, [midiOutId])
@@ -51,10 +81,13 @@ const Midi = () => {
     const unsubMidiStateChanged = MidiIO.sub(
       'midiStateChanged',
       ({ outputs }) => {
-        if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
+        // compare by id: stringifying host MIDIOutput objects yields '{}',
+        // which made the unplug-to-empty transition invisible
+        const ids = outputs.map((a) => a.id).join()
+        if (knownOutIdsRef.current !== ids) {
+          knownOutIdsRef.current = ids
           const mOut = reactLocalStorage.get('midiOutId', '')
-          // is last id still available??
-          setMidiOutId(outputs.map((a) => a.id).includes(mOut) ? mOut : '')
+          setMidiOutId(outputs.some((a) => a.id === mOut) ? mOut : '')
           setMidiOuts(outputs)
         }
       },
@@ -70,17 +103,16 @@ const Midi = () => {
     }
   }, [])
 
-  if (state.calibrationStep > 0) return null
+  const noOut = !midiOuts.some((o) => o.id === midiOutId)
 
   return (
     <nav className="midi">
-      <span>
+      <span className={noOut ? 'no-out' : ''}>
         MIDI Out
         <i className={midiOutActivity ? 'active' : ''} />
       </span>
-      {/* eslint-disable-next-line jsx-a11y/no-onchange */}
       <select
-        className="out"
+        className={noOut ? 'out no-out' : 'out'}
         value={midiOutId}
         onChange={(ev) => setMidiOutId(ev.target.value)}
       >
@@ -104,51 +136,77 @@ const Midi = () => {
           </option>
         ))}
       </select>
-      <span> </span>
-      <span> </span>
-      {(['x', 'y', 'z'] as const).map((i) => (
+      {([0, 1, 2] as const).map((i) => (
         <a
           href="/"
-          title={`Bind parameters to ${i.toUpperCase()}`}
-          className={`${i} ${state.bindingKey === i ? 'active' : ''}`}
+          title={`Bind parameters to ${'XYZ'[i]}`}
+          className={`${'xyz'[i]} ${snap.bindingId === i ? 'active' : ''}`}
           onClick={(ev) => {
             ev.preventDefault()
-            dispatch({ type: 'toggle-binding', bindingKey: i })
+            state.bindingId = i === snap.bindingId ? undefined : i
           }}
           key={i}
         >
-          {i.toUpperCase()}
+          {'XYZ'[i]}
+          {modulation_mode_icons[snap.settings[`mm${'xyz'[i]}`]]}
         </a>
       ))}
       <MenuDropdown
         title="Bind all to..."
         text="⋯"
         options={options}
-        onSelect={(option) => {
-          switch (option.value) {
+        onSelect={(opt) => {
+          switch (opt) {
             case 0:
-              dispatch({ type: 'bind-all' })
+              bindAll()
               break
             case 1:
-              dispatch({ type: 'bind-all', modulator: 'x' })
+              bindAll(0)
               break
             case 2:
-              dispatch({ type: 'bind-all', modulator: 'y' })
+              bindAll(1)
               break
             case 3:
-              dispatch({ type: 'bind-all', modulator: 'z' })
+              bindAll(2)
+              break
+            case 10:
+              setModulationMode('mmx', 0)
+              break
+            case 11:
+              setModulationMode('mmx', 1)
+              break
+            case 12:
+              setModulationMode('mmx', 2)
+              break
+            case 13:
+              setModulationMode('mmy', 0)
+              break
+            case 14:
+              setModulationMode('mmy', 1)
+              break
+            case 15:
+              setModulationMode('mmy', 2)
+              break
+            case 16:
+              setModulationMode('mmz', 0)
+              break
+            case 17:
+              setModulationMode('mmz', 1)
+              break
+            case 18:
+              setModulationMode('mmz', 2)
               break
           }
         }}
       />
-      <span> </span>
-      <span> </span>
       <a
         href="/"
         title="Sync Midi"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'sync-midi' })
+          if (noOut) return
+          syncMidi()
         }}
       >
         SYNC
@@ -156,9 +214,11 @@ const Midi = () => {
       <a
         href="/"
         title="Verify State Checksum"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'verify-checksum' })
+          if (noOut) return
+          sendCrc32()
         }}
       >
         VERIFY
@@ -166,12 +226,31 @@ const Midi = () => {
       <a
         href="/"
         title="Save state to EEPROM"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
-          dispatch({ type: 'save-state' })
+          if (noOut) return
+          saveState()
         }}
       >
         SAVE STATE
+      </a>
+      <a
+        href="/"
+        title="Capture this unit's rest levels to its EEPROM (no CV cables connected, module at rest)"
+        className={noOut ? 'disabled' : ''}
+        onClick={(ev) => {
+          ev.preventDefault()
+          if (noOut) return
+          if (
+            window.confirm(
+              'Calibrate rests: disconnect all CV cables and leave the module at rest.\n\nContinue?',
+            )
+          )
+            calibrateRests()
+        }}
+      >
+        CALIBRATE
       </a>
     </nav>
   )

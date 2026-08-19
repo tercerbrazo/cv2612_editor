@@ -1,34 +1,28 @@
-import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import React from 'react'
+import { useParam, updateParam } from './context'
+import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {
-  id: Param
+  id: SettingParam
+  // extra explanation, shown as a native tooltip (the css `data-title`
+  // bubble is too narrow for a full sentence)
+  hint?: string
 }
 
-const Dropdown = ({ id }: DropdownProps) => {
-  const { dispatch, getParamData } = useContext(CV2612Context)
-
-  const { title, label, options, value, ch, cc } = getParamData(id, 0)
+const Dropdown = ({ id, hint }: DropdownProps) => {
+  const options = getParamOptions(id)
+  const { value, ccHint } = useParam(id, 0)
+  const { title } = getParamMeta(id)
 
   const onChange = (ev) => {
     ev.preventDefault()
     const val = parseInt(ev.target.value, 10)
-
-    dispatch({
-      type: 'change-param',
-      id,
-      op: 0,
-      val,
-    })
+    updateParam(id, 0, val)
   }
 
   return (
-    <div
-      className="dropdown"
-      aria-hidden="true"
-      data-title={`${title} - CC ${ch}:${cc}`}
-    >
-      <label>{label}</label>
+    <div className="dropdown" data-title={`${title} - ${ccHint}`} title={hint}>
+      <label>{id}</label>
       <select onChange={onChange} value={value}>
         {options.map((o, i) => (
           <option key={o} value={i}>

@@ -1,22 +1,38 @@
-import React, { useContext } from 'react'
-import { CV2612Context } from './context'
+import React from 'react'
+import { resetChannel, useParam } from './context'
 import algorithmAscii from './utils/algorithmAscii'
+import { CARRIER_OPS, OP_TO_DIGIT } from './utils/carriers'
 
 const Algorithm = () => {
-  const { dispatch, getParamData } = useContext(CV2612Context)
+  const { value, mixed } = useParam('al', 0)
 
-  const { value } = getParamData('al', 0)
-
-  const onAlgorithmClick = (
-    ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-  ) => {
+  const handleClick = (ev: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     ev.preventDefault()
-    dispatch({ type: 'reset-channel' })
+    resetChannel()
   }
 
+  // Grey modulator digits so carriers stay green. Skip on mixed-algo selection.
+  const ascii = algorithmAscii(value)
+  const carrierDigits = new Set(
+    (CARRIER_OPS[value] ?? []).map((op) => OP_TO_DIGIT[op]),
+  )
+  const isModDigit = (ch: string) => /[1-4]/.test(ch) && !carrierDigits.has(ch)
+
   return (
-    <a href="!#" onClick={onAlgorithmClick} style={{ textDecoration: 'none' }}>
-      <pre className="algorithm">{algorithmAscii(value)}</pre>
+    <a href="!#" onClick={handleClick} style={{ textDecoration: 'none' }}>
+      <pre className={`algorithm ${mixed ? 'mixed' : ''} `}>
+        {mixed
+          ? ascii
+          : [...ascii].map((ch, i) =>
+              isModDigit(ch) ? (
+                <span key={i} className="algo-mod">
+                  {ch}
+                </span>
+              ) : (
+                ch
+              ),
+            )}
+      </pre>
     </a>
   )
 }

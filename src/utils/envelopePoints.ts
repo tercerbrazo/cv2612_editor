@@ -1,4 +1,19 @@
-export const calculateEnvelopePoints = ({ ar, tl, d1, sl, d2, rr }) => {
+type CalculateEnvelopePointsArgs = {
+  ar: number
+  tl: number
+  d1: number
+  sl: number
+  d2: number
+  rr: number
+}
+const calculateEnvelopePoints = ({
+  ar,
+  tl,
+  d1,
+  sl,
+  d2,
+  rr,
+}: CalculateEnvelopePointsArgs) => {
   const x1 = 1 - ar
   const y1 = 1 - tl
   const x2 = x1 + (1 - d1)
@@ -19,3 +34,5 @@ export const calculateEnvelopePoints = ({ ar, tl, d1, sl, d2, rr }) => {
     .map(([x, y]) => `${Math.round(x * 100)},${Math.round((1 - y) * 100)}`)
     .join(' ')
 }
+
+export { calculateEnvelopePoints }

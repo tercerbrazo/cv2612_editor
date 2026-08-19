@@ -3,90 +3,103 @@ import type {
   MidiChannelEnum,
   MidiCommands,
   OperatorParamEnum,
-  PatchParamEnum,
+  SceneParamEnum,
   PlayModeEnum,
   SettingParamEnum,
 } from './enums'
+import Operator from './operator'
 
 declare global {
-  type PatchId = 0 | 1 | 2 | 3
+  type SceneId = 0 | 1 | 2 | 3
   type ChannelId = 0 | 1 | 2 | 3 | 4 | 5
   type OperatorId = 0 | 1 | 2 | 3
+  type BindingId = 0 | 1 | 2 // x | y | z
+
+  type ChannelRef = {
+    sid: SceneId
+    cid: ChannelId
+  }
 
   type SettingParam = `${SettingParamEnum}`
-  type PatchParam = `${PatchParamEnum}`
+  type RoutingParam = 'lr'
+  type SceneParam = `${SceneParamEnum}`
   type ChannelParam = `${ChannelParamEnum}`
   type OperatorParam = `${OperatorParamEnum}`
-  type Param = SettingParam | PatchParam | ChannelParam | OperatorParam
-  type BindingKey = 'x' | 'y' | 'z'
+  type Param =
+    | SettingParam
+    | RoutingParam
+    | SceneParam
+    | ChannelParam
+    | OperatorParam
 
   type ParamMeta = {
-    key: string
     title: string
-    label: string
-    cc: number
-    ch: number
     max: number
     bits: number
-    options: string[]
-    bi?: number
   }
 
-  type ParamData = ParamMeta & {
-    value: number
-    binding?: BindingKey
+  type Operator = Record<OperatorParam, number>
+
+  type Instrument = Record<ChannelParam, number> & {
+    operators: [Operator, Operator, Operator, Operator]
   }
 
-  enum PlayModeEnum {
-    MONO = 0,
-    DUO = 1,
-    TRIO = 2,
-    CHORD = 3,
-    SEQ = 4,
-    RAND = 5,
-    POLY = 6,
+  type Channel = Instrument & {
+    origin: string
   }
 
-  enum MidiChannelEnum {
-    CH1 = 0,
-    CH2 = 1,
-    CH3 = 2,
-    CH4 = 3,
-    CH5 = 4,
-    CH6 = 5,
-    CH7 = 6,
-    CH8 = 7,
-    CH9 = 8,
-    CH10 = 9,
-    CH11 = 10,
-    CH12 = 11,
-    CH13 = 12,
-    CH14 = 13,
-    CH15 = 14,
-    CH16 = 15,
-    OMNI = 16,
-    FORWARD = 17,
-    MULTITRACK = 18,
+  type LibraryEntry = {
+    id: string
+    name: string
+    hash: number
+    system: boolean
+    instrument: Instrument
   }
 
-  /*
-   * A ModuleState is the state of the YM2612 regarding sound design.
-   * What defines it is the value of the whole parameters set,
-   * which can be defined by a set of values.
-   * The key is defined as `ctrlId-patchId-channelId-operatorId`
-   * but to ensure keys are properly built, we should encode/decode them
-   * with the provided helpers
-   */
-  type ModuleState = Record<string, number>
+  type Library = Record<string, LibraryEntry>
+
+  type Scene = {
+    lfo: number
+    channels: [Channel, Channel, Channel, Channel, Channel, Channel]
+  }
+
+  type Settings = Record<SettingParam, number> & {
+    sequence: number[][]
+  }
+
+  type Bindings = number[] // an array of binding indexes
+
+  type Routing = 0b00 | 0b01 | 0b10 | 0b11
+
+  type Patch = {
+    id: string
+    name: string
+    scenes: [Scene, Scene, Scene, Scene]
+    routing: [Routing, Routing, Routing, Routing, Routing, Routing]
+  }
 
   type State = {
-    name: string
-    sequence: number[][]
-    bindingKey?: BindingKey
-    bindings: Record<BindingKey, number[]>
-    moduleState: ModuleState
-    patchIdx: PatchId
-    channelIdx: ChannelId
-    calibrationStep: number
+    // a way to migrate old persisted states
+    version: number
+
+    // actual module state
+    settings: Settings
+    bindings: [Bindings, Bindings, Bindings]
+    patches: Record<string, Patch>
+
+    // currently selected patch id
+    pid: string
+
+    // current scenes/channels selection
+    selection: ChannelRef[]
+    browserOn: boolean
+    browserType: 'library' | 'patch'
+    browserCategory: string
+
+    // mapping parameters?
+    bindingId?: BindingId
+
+    // instruments library
+    library: Library
   }
 }
