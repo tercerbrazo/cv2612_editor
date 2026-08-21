@@ -1783,6 +1783,11 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     if (MidiIO.getMidiOutName() !== null) {
       sendToggleDebug(true)
       setTelemetryEnabled(true)
+    } else {
+      pushLog(
+        null,
+        '⚠ no MIDI output selected — telemetry stays OFF (the toggle needs it). Pick one in the Editor tab, then reconnect.',
+      )
     }
     readLoop(port)
   }
@@ -1961,6 +1966,12 @@ const Monitor = ({ visible }: { visible: boolean }) => {
           drops: {conn === 'connected' ? dropsTotal : '—'}
         </span>
       </nav>
+      {conn === 'connected' && MidiIO.getMidiOutName() === null && (
+        <p className="hint warn">
+          ⚠ No MIDI output selected — the module can't be switched into
+          telemetry mode. Pick a MIDI Out in the Editor tab, then reconnect.
+        </p>
+      )}
       {!serialSupported && (
         <p className="hint">
           WebSerial unavailable; use Chrome (or Edge) and serve the app over
