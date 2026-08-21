@@ -1662,15 +1662,23 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     const serial = getSerial()
     if (!serial) throw new Error('Web Serial not supported')
     const granted = await serial.getPorts()
+    console.log('[mon] openBridgePort: granted ports =', granted.length)
     const p = granted.length === 1 ? granted[0] : await serial.requestPort()
     // reuse an already-open port (a fast reconnect can race the previous close)
-    if (!p.readable) await p.open({ baudRate: 38400 })
+    if (!p.readable) {
+      console.log('[mon] opening port @38400')
+      await p.open({ baudRate: 38400 })
+    } else {
+      console.log('[mon] reusing an already-open port')
+    }
     return p
   }
 
   const readLoop = async (initialPort: SerialPortLike) => {
     // one demux per connection: binary frames and ASCII lines split here
     const demux = new FrameDemux()
+    let sawData = false
+    let sawFrame = false
     let port: SerialPortLike | null = initialPort
     // re-acquire on drop (the Uno bridge can reset on open); real data resets the streak
     let lostStreak = 0
@@ -1695,7 +1703,9 @@ const Monitor = ({ visible }: { visible: boolean }) => {
           if (!value || value.length === 0) continue
           lostStreak = 0
           rxBytesRef.current += value.length
+          if (!sawData) { console.log('[mon] first bytes in:', value.length, 'B'); sawData = true }
           const { frames, textLines } = demux.feed(value)
+          if (!sawFrame && frames.length) { console.log('[mon] first parsed frame:', frames[0].type ?? '?'); sawFrame = true }
           for (const f of frames) handleFrame(f)
           for (const l of textLines) handleLine(l)
         }
@@ -1748,6 +1758,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
       } else {
         setConn('error')
         setConnError(err instanceof Error ? err.message : String(err))
+        console.error('[mon] connect failed:', err)
       }
       return
     }
@@ -1766,6 +1777,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     dropsTotalRef.current = 0
     lastDropRtRef.current = null
     setConn('connected')
+    console.log('[mon] connected @38400; midiOut =', MidiIO.getMidiOutName())
     pushLog(null, '--- serial connected (38400 baud) ---')
     // prod ships OFF: enable on connect so the stream flows (needs a MIDI output)
     if (MidiIO.getMidiOutName() !== null) {
