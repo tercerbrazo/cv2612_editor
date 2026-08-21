@@ -67,8 +67,12 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
 }
 
-const initialSequence = Array.from({ length: 6 }).map((_) =>
-  Array.from({ length: 16 }).map((_) => 0),
+const emptySequence = () =>
+  Array.from({ length: 6 }).map((_) => Array.from({ length: 16 }).map((_) => 0))
+
+// staircase default: voice v on step v, mirrors firmware DEFAULT_SETTINGS
+const initialSequence = Array.from({ length: 6 }).map((_, v) =>
+  Array.from({ length: 16 }).map((_, j) => (j === v ? 1 : 0)),
 )
 
 const initialInstrument = initialLibrary[INIT_INSTRUMENT_ID].instrument
@@ -85,7 +89,7 @@ const initialSettings = {
   pm: 0,
   tu: 64,
   rc: 16,
-  stp: 4, // firmware DEFAULT_SETTINGS.sequence_steps
+  stp: 5, // firmware DEFAULT_SETTINGS.sequence_steps (last index, 0..5)
   vs: 64,
   portamento: 0,
   pbu: 12,
@@ -475,7 +479,7 @@ const calibrateRests = () => {
 
 const clearSequence = () => {
   sendMidiCmd(MidiCommands.CLEAR_SEQ)
-  state.settings.sequence = deepClone(initialSequence)
+  state.settings.sequence = emptySequence()
 }
 
 const useBinding = (id: Param, op: OperatorId) => {

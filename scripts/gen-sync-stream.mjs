@@ -12,9 +12,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { calculate_crc32 } from '../src/utils/checksum.ts'
 import { buildSyncMessages } from '../src/utils/syncMessages.ts'
-import { state } from './vector-states.mjs'
-
-const EXPECTED = { default: 0x35c8bb8a, rich: 0x9c57db6e }
+import { state, EXPECTED } from './vector-states.mjs'
 
 const outdir = process.argv[2]
 let failed = false

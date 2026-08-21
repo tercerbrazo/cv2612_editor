@@ -54,22 +54,25 @@ const state = (rich) => ({
           steps[v + 8] = 1
           return steps
         }),
-        stp: 4, portamento: 0, pbu: 12, pbd: 12, vs: 64,
+        stp: 5, portamento: 0, pbu: 12, pbd: 12, vs: 64,
         mmx: 2, mmy: 2, mmz: 2, qz: 3,
       }
     : {
         // vector 1 = the firmware's DEFAULT_SETTINGS, everything else zeroed
         pm: 0, rc: 16, tr: 64, tu: 64, lb: 127,
-        sequence: Array.from({ length: 6 }, () => new Array(16).fill(0)),
-        stp: 4, portamento: 0, pbu: 12, pbd: 12, vs: 64,
+        // staircase default: voice v on step v
+        sequence: Array.from({ length: 6 }, (_, v) => {
+          const steps = new Array(16).fill(0)
+          steps[v] = 1
+          return steps
+        }),
+        stp: 5, portamento: 0, pbu: 12, pbd: 12, vs: 64,
         mmx: 2, mmy: 2, mmz: 2, qz: 0,
       },
 })
 
-const EXPECTED = {
-  default: 0x35c8bb8a, // pinned on both sides; the firmware suite asserts the same
-  rich: 0x9c57db6e,
-}
+// Golden CRC32 of each vector, pinned on both sides. The firmware suite
+// (test_eeprom_crc.cpp) asserts the same numbers.
+const EXPECTED = { default: 0x4cf61413, rich: 0x6e577108 }
 
-let failed = false
-export { state }
+export { state, EXPECTED }

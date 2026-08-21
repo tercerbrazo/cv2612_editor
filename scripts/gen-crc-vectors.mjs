@@ -4,12 +4,7 @@
  * State spec lives in scripts/vector-states.mjs (shared with the firmware).
  */
 import { calculate_crc32 } from '../src/utils/checksum.ts'
-import { state } from './vector-states.mjs'
-
-const EXPECTED = {
-  default: 0x35c8bb8a, // pinned on both sides; the firmware suite asserts the same
-  rich: 0x9c57db6e,
-}
+import { state, EXPECTED } from './vector-states.mjs'
 
 let failed = false
 for (const [name, rich] of [['default', false], ['rich', true]]) {
