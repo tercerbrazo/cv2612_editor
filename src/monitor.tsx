@@ -88,6 +88,12 @@ const getSerial = (): SerialLike | undefined =>
 const WINDOW_MS = 30000 // strip charts show the last ~30s
 const MAX_LOG = 200
 const FRAME_MS = 33 // ~30fps
+// USB vendor ids of the telemetry bridge Uno (Arduino Srl 0x2a03, genuine
+// 0x2341) — used to pick it out of other ACM devices on the bus
+const BRIDGE_USB_VENDORS = [0x2a03, 0x2341]
+// python serial->WebSocket bridge (suite/ws_bridge.py), the reliable transport
+// when Chrome's Web Serial drops the Uno CDC-ACM adapter
+const WS_BRIDGE_URL = 'ws://localhost:2613'
 
 // series colors follow the editor's convention: X=red, Y=green, Z=blue
 const C_PRIMARY = '#3ed107'
@@ -1370,6 +1376,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   const logKeyRef = useRef(0)
   const keepReadingRef = useRef(false)
   const portRef = useRef<SerialPortLike | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const rxBytesRef = useRef(0) // total bytes received over serial
   const rxFramesRef = useRef(0) // total K+D state frames decoded
@@ -1663,10 +1670,23 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     if (!serial) throw new Error('Web Serial not supported')
     const granted = await serial.getPorts()
     console.log('[mon] openBridgePort: granted ports =', granted.length)
-    const p = granted.length === 1 ? granted[0] : await serial.requestPort()
+    // pick the bridge Uno by USB id, never granted[0] blindly: other ACM
+    // devices on the bus (e.g. a Pico) would be read as the bridge and throw
+    const bridge = granted.find((gp) => {
+      const info = gp.getInfo?.()
+      return info && BRIDGE_USB_VENDORS.includes(info.usbVendorId as number)
+    })
+    if (bridge) console.log('[mon] matched bridge by USB vendor id')
+    const p =
+      bridge ??
+      (await serial.requestPort({
+        filters: BRIDGE_USB_VENDORS.map((usbVendorId) => ({ usbVendorId })),
+      }))
     // reuse an already-open port (a fast reconnect can race the previous close)
     if (!p.readable) {
       console.log('[mon] opening port @38400')
+      // start reading immediately, default buffer: the demux resyncs past the
+      // reset-boot garbage on its own frame headers
       await p.open({ baudRate: 38400 })
     } else {
       console.log('[mon] reusing an already-open port')
@@ -1684,7 +1704,11 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     let lostStreak = 0
     while (keepReadingRef.current) {
       if (!port || !port.readable) {
-        if (lostStreak++ > 8) break
+        console.log('[mon] re-acquiring port, lostStreak =', lostStreak)
+        if (lostStreak++ > 8) {
+          console.log('[mon] lostStreak exceeded, giving up')
+          break
+        }
         await new Promise((r) => setTimeout(r, 1500)) // wait for re-enumeration
         try {
           port = await openBridgePort()
@@ -1699,7 +1723,10 @@ const Monitor = ({ visible }: { visible: boolean }) => {
       try {
         for (;;) {
           const { value, done } = await reader.read()
-          if (done) break
+          if (done) {
+            console.log('[mon] read() done — stream closed by device')
+            break
+          }
           if (!value || value.length === 0) continue
           lostStreak = 0
           rxBytesRef.current += value.length
@@ -1709,8 +1736,9 @@ const Monitor = ({ visible }: { visible: boolean }) => {
           for (const f of frames) handleFrame(f)
           for (const l of textLines) handleLine(l)
         }
-      } catch {
+      } catch (err) {
         // device lost / transient read error — the outer loop re-acquires
+        console.log('[mon] read() threw:', err instanceof Error ? err.message : err)
       } finally {
         try {
           reader.releaseLock()
@@ -1792,11 +1820,67 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     readLoop(port)
   }
 
+  // Alternative transport: read the telemetry from the python serial->WebSocket
+  // bridge (suite/ws_bridge.py). Chrome's Web Serial drops this Arduino CDC-ACM
+  // adapter after the first read; the bridge reads it with pyserial (which
+  // streams it fine) and rebroadcasts the raw bytes here, into the same demux.
+  const connectWs = () => {
+    setConnError('')
+    setConn('connecting')
+    const demux = new FrameDemux()
+    let ws: WebSocket
+    try {
+      ws = new WebSocket(WS_BRIDGE_URL)
+    } catch (err) {
+      setConn('error')
+      setConnError(err instanceof Error ? err.message : String(err))
+      return
+    }
+    ws.binaryType = 'arraybuffer'
+    wsRef.current = ws
+    ws.onopen = () => {
+      bwRef.current = {
+        lastBytes: rxBytesRef.current,
+        lastFrames: rxFramesRef.current,
+        lastT: performance.now(),
+        rate: 0,
+        frameRate: 0,
+      }
+      dropsTotalRef.current = 0
+      lastDropRtRef.current = null
+      setConn('connected')
+      console.log('[mon] WS bridge connected', WS_BRIDGE_URL)
+      pushLog(null, `--- WS bridge connected (${WS_BRIDGE_URL}) ---`)
+    }
+    ws.onmessage = (e) => {
+      const bytes = new Uint8Array(e.data as ArrayBuffer)
+      rxBytesRef.current += bytes.length
+      const { frames, textLines } = demux.feed(bytes)
+      for (const f of frames) handleFrame(f)
+      for (const l of textLines) handleLine(l)
+    }
+    ws.onerror = () => {
+      console.log('[mon] WS bridge error — is ws_bridge.py running?')
+      setConnError('WS bridge unreachable — run suite/ws_bridge.py')
+    }
+    ws.onclose = () => {
+      console.log('[mon] WS bridge closed')
+      wsRef.current = null
+      setConn('idle')
+      latestStateRef.current = null
+      latestVoicesRef.current = null
+    }
+  }
+
   const disconnect = async () => {
     // leave the module in its shipped default (silent) before dropping the link
     if (telemetryEnabled && MidiIO.getMidiOutName() !== null) sendToggleDebug(false)
     setTelemetryEnabled(false)
     keepReadingRef.current = false
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
     try {
       await readerRef.current?.cancel()
     } catch {
@@ -1907,13 +1991,23 @@ const Monitor = ({ visible }: { visible: boolean }) => {
             Disconnect
           </button>
         ) : (
-          <button
-            type="button"
-            disabled={!serialSupported || conn === 'connecting'}
-            onClick={connect}
-          >
-            Connect serial
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={!serialSupported || conn === 'connecting'}
+              onClick={connect}
+            >
+              Connect serial
+            </button>
+            <button
+              type="button"
+              disabled={conn === 'connecting'}
+              onClick={connectWs}
+              title="read via the python serial->WebSocket bridge (suite/ws_bridge.py)"
+            >
+              Connect bridge
+            </button>
+          </>
         )}
         <button
           type="button"
