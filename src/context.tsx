@@ -1,18 +1,12 @@
-import { proxy, Snapshot, subscribe, useSnapshot } from 'valtio'
-import { deepClone } from 'valtio/utils'
-import {
-  unstable_enableOp,
-  subscribe as vanillaSubscribe,
-} from 'valtio/vanilla'
 import {
   ChannelParamEnum,
   MidiCommands,
   OperatorParamEnum,
   SettingParamEnum,
 } from './enums'
-import initialLibraryJson from './instruments.json'
 import MidiIO from './midi-io'
 import { calculate_crc32 } from './utils/checksum'
+import { buildSyncMessages } from './utils/syncMessages'
 import { hashInstrument } from './utils/hashing'
 import {
   getParamBindingIndex,
@@ -24,9 +18,17 @@ import {
   isSettingParam,
 } from './utils/paramsHelpers'
 
-const INIT_INSTRUMENT_ID = 'sys_init'
+import { Snapshot, proxy, subscribe, useSnapshot } from 'valtio'
+import {
+  subscribe as vanillaSubscribe,
+  unstable_enableOp,
+} from 'valtio/vanilla'
+import { deepClone } from 'valtio/utils'
+import initialLibraryJson from './instruments.json'
 
-unstable_enableOp(true)
+// valtio v2: subscribe ops are opt-in
+unstable_enableOp()
+const INIT_INSTRUMENT_ID = 'sys_init'
 
 const SC_IDXS = [0, 1, 2, 3] as const
 const CH_IDXS = [0, 1, 2, 3, 4, 5] as const
@@ -65,8 +67,12 @@ const sendMidiCmd = (cmd: MidiCommands, val = 127) => {
   MidiIO.sendCC(15, cmd, val)
 }
 
-const initialSequence = Array.from({ length: 6 }).map((_) =>
-  Array.from({ length: 16 }).map((_) => 0),
+const emptySequence = () =>
+  Array.from({ length: 6 }).map((_) => Array.from({ length: 16 }).map((_) => 0))
+
+// staircase default: voice v on step v, mirrors firmware DEFAULT_SETTINGS
+const initialSequence = Array.from({ length: 6 }).map((_, v) =>
+  Array.from({ length: 16 }).map((_, j) => (j === v ? 1 : 0)),
 )
 
 const initialInstrument = initialLibrary[INIT_INSTRUMENT_ID].instrument
@@ -76,19 +82,22 @@ const initialScene = {
 } as Scene
 
 const initialSettings = {
-  lb: 5,
-  tr: 32,
+  // mirrors the firmware's DEFAULT_SETTINGS: a fresh editor and a fresh
+  // module must agree, or the very first CRC check reads as a mismatch
+  lb: 127,
+  tr: 64,
   pm: 0,
   tu: 64,
-  rc: 0,
-  stp: 7,
-  vs: 8,
+  rc: 16,
+  stp: 5, // firmware DEFAULT_SETTINGS.sequence_steps (last index, 0..5)
+  vs: 64,
   portamento: 0,
-  pbu: 2,
+  pbu: 12,
   pbd: 12,
   mmx: 2,
   mmy: 2,
   mmz: 2,
+  qz: 0,
   sequence: initialSequence,
 }
 
@@ -122,17 +131,47 @@ const initialState: State = {
   browserType: 'library',
 }
 
+// a persisted/backup state is safe to boot from only if these load-bearing
+// fields are structurally intact; a version match alone let a truncated file
+// through and bricked the first render (patch.tsx reads patches[pid].scenes)
+const isRestorableState = (s: any): boolean =>
+  !!s &&
+  typeof s === 'object' &&
+  !Array.isArray(s) &&
+  s.version === CURRENT_VERSION &&
+  !!s.patches &&
+  typeof s.patches === 'object' &&
+  !Array.isArray(s.patches) &&
+  typeof s.pid === 'string' &&
+  s.pid in s.patches &&
+  Array.isArray(s.selection) &&
+  s.selection.length > 0 &&
+  !!s.settings &&
+  typeof s.settings === 'object' &&
+  !!s.library &&
+  typeof s.library === 'object' &&
+  Array.isArray(s.bindings)
+
 const getInitialState = () => {
   const lastStateStr = localStorage.getItem('lastState')
   if (lastStateStr !== null) {
-    const lastState = JSON.parse(lastStateStr)
-    if (lastState.version === CURRENT_VERSION) {
-      return lastState as State
-    } else {
-      // TODO: migrate a previous version?
-      console.error(
-        `MISSING MIGRATION FROM ${lastState.version} to ${CURRENT_VERSION}`,
-      )
+    // bad JSON here would blank the app at load; tolerate it
+    let lastState: any = null
+    try {
+      lastState = JSON.parse(lastStateStr)
+    } catch {
+      console.error('lastState is corrupt, starting fresh')
+    }
+    if (isRestorableState(lastState)) {
+      // backfill settings added after this state was persisted, so a new
+      // setting is not `undefined` on load (it would be sent as NaN on sync)
+      return {
+        ...lastState,
+        settings: { ...initialSettings, ...lastState.settings },
+      } as State
+    } else if (lastState) {
+      // wrong version or structurally broken: boot fresh, never crash on it
+      console.error('lastState unusable, starting fresh', lastState.version)
     }
   }
   return deepClone(initialState)
@@ -172,7 +211,6 @@ vanillaSubscribe(state, (ops) => {
     if (type !== 'set') {
       return
     }
-    console.log(path, value, prev)
 
     if (path[0] === 'settings') {
       if (path[1] === 'sequence') {
@@ -209,9 +247,11 @@ vanillaSubscribe(state, (ops) => {
           break
         case 5:
           {
-            const cid = Number(path[3]) as SceneId
+            // path[3] is the SCENE index — sending it as the channel routed
+            // live lfo edits of scenes B/C/D onto scene A's CC map
+            const sid = Number(path[3]) as SceneId
             if (value !== prev) {
-              sendMidiParam('lfo', 0, cid, 0, value as number)
+              sendMidiParam('lfo', sid, 0, 0, value as number)
             }
           }
           break
@@ -229,7 +269,9 @@ vanillaSubscribe(state, (ops) => {
             const sid = Number(path[3]) as SceneId
             const cid = Number(path[5]) as ChannelId
             const id = path[6] as ChannelParam
-            if (value !== prev) {
+            // non-midi fields (e.g. origin) also land here; the filter below
+            // keeps them off the wire as garbage CCs
+            if (CHANNEL_PARAMS.includes(id) && value !== prev) {
               sendMidiParam(id, sid, cid, 0, value as number)
             }
           }
@@ -239,9 +281,8 @@ vanillaSubscribe(state, (ops) => {
             const sid = Number(path[3]) as SceneId
             const cid = Number(path[5]) as ChannelId
             const oid = Number(path[7]) as OperatorId
-            const id = path[8] as ChannelParam
-            console.log(sid, cid, oid, id, value, prev)
-            if (value !== prev) {
+            const id = path[8] as OperatorParam
+            if (OPERATOR_PARAMS.includes(id) && value !== prev) {
               sendMidiParam(id, sid, cid, oid, value as number)
             }
           }
@@ -343,10 +384,17 @@ const sendMidiParam = (
 ) => {
   const { bits } = getParamMeta(id)
   const { ch, cc } = getParamMidiCc(id, sid, cid, op)
+  // clamp to the param's declared range: MidiIO.sendCC masks the data byte with
+  // & 0x7f, so an out-of-range val (e.g. from a lax instrument import) would wrap
+  // to a wrong CC silently. Catch the whole class here rather than per-parser.
+  const max = (1 << bits) - 1
+  const clamped = val < 0 ? 0 : val > max ? max : val
+  if (clamped !== val) {
+    console.warn(`param ${id}: value ${val} out of range [0,${max}], clamped`)
+  }
   // sync midi cc
-  const ccVal = val << (7 - bits)
+  const ccVal = clamped << (7 - bits)
   MidiIO.sendCC(ch, cc, ccVal)
-  console.log('sending ', ch, cc, ccVal)
 }
 
 const bindAll = (modulator?: number) => {
@@ -361,7 +409,8 @@ const bindAll = (modulator?: number) => {
   const params: Param[] = ['lfo', 'al', 'fms', 'ams', 'fb']
   params.forEach((id) => {
     const bi = getParamBindingIndex(id, 0)
-    if (bi) {
+    // !== undefined: lfo's binding index is 0, which is falsy
+    if (bi !== undefined) {
       state.bindings[modulator].push(bi)
     }
   })
@@ -370,7 +419,7 @@ const bindAll = (modulator?: number) => {
   opParams.forEach((id) => {
     for (let o = 0; o < 4; o++) {
       const bi = getParamBindingIndex(id, o as OperatorId)
-      if (bi) {
+      if (bi !== undefined) {
         state.bindings[modulator].push(bi)
       }
     }
@@ -385,56 +434,11 @@ const bindAll = (modulator?: number) => {
 }
 
 const syncMidi = () => {
-  // clear all bindings first
-  sendMidiCmd(MidiCommands.CLEAR_BINDINGS)
-
-  // settings
-  for (const id of SETTING_PARAMS) {
-    sendMidiParam(id, 0, 0, 0, state.settings[id])
+  // the message list IS the protocol — see utils/syncMessages.ts, shared
+  // with the wire-level tests against the firmware's native suite
+  for (const [ch, cc, val] of buildSyncMessages(state)) {
+    MidiIO.sendCC(ch, cc, val)
   }
-
-  // send sequence
-  sendMidiCmd(MidiCommands.CLEAR_SEQ)
-  state.settings.sequence.forEach((seq, voice) => {
-    seq.forEach((step_on, step_index) => {
-      if (step_on) {
-        sendMidiCmd(MidiCommands.SET_SEQ_STEP_ON, voice * 16 + step_index)
-      }
-    })
-  })
-
-  // routing
-  for (const cid of CH_IDXS) {
-    sendMidiParam('lr', 0, cid, 0, state.patches[state.pid].routing[cid])
-  }
-
-  // scenes
-  for (const sid of SC_IDXS) {
-    const scene = state.patches[state.pid].scenes[sid]
-    sendMidiParam('lfo', sid, 0, 0, scene.lfo)
-    for (const cid of CH_IDXS) {
-      const ch = scene.channels[cid]
-
-      for (const id of CHANNEL_PARAMS) {
-        sendMidiParam(id, sid, cid, 0, ch[id])
-      }
-
-      for (const o of OP_IDXS) {
-        for (const id of OPERATOR_PARAMS) {
-          sendMidiParam(id, sid, cid, o, ch.operators[o][id])
-        }
-      }
-    }
-  }
-
-  state.bindings.forEach((bindings, index) => {
-    bindings.forEach((bi) => {
-      // send binding via midi
-      sendMidiCmd(BINDING_CMDS[index], 64 + bi)
-    })
-  })
-
-  sendCrc32()
 }
 
 const resetOperator = (op: OperatorId) => {
@@ -464,9 +468,18 @@ const saveState = () => {
   sendCrc32()
 }
 
+// Captures the module's own resting levels (pitch, X/Y/Z, trimmer centres)
+// into its EEPROM. Every unit rests at slightly different ADC counts and the
+// compiled defaults only fit one of them, so an uncalibrated module plays
+// sharp or flat by whatever its own offset is. Needs no telemetry, which
+// matters because production firmware ships without it.
+const calibrateRests = () => {
+  sendMidiCmd(MidiCommands.SET_CALIBRATION_STEP, 9)
+}
+
 const clearSequence = () => {
   sendMidiCmd(MidiCommands.CLEAR_SEQ)
-  state.settings.sequence = deepClone(initialSequence)
+  state.settings.sequence = emptySequence()
 }
 
 const useBinding = (id: Param, op: OperatorId) => {
@@ -565,23 +578,58 @@ const assignFromChannel = (sid: number, cid: number) => {
   })
 }
 
+// restore a Save-Backup json: reject a wrong-version or malformed file (returns
+// the reason), else persist it and reboot through the same localStorage path
+// getInitialState uses, so the reload gets the version-check and settings backfill
+const loadBackup = (raw: string): string | null => {
+  let parsed: any
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return 'Not a valid JSON file.'
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return 'Not an editor backup.'
+  }
+  if (parsed.version !== CURRENT_VERSION) {
+    return `Backup is version ${parsed.version ?? '?'}; this editor is ${CURRENT_VERSION}.`
+  }
+  if (!isRestorableState(parsed)) {
+    return 'Backup is incomplete or corrupt; not loading it.'
+  }
+  if (
+    !window.confirm(
+      'Replace the current editor state with this backup? Unsaved changes are lost.',
+    )
+  ) {
+    return null
+  }
+  // reload must immediately follow the write: the state subscribe rewrites
+  // lastState on any mutation, which would clobber the backup before navigation
+  localStorage.setItem('lastState', JSON.stringify(parsed))
+  window.location.reload()
+  return null
+}
+
 export {
-  addToLibrary,
-  assignFromChannel,
-  assignFromLibrary,
-  bindAll,
-  channelName,
-  clearSequence,
-  createPatch,
-  isChannelDirty,
-  resetChannel,
-  resetOperator,
-  saveState,
-  sendCrc32,
   state,
-  syncMidi,
-  toggleParamBinding,
+  loadBackup,
+  channelName,
+  useParam,
   updateParam,
   useBinding,
-  useParam,
+  clearSequence,
+  toggleParamBinding,
+  bindAll,
+  assignFromLibrary,
+  assignFromChannel,
+  addToLibrary,
+  isChannelDirty,
+  syncMidi,
+  sendCrc32,
+  saveState,
+  calibrateRests,
+  resetChannel,
+  resetOperator,
+  createPatch,
 }

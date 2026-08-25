@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { lazy, Suspense, useState } from 'react'
 import { useSnapshot } from 'valtio'
 import Channel from './channel'
 import { state } from './context'
@@ -9,7 +9,11 @@ import Midi from './midi'
 import Patch from './patch'
 import Sequencer from './sequencer'
 import Slider from './slider'
+import { useMonitorUnlock } from './use-monitor-unlock'
 import './styles.sass'
+
+// Internal bench tool, lazy so it stays out of the initial bundle until #monitor.
+const Monitor = lazy(() => import('./monitor'))
 
 const Header = () => {
   return (
@@ -37,6 +41,10 @@ const Settings = () => {
       </div>
       <div className="col">
         <Slider id="tu" />
+        <Dropdown
+          id="qz"
+          hint="Snaps the pitch CV to the selected scale. Quantization happens before transpose, so the Transpose setting rotates the scale and picks the key."
+        />
       </div>
       <div className="col">
         <Slider id="lb" />
@@ -47,17 +55,46 @@ const Settings = () => {
 
 const App = () => {
   const snap = useSnapshot(state)
+  const [view, setView] = useState<'editor' | 'monitor'>('editor')
+  const monitorUnlocked = useMonitorUnlock()
+  // when locked the Monitor tab does not exist, so a stale view falls back to editor
+  const activeView = monitorUnlocked ? view : 'editor'
 
   return (
     <>
       <Header />
-      <Midi />
-      <br />
-      <Settings />
-      {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
-      <Patch />
-      <br />
-      <Channel />
+      {monitorUnlocked && (
+        <nav className="view-tabs">
+          {(['editor', 'monitor'] as const).map((v) => (
+            <a
+              href="/"
+              key={v}
+              className={view === v ? 'active' : ''}
+              onClick={(ev) => {
+                ev.preventDefault()
+                setView(v)
+              }}
+            >
+              {v === 'editor' ? 'Editor' : 'Monitor'}
+            </a>
+          ))}
+        </nav>
+      )}
+      <div style={{ display: activeView === 'editor' ? undefined : 'none' }}>
+        <Midi />
+        <br />
+        <Settings />
+        {snap.settings.pm === PlayModeEnum.SEQ && <Sequencer />}
+        <Patch />
+        <br />
+        <Channel />
+      </div>
+      {monitorUnlocked && (
+        <Suspense fallback={null}>
+          {/* Monitor stays mounted so the serial connection survives tab switches */}
+          <Monitor visible={activeView === 'monitor'} />
+        </Suspense>
+      )}
     </>
   )
 }

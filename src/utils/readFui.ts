@@ -1,3 +1,5 @@
+import { fileDtToChip } from './detune.ts'
+
 // helpers
 const readU16 = (d: Uint8Array, o: number) => d[o] | (d[o + 1] << 8)
 const readU32 = (d: Uint8Array, o: number) =>
@@ -51,8 +53,10 @@ const readFuiLegacy = (data: Uint8Array): Instrument | null => {
 
   pos += 1 // 1  | reserved
 
-  // skip name
-  while (data[pos] !== 0) pos++
+  // skip name — bound to length: an unterminated name field would spin forever
+  // (data[pos] is undefined past EOF, never === 0), hanging the tab synchronously
+  while (pos < data.length && data[pos] !== 0) pos++
+  if (pos >= data.length) return null
   pos++
 
   // FM instrument header
@@ -79,7 +83,7 @@ const readFuiLegacy = (data: Uint8Array): Instrument | null => {
       sl: data[o + 5],
       tl: data[o + 6],
       rs: data[o + 8],
-      det: data[o + 9],
+      det: fileDtToChip(data[o + 9]),
       d2: data[o + 10],
     })
   }
@@ -178,7 +182,7 @@ const parseFMBlock = (d: Uint8Array, _version: number): Instrument | null => {
 
     const b0 = d[pos++]
     const ksr = (b0 >> 7) & 0x01
-    const det = (b0 >> 4) & 0x07
+    const det = fileDtToChip((b0 >> 4) & 0x07)
     const mul = b0 & 0x0f
 
     const b1 = d[pos++]

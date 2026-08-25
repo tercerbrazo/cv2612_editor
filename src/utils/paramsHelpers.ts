@@ -2,10 +2,10 @@ import {
   ChannelParamEnum,
   MidiChannelEnum,
   OperatorParamEnum,
-  PlayModeEnum,
   SceneParamEnum,
+  PlayModeEnum,
   SettingParamEnum,
-} from '../enums'
+} from '../enums.ts'
 
 const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
   PLAY_MODE: 20,
@@ -21,6 +21,7 @@ const SETTING_PARAM_MIDI_CC: Record<keyof typeof SettingParamEnum, number> = {
   MODULATION_MODE_X: 30,
   MODULATION_MODE_Y: 31,
   MODULATION_MODE_Z: 32,
+  QUANTIZE: 34, // 33 was never assigned; 34 is what both sides ship
 }
 
 const PARAM_INDEXES = [
@@ -84,6 +85,7 @@ const paramTitle: Record<Param, string> = {
   mmx: 'Modulation Mode X',
   mmy: 'Modulation Mode Y',
   mmz: 'Modulation Mode Z',
+  qz: 'Quantize',
   lfo: 'Low Frequency Oscillator',
   lr: 'Stereo Mode',
   ams: 'Amplitude Modulation Sensitivity',
@@ -132,11 +134,26 @@ const getParamOptions = (id: Param): string[] => {
     [PlayModeEnum.POLY]: '⚪ POLY',
   }
 
+  // CV quantizer scales, indexed by the value sent to the module.
+  // The module clamps anything above the last entry.
+  const quantizeOptions = [
+    'Off',
+    'Chromatic',
+    'Major',
+    'Natural minor',
+    'Harmonic minor',
+    'Dorian',
+    'Pentatonic major',
+    'Pentatonic minor',
+  ]
+
   switch (id) {
     case 'pm':
       return Object.values(playmodeOptions)
     case 'rc':
       return Object.keys(MidiChannelEnum).filter((k) => isNaN(Number(k)))
+    case 'qz':
+      return quantizeOptions
     default:
       return []
   }
@@ -216,12 +233,12 @@ const getParamMeta = (id: Param): ParamMeta => {
 }
 
 export {
-  getParamBindingIndex,
-  getParamMeta,
-  getParamMidiCc,
-  getParamOptions,
+  isSettingParam,
+  isSceneParam,
   isChannelParam,
   isOperatorParam,
-  isSceneParam,
-  isSettingParam,
+  getParamMidiCc,
+  getParamBindingIndex,
+  getParamMeta,
+  getParamOptions,
 }

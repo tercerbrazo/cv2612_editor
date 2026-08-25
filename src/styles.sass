@@ -1,8 +1,5 @@
 @use "sass:color"
-
-$black: #222
-$white: #ddd
-$primary: #3ed107
+@use "theme" as *
 
 %no-select
   user-select: none
@@ -77,6 +74,8 @@ p
     font-size: 1em
     color: $primary
     &.mixed
+      color: #666
+    .algo-mod
       color: #666
 
 
@@ -218,6 +217,10 @@ p
       &.connected
         select.out
           background: #81e5ff
+      .no-out
+        color: #ff5252
+      select.out.no-out
+        border: 1px solid #ff5252
       a
         font-weight: bold
         &.x
@@ -230,6 +233,11 @@ p
           background: #ddd
         &:hover
           background: #999
+        // action greyed out when there is no MIDI output to send to
+        &.disabled
+          opacity: 0.35
+          &:hover
+            background: none
       input[type="text"]
         padding: 0.5em
         border: 0
@@ -254,6 +262,34 @@ p
       border-radius: 50%
       &[title]:after
         filter: none
+
+  // muted channel (routing off): dim its whole editing area — edits are inaudible
+  .channel.muted
+    opacity: 0.4
+
+  // inert: soft de-emphasis (still editable), not a disabled look
+  .slider.inert
+    label, input, span
+      opacity: 0.6
+
+  // operator role tag (carrier = TL is volume, mod = TL is timbre)
+  .op-role
+    display: block
+    text-align: center
+    font-size: 0.6em
+    color: #777
+    &.carrier
+      color: $primary
+    // operator 1 feedback marker; greyed when fb=0 (pure sine)
+    .op-fb
+      color: $primary
+      &.off
+        color: #777
+
+  // play-mode-repurposed binding: grey the X/Y/Z colour bar
+  .slider label i.blocked
+    background: #555 !important
+    opacity: 0.5
 
   .two-cols
     display: flex
@@ -489,6 +525,10 @@ p
         padding: 0.5em
         top: 0
         right: 32px
+
+#app
+  nav.view-tabs
+    margin: 12px auto
 
 @keyframes blinkLed
   from

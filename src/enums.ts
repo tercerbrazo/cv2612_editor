@@ -13,6 +13,7 @@ enum SettingParamEnum {
   MODULATION_MODE_X = 'mmx',
   MODULATION_MODE_Y = 'mmy',
   MODULATION_MODE_Z = 'mmz',
+  QUANTIZE = 'qz',
 }
 
 enum SceneParamEnum {
@@ -48,7 +49,7 @@ enum MidiCommands {
   SAVE_STATE = 110,
   CLEAR_SEQ = 111,
   CLEAR_BINDINGS = 112,
-  // SET_CALIBRATION_STEP = 113,
+  SET_CALIBRATION_STEP = 113,
   TOGGLE_DEBUG = 114,
   SEND_CRC32_CHUNK = 115,
 }

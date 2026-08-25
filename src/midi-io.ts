@@ -88,9 +88,7 @@ const messageQueue = new Map()
 
 const sendCC = async (channel: number, number: number, value: number) => {
   if (!state.ma) return
-
-  const midiOut = state.ma.outputs.get(state.midiOutId)
-  if (!midiOut) return
+  if (!state.ma.outputs.get(state.midiOutId)) return
 
   // Create a unique key for each channel-number combination
   let key = `${channel}-${number}`
@@ -105,17 +103,22 @@ const sendCC = async (channel: number, number: number, value: number) => {
     pendingCount--
   }
 
-  // Create a new message and add it to the queue
-  const msg = [0xb0 + channel, number, value]
+  // Create a new message and add it to the queue. Data bytes are hard-capped
+  // to 7 bits: a value with the high bit set would be read as a status byte
+  // and corrupt the whole stream downstream.
+  const msg = [0xb0 + (channel & 0x0f), number & 0x7f, value & 0x7f]
   const timeoutId = setTimeout(
     async () => {
-      // TODO: log inside an HTML element
-      // eslint-disable-next-line no-console
-      console.log(`CC ${channel}:${number} -> ${value}`, pendingCount)
-      midiOut.send(msg)
-      messageQueue.delete(key)
-      pendingCount--
-      pub('midiOutProgress', { done: pendingCount === 0 })
+      // look up the output when the timer fires; the finally{} keeps a failed
+      // send from wedging pendingCount
+      try {
+        const out = state.ma?.outputs.get(state.midiOutId)
+        if (out && out.state === 'connected') out.send(msg)
+      } finally {
+        messageQueue.delete(key)
+        pendingCount--
+        pub('midiOutProgress', { done: pendingCount === 0 })
+      }
     },
     getInterval() * pendingCount + MINIMUM_THROTTLE,
   )
@@ -124,7 +127,26 @@ const sendCC = async (channel: number, number: number, value: number) => {
   pendingCount++
 }
 
-// TODO: where to put this???
+/*
+ * Send a raw MIDI message (note on/off, pitch bend...) immediately,
+ * bypassing the CC throttle queue — stimuli timing must not be affected
+ * by pending CC traffic. Uses the same selected output as sendCC.
+ */
+const sendRaw = (msg: number[]) => {
+  if (!state.ma) return
+  const midiOut = state.ma.outputs.get(state.midiOutId)
+  if (!midiOut) return
+  // same 7-bit cap as sendCC, status byte untouched
+  midiOut.send(msg.map((b, i) => (i === 0 ? b : b & 0x7f)))
+}
+
+// name of the currently selected output, or null if none/unavailable
+const getMidiOutName = (): string | null => {
+  if (!state.ma) return null
+  return state.ma.outputs.get(state.midiOutId)?.name ?? null
+}
+
+// TODO: move this off module load
 init()
 
 export { SpeedPreset }
@@ -134,5 +156,7 @@ export default {
   setMidiOutId,
   setSpeedPreset,
   sendCC,
+  sendRaw,
+  getMidiOutName,
   init,
 }

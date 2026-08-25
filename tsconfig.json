@@ -5,6 +5,7 @@
     "allowJs": true,
     "outDir": "./.tsbuild/",
     "moduleResolution": "node",
+    "allowImportingTsExtensions": true,
     "strictNullChecks": true,
     "noImplicitReturns": true,
     "strict": true,
