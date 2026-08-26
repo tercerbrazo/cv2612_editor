@@ -1,13 +1,12 @@
-import { chipDtToFile } from './detune.ts'
+import { clampFileDt } from './detune.ts'
 
 /*
  * DMP (DefleMask preset) writer — the library's export format.
  * Version 9 layout, the same shape readDmp accepts back: version, mode=1,
  * reserved, then fms/fb/al/ams and 4 operators x 11 bytes
- * (mul, tl, ar, dr, sl, rr, am, rs, dt, d2r, ssg). Detune converts from
- * the chip's sign-magnitude to the file's 0..6-center-3 (see detune.ts) so
- * a patch survives an export/import round trip — and so the file means the
- * same thing in DefleMask/Furnace.
+ * (mul, tl, ar, dr, sl, rr, am, rs, dt, d2r, ssg). Detune stays in the
+ * file's 0..6-center-3 domain end to end (see detune.ts), so a patch
+ * round-trips and the file means the same thing in DefleMask/Furnace.
  */
 const writeDmp = (inst: Instrument): number[] => {
   const bytes: number[] = []
@@ -34,7 +33,7 @@ const writeDmp = (inst: Instrument): number[] => {
     bytes.push(op.rr)
     bytes.push(op.am)
     bytes.push(op.rs)
-    bytes.push(chipDtToFile(op.det))
+    bytes.push(clampFileDt(op.det))
     bytes.push(op.d2)
 
     // SSG-EG (not modeled)
