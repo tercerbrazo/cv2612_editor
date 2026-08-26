@@ -1,4 +1,4 @@
-import { fileDtToChip } from './detune.ts'
+import { clampFileDt } from './detune.ts'
 
 // helpers
 const readU16 = (d: Uint8Array, o: number) => d[o] | (d[o + 1] << 8)
@@ -83,7 +83,7 @@ const readFuiLegacy = (data: Uint8Array): Instrument | null => {
       sl: data[o + 5],
       tl: data[o + 6],
       rs: data[o + 8],
-      det: fileDtToChip(data[o + 9]),
+      det: clampFileDt(data[o + 9]),
       d2: data[o + 10],
     })
   }
@@ -182,7 +182,7 @@ const parseFMBlock = (d: Uint8Array, _version: number): Instrument | null => {
 
     const b0 = d[pos++]
     const ksr = (b0 >> 7) & 0x01
-    const det = fileDtToChip((b0 >> 4) & 0x07)
+    const det = clampFileDt((b0 >> 4) & 0x07)
     const mul = b0 & 0x0f
 
     const b1 = d[pos++]

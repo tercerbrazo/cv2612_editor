@@ -10,11 +10,11 @@
  *   - operator order: the files store S1,S3,S2,S4 — which IS this
  *     editor's operators[] order (firmware maps op index straight to the
  *     register slot), so a correct import does NOT reorder.
- *   - detune: files use 0..6 with 3 = neutral; the editor/module use the
- *     chip's sign-magnitude DT1 encoding end to end.
+ *   - detune: files use 0..6 with 3 = neutral; the editor, files and sync
+ *     stay in 0..6 — the firmware remaps to the chip's DT1 register.
  */
 import assert from 'node:assert/strict'
-import { fileDtToChip, chipDtToFile } from '../src/utils/detune.ts'
+import { clampFileDt } from '../src/utils/detune.ts'
 import { readTfi } from '../src/utils/readTfi.ts'
 import { readVGI } from '../src/utils/readVgi.ts'
 import { readDmp } from '../src/utils/readDmp.ts'
@@ -30,17 +30,13 @@ const ok = (name) => {
 // detune conversion
 // ---------------------------------------------------------------------------
 {
-  // file 0..6 = -3..+3 -> chip sign-magnitude (0..3 = +, 4..7 = -)
-  const expected = { 0: 7, 1: 6, 2: 5, 3: 0, 4: 1, 5: 2, 6: 3 }
-  for (const [file, chip] of Object.entries(expected)) {
-    assert.equal(fileDtToChip(Number(file)), chip, `fileDtToChip(${file})`)
+  // detune stays in the file domain (0..6); the firmware remaps to the chip.
+  // clampFileDt only guards the range (7, which no format uses, -> 6).
+  for (let dt = 0; dt <= 6; dt++) {
+    assert.equal(clampFileDt(dt), dt, `clampFileDt(${dt}) passes through`)
   }
-  // round trip from the chip side; -0 (chip 4) collapses to 0 by design
-  for (const det of [0, 1, 2, 3, 5, 6, 7]) {
-    assert.equal(fileDtToChip(chipDtToFile(det)), det, `round trip det ${det}`)
-  }
-  assert.equal(fileDtToChip(chipDtToFile(4)), 0, 'chip -0 collapses to +0')
-  ok('detune: file<->chip table and round trip')
+  assert.equal(clampFileDt(7), 6, 'out-of-range 7 clamps to 6')
+  ok('detune: clampFileDt keeps the 0..6 file domain')
 }
 
 // ---------------------------------------------------------------------------
@@ -71,8 +67,8 @@ const tfiOp = (i) => [
     assert.equal(op.am, 0, `op${i} am (TFI has none)`)
   }
   // dt: ops use file 3 (neutral) except op1 which uses 5 (+2)
-  assert.equal(inst.operators[0].det, 0, 'neutral file dt 3 -> chip 0')
-  assert.equal(inst.operators[1].det, 2, 'file dt 5 -> chip +2')
+  assert.equal(inst.operators[0].det, 3, 'neutral file dt 3 stays 3')
+  assert.equal(inst.operators[1].det, 5, 'file dt 5 stays 5')
   assert.equal(readTfi(bytes.subarray(0, 41)), null, 'short TFI rejected')
   ok('TFI: 42-byte layout, field mapping, detune')
 }
@@ -100,7 +96,7 @@ const tfiOp = (i) => [
   assert.equal(inst.ams, 2, 'AMS from bits 4-5')
   assert.equal(inst.operators[1].am, 1, 'AM flag from DR bit 7')
   assert.equal(inst.operators[1].d1, 6, 'DR without the AM bit')
-  assert.equal(inst.operators[1].det, 2, 'file dt 5 -> chip +2')
+  assert.equal(inst.operators[1].det, 5, 'file dt 5 stays 5')
   ok('VGI: FMS/AMS bit split, AM-in-DR, detune')
 }
 
@@ -130,8 +126,8 @@ const dmpOp = (i) => [
       assert.equal(op.am, i % 2, `${name} op${i} am`)
       assert.equal(op.d2, 4 + i, `${name} op${i} d2`)
     }
-    assert.equal(inst.operators[0].det, 0, `${name} neutral dt`)
-    assert.equal(inst.operators[2].det, 6, `${name} file dt 1 -> chip -2`)
+    assert.equal(inst.operators[0].det, 3, `${name} neutral dt stays 3`)
+    assert.equal(inst.operators[2].det, 1, `${name} file dt 1 stays 1`)
   }
   // wrong system on v11 is rejected
   assert.equal(readDmp(new Uint8Array([0x0b, 0x07, 0x01, ...body])), null,
@@ -164,7 +160,7 @@ const dmpOp = (i) => [
     al: 3, fb: 2, fms: 4, ams: 1,
     operators: [0, 1, 2, 3].map((i) => ({
       mul: 2 + i, tl: 30 + i, ar: 28 - i, d1: 3 + i, sl: 5 + i,
-      rr: 12 - i, am: i % 2, rs: i % 4, det: [0, 3, 5, 7][i], d2: 6 + i,
+      rr: 12 - i, am: i % 2, rs: i % 4, det: [0, 3, 5, 6][i], d2: 6 + i,
     })),
   }
   const back = readDmp(new Uint8Array(writeDmp(inst)))

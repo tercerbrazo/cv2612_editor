@@ -1,4 +1,4 @@
-import { fileDtToChip } from './detune.ts'
+import { clampFileDt } from './detune.ts'
 
 const readDmp = (data: Uint8Array): Instrument | null => {
   const version = data[0]
@@ -44,7 +44,7 @@ const readDmp = (data: Uint8Array): Instrument | null => {
       am: data[o + 6] & 0x01,
       rs: data[o + 7] & 0x03,
       // low nibble only: on YM2151-targeted files the high nibble is DT2
-      det: fileDtToChip(data[o + 8] & 0x0f),
+      det: clampFileDt(data[o + 8]),
       d2: data[o + 9] & 0x1f,
     })
   }

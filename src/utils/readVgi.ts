@@ -1,4 +1,4 @@
-import { fileDtToChip } from './detune.ts'
+import { clampFileDt } from './detune.ts'
 
 /*
  * VGI (VGM Music Maker instrument): 43 bytes = TFI plus one FMS/AMS byte.
@@ -20,7 +20,7 @@ const readVGI = (data: Uint8Array): Instrument | null => {
     const p = 3 + i * 10
 
     const mul = data[p + 0] & 0x0f
-    const det = fileDtToChip(data[p + 1])
+    const det = clampFileDt(data[p + 1])
     const tl = data[p + 2] & 0x7f
 
     const rs = data[p + 3] & 0x03

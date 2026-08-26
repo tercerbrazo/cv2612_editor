@@ -1,4 +1,4 @@
-import { fileDtToChip } from './detune.ts'
+import { clampFileDt } from './detune.ts'
 
 /*
  * TFI (TFM Music Maker instrument): 42 bytes, the lingua franca of the
@@ -27,7 +27,7 @@ const readTfi = (data: Uint8Array): Instrument | null => {
 
     operators.push({
       mul: data[p + 0] & 0x0f,
-      det: fileDtToChip(data[p + 1]),
+      det: clampFileDt(data[p + 1]),
       tl: data[p + 2] & 0x7f,
       rs: data[p + 3] & 0x03,
       ar: data[p + 4] & 0x1f,
