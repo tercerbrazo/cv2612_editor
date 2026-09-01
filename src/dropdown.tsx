@@ -1,12 +1,15 @@
 import React from 'react'
-import { updateParam, useParam } from './context'
+import { useParam, updateParam } from './context'
 import { getParamMeta, getParamOptions } from './utils/paramsHelpers'
 
 type DropdownProps = {
   id: SettingParam
+  // extra explanation, shown as a native tooltip (the css `data-title`
+  // bubble is too narrow for a full sentence)
+  hint?: string
 }
 
-const Dropdown = ({ id }: DropdownProps) => {
+const Dropdown = ({ id, hint }: DropdownProps) => {
   const options = getParamOptions(id)
   const { value, ccHint } = useParam(id, 0)
   const { title } = getParamMeta(id)
@@ -18,7 +21,7 @@ const Dropdown = ({ id }: DropdownProps) => {
   }
 
   return (
-    <div className="dropdown" data-title={`${title} - ${ccHint}`}>
+    <div className="dropdown" data-title={`${title} - ${ccHint}`} title={hint}>
       <label>{id}</label>
       <select onChange={onChange} value={value}>
         {options.map((o, i) => (

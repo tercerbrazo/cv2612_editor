@@ -1,7 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { reactLocalStorage } from 'reactjs-localstorage'
 import { useSnapshot } from 'valtio'
-import { bindAll, saveState, sendCrc32, state, syncMidi } from './context'
+import {
+  bindAll,
+  calibrateRests,
+  saveState,
+  sendCrc32,
+  state,
+  syncMidi,
+} from './context'
 import { MenuDropdown } from './menu-dropdown'
 import MidiIO, { SpeedPreset } from './midi-io'
 import { getParamMidiCc } from './utils/paramsHelpers'
@@ -24,12 +31,8 @@ const options = [
   { label: 'Z: Linked Morph', value: 18 },
 ]
 
-const modulation_mode_icons = ['🎯', '🔗', '⚡']
-/*
-ABSOLUTE → 🎯
-LINKED_MORPH → 🔗
-DIRECT_MORPH → ⚡
-*/
+// indexed by mode value: ABSOLUTE=0 🎯, DIRECT_MORPH=1 ⚡, LINKED_MORPH=2 🔗
+const modulation_mode_icons = ['🎯', '⚡', '🔗']
 
 const speedPresetOptions: { value: SpeedPreset; label: string }[] = [
   { value: 'turbo', label: '🚀 Turbo' },
@@ -50,11 +53,14 @@ const Midi = () => {
   const [speed, setSpeed] = useState('normal')
   const [midiOutId, setMidiOutId] = useState('-')
   const [midiOuts, setMidiOuts] = useState<WebMidi.MIDIOutput[]>([])
+  const knownOutIdsRef = useRef('')
   const [midiOutActivity, setMidiOutActivity] = useState(false)
 
   useEffect(() => {
     if (midiOutId !== '-') {
-      reactLocalStorage.set('midiOutId', midiOutId)
+      // never persist the empty selection: a statechange while the saved
+      // device is briefly absent would otherwise erase it for good
+      if (midiOutId !== '') reactLocalStorage.set('midiOutId', midiOutId)
       MidiIO.setMidiOutId(midiOutId)
     }
   }, [midiOutId])
@@ -75,10 +81,13 @@ const Midi = () => {
     const unsubMidiStateChanged = MidiIO.sub(
       'midiStateChanged',
       ({ outputs }) => {
-        if (JSON.stringify(midiOuts) !== JSON.stringify(outputs)) {
+        // compare by id: stringifying host MIDIOutput objects yields '{}',
+        // which made the unplug-to-empty transition invisible
+        const ids = outputs.map((a) => a.id).join()
+        if (knownOutIdsRef.current !== ids) {
+          knownOutIdsRef.current = ids
           const mOut = reactLocalStorage.get('midiOutId', '')
-          // is last id still available??
-          setMidiOutId(outputs.map((a) => a.id).includes(mOut) ? mOut : '')
+          setMidiOutId(outputs.some((a) => a.id === mOut) ? mOut : '')
           setMidiOuts(outputs)
         }
       },
@@ -94,14 +103,16 @@ const Midi = () => {
     }
   }, [])
 
+  const noOut = !midiOuts.some((o) => o.id === midiOutId)
+
   return (
     <nav className="midi">
-      <span>
+      <span className={noOut ? 'no-out' : ''}>
         MIDI Out
         <i className={midiOutActivity ? 'active' : ''} />
       </span>
       <select
-        className="out"
+        className={noOut ? 'out no-out' : 'out'}
         value={midiOutId}
         onChange={(ev) => setMidiOutId(ev.target.value)}
       >
@@ -191,8 +202,10 @@ const Midi = () => {
       <a
         href="/"
         title="Sync Midi"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
+          if (noOut) return
           syncMidi()
         }}
       >
@@ -201,8 +214,10 @@ const Midi = () => {
       <a
         href="/"
         title="Verify State Checksum"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
+          if (noOut) return
           sendCrc32()
         }}
       >
@@ -211,12 +226,31 @@ const Midi = () => {
       <a
         href="/"
         title="Save state to EEPROM"
+        className={noOut ? 'disabled' : ''}
         onClick={(ev) => {
           ev.preventDefault()
+          if (noOut) return
           saveState()
         }}
       >
         SAVE STATE
+      </a>
+      <a
+        href="/"
+        title="Capture this unit's rest levels to its EEPROM (no CV cables connected, module at rest)"
+        className={noOut ? 'disabled' : ''}
+        onClick={(ev) => {
+          ev.preventDefault()
+          if (noOut) return
+          if (
+            window.confirm(
+              'Calibrate rests: disconnect all CV cables and leave the module at rest.\n\nContinue?',
+            )
+          )
+            calibrateRests()
+        }}
+      >
+        CALIBRATE
       </a>
     </nav>
   )

@@ -1,6 +1,7 @@
 {
   "name": "cv2612_editor",
   "version": "1.0.0",
+  "type": "module",
   "description": "CV2612 web editor",
   "browserslist": "> 0.5%, last 2 versions, not dead",
   "repository": "git@github.com:tercerbrazo/cv2612_editor.git",
@@ -10,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "pre-commit": "lint-staged -v"
+    "pre-commit": "lint-staged -v",
+    "test": "node scripts/test-import.mjs && node scripts/test-frames.mjs && node scripts/test-checklist.mjs && node scripts/test-calibration.mjs && node scripts/test-monitor-parser.mjs && node scripts/gen-crc-vectors.mjs && node --experimental-transform-types scripts/gen-sync-stream.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.8",

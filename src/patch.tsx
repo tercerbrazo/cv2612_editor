@@ -1,25 +1,27 @@
-import * as zip from '@zip.js/zip.js'
-import { BlobWriter, Uint8ArrayReader } from '@zip.js/zip.js'
 import React, { useEffect, useRef, useState } from 'react'
+import * as zip from '@zip.js/zip.js'
+
 import { useSnapshot } from 'valtio'
-import { deepClone } from 'valtio/utils'
 import {
   addToLibrary,
-  assignFromChannel,
   assignFromLibrary,
+  assignFromChannel,
   channelName,
   createPatch,
   isChannelDirty,
+  loadBackup,
   state,
 } from './context'
 import { Stereo } from './stereo'
-import { hashInstrument } from './utils/hashing'
 import { readDmp } from './utils/readDmp'
-import { readFui } from './utils/readFui'
-import { readVGI } from './utils/readVgi'
 import { previewInstrument } from './utils/vgm'
-
-const applyNewState = async () => {}
+import { deepClone } from 'valtio/utils'
+import { hashInstrument } from './utils/hashing'
+import { readVGI } from './utils/readVgi'
+import { readFui } from './utils/readFui'
+import { readTfi } from './utils/readTfi'
+import { writeDmp } from './utils/writeDmp'
+import { BlobWriter, Uint8ArrayReader } from '@zip.js/zip.js'
 
 const restoreBackup = () => {
   const fileInput = document.createElement('input')
@@ -35,12 +37,11 @@ const restoreBackup = () => {
       const reader = new FileReader()
 
       reader.onload = (e) => {
-        try {
-          const newState = JSON.parse(e.target?.result as string)
-          console.log(newState)
-          // FIXME
-        } catch (error) {
-          console.error('Error parsing JSON:', error)
+        // loadBackup reloads on success; a returned string is the failure reason
+        const err = loadBackup(e.target?.result as string)
+        if (err) {
+          console.error('Load Backup:', err)
+          alert(err)
         }
       }
 
@@ -80,11 +81,17 @@ const exportInstruments = async () => {
 
   const indices = Object.values(state.library).map((i) => i.id)
 
+  // zip.js chokes on duplicate names and '/'; one bad instrument name would
+  // throw mid-export
+  const used = new Set<string>()
   for (const index of indices) {
     const libEntry = state.library[index]
     const inst = libEntry.instrument
-    const name = libEntry.name
-    const bytes = getDmpBytes(inst)
+    const base = (libEntry.name || 'instrument').replaceAll('/', '-')
+    let name = base
+    for (let n = 2; used.has(name); n++) name = `${base} (${n})`
+    used.add(name)
+    const bytes = writeDmp(inst)
 
     // add file to zip
     await zipWriter.add(
@@ -105,41 +112,6 @@ const exportInstruments = async () => {
   a.click()
 
   URL.revokeObjectURL(url)
-}
-
-const getDmpBytes = (inst: Instrument) => {
-  const bytes: number[] = []
-
-  // version
-  bytes.push(0x09)
-
-  // header flags expected by reader
-  bytes.push(0x01)
-  bytes.push(0x00)
-
-  // channel params
-  bytes.push(inst.fms)
-  bytes.push(inst.fb)
-  bytes.push(inst.al)
-  bytes.push(inst.ams)
-
-  for (const op of inst.operators) {
-    bytes.push(op.mul)
-    bytes.push(op.tl)
-    bytes.push(op.ar)
-    bytes.push(op.d1)
-    bytes.push(op.sl)
-    bytes.push(op.rr)
-    bytes.push(op.am)
-    bytes.push(op.rs)
-    bytes.push(op.det)
-    bytes.push(op.d2)
-
-    // reserved byte
-    bytes.push(0)
-  }
-
-  return bytes
 }
 
 const LibraryBrowser = () => {
@@ -322,10 +294,16 @@ const Browser = () => {
               <button title="Load Backup" onClick={restoreBackup}>
                 📂
               </button>
-              <button title="Import Instruments" onClick={importInstruments}>
+              <button
+                title="Import instruments — .tfi, .dmp, .vgi, .fui (TFM Maker, DefleMask, VGM Maker, Furnace)"
+                onClick={importInstruments}
+              >
                 📥
               </button>
-              <button title="Export Instruments" onClick={exportInstruments}>
+              <button
+                title="Export library as .dmp files (DefleMask-compatible zip)"
+                onClick={exportInstruments}
+              >
                 📦
               </button>
               <button title="Close" onClick={closeAction}>
@@ -488,7 +466,7 @@ const NavBar = () => {
 const importInstruments = () => {
   const fileInput = document.createElement('input')
   fileInput.type = 'file'
-  fileInput.accept = '.dmp,.vgi,.fui'
+  fileInput.accept = '.dmp,.vgi,.fui,.tfi'
   fileInput.multiple = true
 
   fileInput.addEventListener('change', async (event) => {
@@ -506,7 +484,7 @@ const importInstruments = () => {
         const data = new Uint8Array(e.target.result as ArrayBuffer)
 
         const ext = file.name.split('.').pop()?.toLowerCase()
-        const name = file.name.replace(/\.(dmp|vgi|fui)$/i, '')
+        const name = file.name.replace(/\.(dmp|vgi|fui|tfi)$/i, '')
 
         let instrument: Instrument | null = null
 
@@ -516,6 +494,8 @@ const importInstruments = () => {
           instrument = readVGI(data)
         } else if (ext === 'fui') {
           instrument = readFui(data)
+        } else if (ext === 'tfi') {
+          instrument = readTfi(data)
         }
 
         if (!instrument) return

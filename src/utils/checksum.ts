@@ -2,13 +2,13 @@
 
 This util calculates the checksum of the module state, to be sent to the module
 
-The checksum is a CRC14 of the whole module state, but we first need to layout
+The checksum is a CRC32 of the whole module state, but we first need to layout
 the module state in a linear array of bytes matching the module layout.
 
-The module layout is as follows:
- * settings (1)
- * bindings (3)
+The module layout is as follows (hashed in this order):
  * scenes (4)
+ * bindings (3)
+ * settings (1)
   
 Settings layout: (settings_t)
 =============================
@@ -25,7 +25,12 @@ typedef struct {
   uint8_t pitch_bend_up;
   uint8_t pitch_bend_down;
   uint8_t velocity_sensitivity;
-} settings_t;
+  modulation_mode_t modulation_mode_x;
+  modulation_mode_t modulation_mode_y;
+  modulation_mode_t modulation_mode_z;
+  uint8_t quantize_cv;
+} settings_t; // 26 bytes (avr packs everything byte-aligned)
+
 
 Bindings layout: (ch_bitmask_t)
 ===============================
@@ -261,6 +266,12 @@ const calculate_crc32 = (state: State) => {
   data.push(settings.mmx) // modulation mode x
   data.push(settings.mmy) // modulation mode y
   data.push(settings.mmz) // modulation mode z
+
+  // Completes settings_t at 26 bytes. The firmware used to checksum
+  // `sizeof(settings) - 1` to match an editor that had no quantize field;
+  // both sides dropped that exclusion in the scales release, so a module on
+  // older firmware hashes 25 bytes and will mismatch until reflashed.
+  data.push(settings.qz) // quantize_cv
 
   // calculate CRC 32 of the data
   let crc32 = 0
