@@ -101,10 +101,6 @@ const FRAME_MS = 33 // ~30fps
 const BRIDGE_USB_VENDORS = [0x2a03, 0x2341, 0x1a86]
 // firmware image shipped with the app (vite copies public/ to the site root)
 const FW_HEX_URL = '/cv2612.hex'
-// python serial->WebSocket bridge (suite/ws_bridge.py), the reliable transport
-// when Chrome's Web Serial drops the Uno CDC-ACM adapter
-const WS_BRIDGE_URL = 'ws://localhost:2613'
-
 // series colors follow the editor's convention: X=red, Y=green, Z=blue
 const C_PRIMARY = '#3ed107'
 const C_X = '#ff5252'
@@ -1389,7 +1385,6 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   const logKeyRef = useRef(0)
   const keepReadingRef = useRef(false)
   const portRef = useRef<SerialPortLike | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const rxBytesRef = useRef(0) // total bytes received over serial
   const rxFramesRef = useRef(0) // total K+D state frames decoded
@@ -1834,67 +1829,11 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     readLoop(port)
   }
 
-  // Alternative transport: read the telemetry from the python serial->WebSocket
-  // bridge (suite/ws_bridge.py). Chrome's Web Serial drops this Arduino CDC-ACM
-  // adapter after the first read; the bridge reads it with pyserial (which
-  // streams it fine) and rebroadcasts the raw bytes here, into the same demux.
-  const connectWs = () => {
-    setConnError('')
-    setConn('connecting')
-    const demux = new FrameDemux()
-    let ws: WebSocket
-    try {
-      ws = new WebSocket(WS_BRIDGE_URL)
-    } catch (err) {
-      setConn('error')
-      setConnError(err instanceof Error ? err.message : String(err))
-      return
-    }
-    ws.binaryType = 'arraybuffer'
-    wsRef.current = ws
-    ws.onopen = () => {
-      bwRef.current = {
-        lastBytes: rxBytesRef.current,
-        lastFrames: rxFramesRef.current,
-        lastT: performance.now(),
-        rate: 0,
-        frameRate: 0,
-      }
-      dropsTotalRef.current = 0
-      lastDropRtRef.current = null
-      setConn('connected')
-      console.log('[mon] WS bridge connected', WS_BRIDGE_URL)
-      pushLog(null, `--- WS bridge connected (${WS_BRIDGE_URL}) ---`)
-    }
-    ws.onmessage = (e) => {
-      const bytes = new Uint8Array(e.data as ArrayBuffer)
-      rxBytesRef.current += bytes.length
-      const { frames, textLines } = demux.feed(bytes)
-      for (const f of frames) handleFrame(f)
-      for (const l of textLines) handleLine(l)
-    }
-    ws.onerror = () => {
-      console.log('[mon] WS bridge error — is ws_bridge.py running?')
-      setConnError('WS bridge unreachable — run suite/ws_bridge.py')
-    }
-    ws.onclose = () => {
-      console.log('[mon] WS bridge closed')
-      wsRef.current = null
-      setConn('idle')
-      latestStateRef.current = null
-      latestVoicesRef.current = null
-    }
-  }
-
   const disconnect = async () => {
     // leave the module in its shipped default (silent) before dropping the link
     if (telemetryEnabled && MidiIO.getMidiOutName() !== null) sendToggleDebug(false)
     setTelemetryEnabled(false)
     keepReadingRef.current = false
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
-    }
     try {
       await readerRef.current?.cancel()
     } catch {
@@ -2056,14 +1995,6 @@ const Monitor = ({ visible }: { visible: boolean }) => {
               onClick={connect}
             >
               Connect serial
-            </button>
-            <button
-              type="button"
-              disabled={conn === 'connecting' || flashBusy}
-              onClick={connectWs}
-              title="read via the python serial->WebSocket bridge (suite/ws_bridge.py)"
-            >
-              Connect bridge
             </button>
           </>
         )}
