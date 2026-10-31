@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { state as editorState } from './context'
 import instrumentBank from './instruments.json'
 import MidiIO from './midi-io'
+import { eraseEeprom, flashFirmware } from './utils/ispFlasher'
 import {
   centsEffectSeen,
   EFFECT_TIMEOUT_MS,
@@ -71,8 +72,14 @@ import './monitor.sass'
 // ---------------------------------------------------------------------------
 type SerialPortLike = {
   readable: ReadableStream<Uint8Array> | null
+  writable: WritableStream<Uint8Array> | null
   open: (options: { baudRate: number }) => Promise<void>
   close: () => Promise<void>
+  setSignals: (signals: {
+    dataTerminalReady?: boolean
+    requestToSend?: boolean
+  }) => Promise<void>
+  getInfo?: () => { usbVendorId?: number; usbProductId?: number }
 }
 type SerialLike = {
   requestPort: () => Promise<SerialPortLike>
@@ -88,9 +95,12 @@ const getSerial = (): SerialLike | undefined =>
 const WINDOW_MS = 30000 // strip charts show the last ~30s
 const MAX_LOG = 200
 const FRAME_MS = 33 // ~30fps
-// USB vendor ids of the telemetry bridge Uno (Arduino Srl 0x2a03, genuine
-// 0x2341) — used to pick it out of other ACM devices on the bus
-const BRIDGE_USB_VENDORS = [0x2a03, 0x2341]
+// USB vendor ids of the bridge/programmer Uno — used to pick it out of other
+// serial devices on the bus. Arduino Srl 0x2a03, genuine 0x2341, CH340 clones
+// 0x1a86 (these enumerate as ttyUSB, not ttyACM; Web Serial opens both).
+const BRIDGE_USB_VENDORS = [0x2a03, 0x2341, 0x1a86]
+// firmware image shipped with the app (vite copies public/ to the site root)
+const FW_HEX_URL = '/cv2612.hex'
 // python serial->WebSocket bridge (suite/ws_bridge.py), the reliable transport
 // when Chrome's Web Serial drops the Uno CDC-ACM adapter
 const WS_BRIDGE_URL = 'ws://localhost:2613'
@@ -1333,6 +1343,9 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   const [, setTick] = useState(0) // throttled re-render of live values
   // flips CC114 (val 1/0); tracks the last command sent (the firmware has no readback)
   const [telemetryEnabled, setTelemetryEnabled] = useState(false)
+  // firmware flashing over the same Web Serial port (stk500 via ArduinoISP)
+  const [flashBusy, setFlashBusy] = useState(false)
+  const [flashStatus, setFlashStatus] = useState('')
   // keep the "no MIDI output" state fresh when the user picks an output
   useEffect(() => MidiIO.sub('midiStateChanged', () => setTick((v) => v + 1)), [])
 
@@ -1774,6 +1787,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   const connect = async () => {
     const serial = getSerial()
     if (!serial) return
+    if (flashBusy) return // the flasher owns the port while flashing
     setConnError('')
     setConn('connecting')
     let port: SerialPortLike
@@ -1894,6 +1908,50 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     setTelemetryEnabled(next)
   }
 
+  // Flashing holds the port exclusively (reader + writer + DTR reset), so it
+  // runs only while telemetry is disconnected; it opens the Uno the same way.
+  const runFlasher = async (
+    label: string,
+    fn: (port: SerialPortLike, prog: (s: string) => void) => Promise<string>,
+  ) => {
+    // never while the telemetry read loop owns the port (connected) or is
+    // mid-open (connecting) — both would collide on the reader/writer lock
+    if (flashBusy || conn === 'connected' || conn === 'connecting') return
+    setFlashBusy(true)
+    setFlashStatus(`${label}…`)
+    let port: SerialPortLike | null = null
+    try {
+      port = await openBridgePort()
+      setFlashStatus(await fn(port, setFlashStatus))
+    } catch (e) {
+      setFlashStatus(`✕ ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      try {
+        await port?.close()
+      } catch {
+        // already closed / device gone
+      }
+      setFlashBusy(false)
+    }
+  }
+  // Flash the firmware bundled with the app (public/cv2612.hex) — one click,
+  // no file picker, so the operator can't pick the wrong image.
+  const doFlash = () =>
+    void runFlasher('flashing', async (port, prog) => {
+      const res = await fetch(FW_HEX_URL, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`firmware fetch failed (${res.status})`)
+      const hex = await res.text()
+      const r = await flashFirmware(port, hex, (ph, d, t) => prog(`${ph} ${d}/${t}`))
+      return r.verifyBad === 0
+        ? `✅ flashed + verified (${Math.round(r.bytesWritten / 1024)}KB, ${r.seconds.toFixed(0)}s)`
+        : `✕ verify failed: ${r.verifyBad} pages`
+    })
+  const doErase = () =>
+    void runFlasher('erasing', async (port, prog) => {
+      await eraseEeprom(port, (ph, d, t) => prog(`${ph} ${d}/${t}`))
+      return '✅ EEPROM cleared — factory bank reseeds on next boot'
+    })
+
   // flush the event-log queue, refresh live values (~4Hz) and recompute
   // the serial bandwidth over ~1s windows
   useEffect(() => {
@@ -1994,14 +2052,14 @@ const Monitor = ({ visible }: { visible: boolean }) => {
           <>
             <button
               type="button"
-              disabled={!serialSupported || conn === 'connecting'}
+              disabled={!serialSupported || conn === 'connecting' || flashBusy}
               onClick={connect}
             >
               Connect serial
             </button>
             <button
               type="button"
-              disabled={conn === 'connecting'}
+              disabled={conn === 'connecting' || flashBusy}
               onClick={connectWs}
               title="read via the python serial->WebSocket bridge (suite/ws_bridge.py)"
             >
@@ -2022,6 +2080,23 @@ const Monitor = ({ visible }: { visible: boolean }) => {
         >
           Telemetry {telemetryEnabled ? 'ON' : 'OFF'}
         </button>
+        <button
+          type="button"
+          disabled={conn !== 'idle' || flashBusy || !serialSupported}
+          onClick={doFlash}
+          title="flash the shipped firmware to the module through the Uno (ArduinoISP)"
+        >
+          Flashear firmware
+        </button>
+        <button
+          type="button"
+          disabled={conn !== 'idle' || flashBusy || !serialSupported}
+          onClick={doErase}
+          title="clear the module EEPROM (factory bank reseeds on next boot)"
+        >
+          Borrar EEPROM
+        </button>
+        {flashStatus && <span className="status">{flashStatus}</span>}
         <span className={`status ${conn}`}>
           {conn === 'connected'
             ? '● connected 38400'

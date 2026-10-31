@@ -12,7 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "pre-commit": "lint-staged -v",
-    "test": "node scripts/test-import.mjs && node scripts/test-frames.mjs && node scripts/test-checklist.mjs && node scripts/test-calibration.mjs && node scripts/test-monitor-parser.mjs && node scripts/gen-crc-vectors.mjs && node --experimental-transform-types scripts/gen-sync-stream.mjs"
+    "test": "node scripts/test-import.mjs && node scripts/test-frames.mjs && node scripts/test-checklist.mjs && node scripts/test-calibration.mjs && node scripts/test-monitor-parser.mjs && node scripts/test-ispflasher.mjs && node scripts/gen-crc-vectors.mjs && node --experimental-transform-types scripts/gen-sync-stream.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.8",

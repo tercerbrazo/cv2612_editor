@@ -24,9 +24,14 @@ export const sendCleanState = () => {
 }
 
 // "Sine patch": a single sine carrier on patch A, channel 1 (MIDI ch0)
+// A single pure sine: AL=7 (4 parallel carriers) with only op0 audible, FB=0,
+// MUL=1, constant-amplitude envelope, and every LFO path (AMS/FMS/op AM + the
+// global LFO in sendSinePatch) forced off so a stale patch can't add vibrato.
 export const SINE_PATCH: [number, number][] = [
   [11, 112],
   [12, 0],
+  [13, 0], // AMS=0: no LFO amplitude-mod depth
+  [14, 0], // FMS=0: no LFO freq-mod depth (kills the vibrato path)
   [10, 96],
   [15, 124],
   [16, 0],
@@ -46,6 +51,7 @@ export const SINE_PATCH: [number, number][] = [
 export const sendSinePatch = () => {
   for (const [cc, val] of SINE_PATCH) MidiIO.sendCC(0, cc, val)
   MidiIO.sendCC(0, 1, 0) // W to zero so the morph does not bite
+  MidiIO.sendCC(0, 5, 0) // global LFO off (live YM_LFO write): no vibrato/tremolo
 }
 
 // "Capture rests": commands channel (15), same path as the editor's

@@ -56,6 +56,11 @@ const sub = <T extends keyof EventMap>(event: T, callback: Callback<T>) => {
 
 const setMidiOutId = (midiOutId: string) => {
   state.midiOutId = midiOutId
+  try {
+    localStorage.setItem('midiOutId', midiOutId)
+  } catch {
+    // private window / storage blocked: selection just won't survive a reload
+  }
 }
 
 const setSpeedPreset = (speedPreset: SpeedPreset) => {
@@ -77,6 +82,14 @@ const init = async () => {
     const ma = await navigator.requestMIDIAccess()
     state.ma = ma
     ma.onstatechange = refresh
+    // restore the last-picked output so a reload doesn't silently lose it —
+    // telemetry can keep flowing and hide that stimuli have no output to send to
+    try {
+      const saved = localStorage.getItem('midiOutId')
+      if (saved && ma.outputs.get(saved)) state.midiOutId = saved
+    } catch {
+      // storage blocked
+    }
     refresh()
   } catch (e) {
     // do nothing
