@@ -65,6 +65,8 @@ import {
   sendToggleDebug,
   TEST_NOTE_DEFAULT,
 } from './monitor-stimuli'
+import { CalibrationMode } from './monitor-cal-mode'
+import type { WizSample } from './monitor-cal-wizard'
 import './monitor.sass'
 
 // ---------------------------------------------------------------------------
@@ -1339,6 +1341,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   const [, setTick] = useState(0) // throttled re-render of live values
   // flips CC114 (val 1/0); tracks the last command sent (the firmware has no readback)
   const [telemetryEnabled, setTelemetryEnabled] = useState(false)
+  const [calMode, setCalMode] = useState(false)
   // firmware flashing over the same Web Serial port (stk500 via ArduinoISP)
   const [flashBusy, setFlashBusy] = useState(false)
   const [flashStatus, setFlashStatus] = useState('')
@@ -1381,6 +1384,7 @@ const Monitor = ({ visible }: { visible: boolean }) => {
   )
   const chkSubsRef = useRef<Set<(s: ChkSample) => void>>(new Set())
   const calSubsRef = useRef<Set<(s: RestSample) => void>>(new Set())
+  const wizSubsRef = useRef<Set<(s: WizSample) => void>>(new Set())
   const logQueueRef = useRef<LogEntry[]>([])
   const logKeyRef = useRef(0)
   const keepReadingRef = useRef(false)
@@ -1428,6 +1432,9 @@ const Monitor = ({ visible }: { visible: boolean }) => {
 
   const notifyCal = (s: RestSample) => {
     calSubsRef.current.forEach((fn) => fn(s))
+  }
+  const notifyWizard = (s: WizSample) => {
+    wizSubsRef.current.forEach((fn) => fn(s))
   }
 
   // log jack connect/disconnect transitions (from CV lines or state frames)
@@ -1632,6 +1639,21 @@ const Monitor = ({ visible }: { visible: boolean }) => {
       yConn: st.yConn,
       zConn: st.zConn,
     })
+    notifyWizard({
+      rt,
+      pitchRaw: st.pitchRaw,
+      x: st.x,
+      y: st.y,
+      z: st.z,
+      xConn: st.xConn,
+      yConn: st.yConn,
+      zConn: st.zConn,
+      ax: st.ax,
+      ay: st.ay,
+      az: st.az,
+      modY: st.modY,
+      modZ: st.modZ,
+    })
     // keyframes carry loopRate — keep the heartbeat fresh without log spam
     heartbeatRef.current = { rt, loopRate: st.loopRate }
     const mn = modeName(st.mode)
@@ -1655,6 +1677,13 @@ const Monitor = ({ visible }: { visible: boolean }) => {
     calSubsRef.current.add(fn)
     return () => {
       calSubsRef.current.delete(fn)
+    }
+  }, [])
+
+  const subscribeWizard = useCallback((fn: (s: WizSample) => void) => {
+    wizSubsRef.current.add(fn)
+    return () => {
+      wizSubsRef.current.delete(fn)
     }
   }, [])
 
@@ -2027,6 +2056,15 @@ const Monitor = ({ visible }: { visible: boolean }) => {
         >
           Borrar EEPROM
         </button>
+        <button
+          type="button"
+          className={calMode ? 'active' : ''}
+          disabled={conn !== 'connected'}
+          onClick={() => setCalMode((v) => !v)}
+          title="guided calibration + verification wizard"
+        >
+          Calibrar módulo
+        </button>
         {flashStatus && <span className="status">{flashStatus}</span>}
         <span className={`status ${conn}`}>
           {conn === 'connected'
@@ -2083,6 +2121,16 @@ const Monitor = ({ visible }: { visible: boolean }) => {
           {connError}; is the port held by another process (cat, another tab)?
           There can be only ONE owner of the port.
         </p>
+      )}
+      {calMode && (
+        <CalibrationMode
+          subscribe={subscribeWizard}
+          getCents={getRestCents}
+          serialConnected={conn === 'connected'}
+          noOut={MidiIO.getMidiOutName() === null}
+          pushLog={pushLog}
+          onExit={() => setCalMode(false)}
+        />
       )}
       <Stimuli />
       <div className="voices">

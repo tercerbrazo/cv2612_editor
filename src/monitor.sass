@@ -257,6 +257,76 @@
           &.warn
             color: #e8b23a
 
+    .cal-mode
+      border: 1px solid $primary
+      border-radius: 8px
+      padding: 10px 12px
+      margin: 10px 0
+      background: rgba(47,158,104,0.06)
+      .cal-mode-head
+        display: flex
+        align-items: center
+        gap: 12px
+        margin-bottom: 8px
+        .cal-progress
+          color: #888
+          font-size: 0.85em
+        .cal-exit
+          margin-left: auto
+      .cal-stepline
+        list-style: none
+        display: flex
+        flex-wrap: wrap
+        gap: 6px
+        padding: 0
+        margin: 0 0 10px
+        li
+          font-size: 0.75em
+          padding: 2px 8px
+          border-radius: 999px
+          border: 1px solid #333
+          color: #777
+          &.now
+            border-color: $primary
+            color: $primary
+          &.done
+            color: #ccc
+            border-color: #555
+      .cal-step
+        h4
+          margin: 4px 0
+        .cal-hint
+          color: #888
+          margin: 4px 0 8px
+          &.warn
+            color: #e8b23a
+        .cal-checks
+          margin: 6px 0 8px
+        .cal-check
+          display: flex
+          gap: 8px
+          line-height: 1.8
+          .st
+            display: inline-block
+            width: 1.4em
+            text-align: center
+          .name
+            min-width: 16em
+          .val
+            color: #888
+          &.ok .st
+            color: $primary
+          &.bad
+            .st, .val
+              color: #ff5252
+      .cal-nav
+        margin-top: 8px
+        .cal-next:disabled
+          opacity: 0.5
+      .cal-summary
+        .cal-hint
+          font-weight: 600
+
     .monitor-body
       display: flex
       gap: 12px
