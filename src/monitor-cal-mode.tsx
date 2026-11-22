@@ -193,7 +193,11 @@ export const CalibrationMode = ({
   // a signal-carrying cable (jacks — detection is voltage-based) stay
   // advanceable, so a module without that telemetry never traps the operator.
   // The summary still records the truth via verified().
-  const BLOCKING: WizStepId[] = ['prepare', 'sweepY', 'sweepZ']
+  // Only the capture pre-conditions hard-block: jacks out + quiet is reliable
+  // and a bad rest capture is not recoverable. The sweeps, jack test and tuning
+  // are advisory — a guessed octave threshold, a bare cable or missing voices
+  // telemetry must never trap a remote operator. The summary records the truth.
+  const BLOCKING: WizStepId[] = ['prepare']
   const canAdvance = (id: WizStepId): boolean => {
     if (id === 'done') return true
     if (id === 'capture')

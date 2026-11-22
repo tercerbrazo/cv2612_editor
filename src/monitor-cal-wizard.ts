@@ -57,8 +57,10 @@ export type CapturePrecheck = Omit<PrecheckResult, 'latest'> & {
 
 /*
  * Pre-conditions for capturing the rests: the rest-panel checks (jacks out,
- * everything quiet) plus the three trimmers centered. The latest sample drives
- * "centered" the same way the latest sample drives the jack check.
+ * everything quiet). "centered" is computed for display but is ADVISORY: the
+ * firmware clamps the stored trimmer centers, and a tolerance guessed without
+ * hardware must not block a remote operator from capturing, so it is not part
+ * of readyToCapture.
  */
 export const evalCapturePrecheck = (
   samples: WizSample[],
@@ -71,7 +73,7 @@ export const evalCapturePrecheck = (
     Math.abs(latest.ax) <= TRIM_CENTER_TOL &&
     Math.abs(latest.ay) <= TRIM_CENTER_TOL &&
     Math.abs(latest.az) <= TRIM_CENTER_TOL
-  return { ...base, latest, centered, readyToCapture: base.ready && centered }
+  return { ...base, latest, centered, readyToCapture: base.ready }
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +169,7 @@ export const WIZARD_STEPS: WizStep[] = [
   {
     id: 'jacks',
     title: 'Jack detection',
-    hint: 'Enchufá y sacá un cable en X, Y y Z: el flag tiene que cambiar.',
+    hint: 'Enchufá y sacá un cable (con señal) en X, Y y Z: el flag debe cambiar.',
   },
   {
     id: 'sweepY',

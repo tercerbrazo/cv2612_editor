@@ -56,13 +56,13 @@ check('capture precheck: green when quiet, jacks out, trimmers centered', () => 
   assert.equal(r.readyToCapture, true)
 })
 
-check('capture precheck: an off-center trimmer blocks capture', () => {
+check('capture precheck: off-center trimmer is flagged but does NOT block', () => {
   const r = evalCapturePrecheck(
     wizSamples(20, (i) => ({ ay: i === 19 ? TRIM_CENTER_TOL + 1 : 0 })),
     NOW,
   )
-  assert.equal(r.centered, false)
-  assert.equal(r.readyToCapture, false)
+  assert.equal(r.centered, false) // advisory flag is raised
+  assert.equal(r.readyToCapture, true) // but centering does not gate capture
 })
 
 check('capture precheck: trimmer exactly at the tolerance still centered', () => {
