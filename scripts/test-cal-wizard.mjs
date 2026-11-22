@@ -10,7 +10,7 @@ import {
   inTune,
   jackProbeOk,
   observeJack,
-  OCTAVE_END,
+  OCTAVE_SPAN_MIN,
   reachedOctave,
   spanSemitones,
   spanWidth,
@@ -99,16 +99,23 @@ check('span: a compressed sweep (false-connected Y) does NOT reach octave', () =
   // the few-semitone symptom: modY only spans ~±50
   let s = emptySpan()
   for (const v of [0, -48, 51, -50, 49]) s = trackSpan(s, v)
-  assert.ok(spanWidth(s) < 2 * OCTAVE_END)
+  assert.ok(spanWidth(s) < OCTAVE_SPAN_MIN)
   assert.equal(reachedOctave(s), false)
 })
 
-check('span: wide but off-center sweep is rejected (both ends required)', () => {
-  // span width is large but it never reached the negative end
+check('span: a healthy but off-center sweep still reaches octave', () => {
+  // the reason the test is width-based: an off-center pot (-70..+127) has a
+  // full-width span and must pass, where a fixed ±end test would reject it
+  let s = emptySpan()
+  for (const v of [-70, 0, 127, -40]) s = trackSpan(s, v)
+  assert.ok(spanWidth(s) >= OCTAVE_SPAN_MIN)
+  assert.equal(reachedOctave(s), true)
+})
+
+check('span: a one-sided sweep (never crosses zero) is rejected', () => {
   let s = emptySpan()
   for (const v of [10, 60, 127]) s = trackSpan(s, v)
-  assert.ok(spanWidth(s) >= OCTAVE_END)
-  assert.equal(reachedOctave(s), false) // min never hit -OCTAVE_END
+  assert.equal(reachedOctave(s), false) // too narrow / never went negative
 })
 
 check('span: semitone readout at the ends', () => {

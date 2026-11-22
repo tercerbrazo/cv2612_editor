@@ -122,6 +122,11 @@ export const CalibrationMode = ({
   // entering a step prepares its side (mode + fresh trackers)
   useEffect(() => {
     const id = WIZARD_STEPS[idx].id
+    // leaving the tuning step: stop the held reference note
+    if (id !== 'tuning' && a4HeldRef.current) {
+      noteOff(A4_NOTE)
+      a4HeldRef.current = false
+    }
     if (id === 'sweepY') {
       spanYRef.current = emptySpan()
       setPlayMode(MODE_DUO)
@@ -161,15 +166,17 @@ export const CalibrationMode = ({
   const jacks = jackRef.current
   const cents = getCents()
 
-  // is the current step satisfied (the gate for "Siguiente")?
-  const stepDone = (id: WizStepId): boolean => {
+  // what the summary records: a real telemetry-derived pass for each step
+  const verified = (id: WizStepId): boolean => {
     switch (id) {
       case 'prepare':
         return pre.readyToCapture
       case 'capture':
-        return capture?.afterCents != null || pass.capture === true
+        return capture?.afterCents != null
       case 'jacks':
-        return jackProbeOk(jacks.x) && jackProbeOk(jacks.y) && jackProbeOk(jacks.z)
+        return (
+          jackProbeOk(jacks.x) && jackProbeOk(jacks.y) && jackProbeOk(jacks.z)
+        )
       case 'sweepY':
         return yOct
       case 'sweepZ':
@@ -181,6 +188,23 @@ export const CalibrationMode = ({
     }
   }
 
+  // the gate for "Siguiente". Steps whose check is reliably telemetry-measured
+  // block until verified; steps that need v2 voices frames (capture, tuning) or
+  // a signal-carrying cable (jacks — detection is voltage-based) stay
+  // advanceable, so a module without that telemetry never traps the operator.
+  // The summary still records the truth via verified().
+  const BLOCKING: WizStepId[] = ['prepare', 'sweepY', 'sweepZ']
+  const canAdvance = (id: WizStepId): boolean => {
+    if (id === 'done') return true
+    if (id === 'capture')
+      return (
+        capture != null &&
+        (capture.afterCents != null || now - capture.sentAt > EFFECT_TIMEOUT_MS)
+      )
+    if (!BLOCKING.includes(id)) return true
+    return verified(id)
+  }
+
   const doCapture = () => {
     const before = getCents()
     sendCaptureRests()
@@ -189,7 +213,7 @@ export const CalibrationMode = ({
   }
 
   const advance = () => {
-    setPass((p) => ({ ...p, [step.id]: true }))
+    setPass((p) => ({ ...p, [step.id]: verified(step.id) }))
     if (idx < WIZARD_STEPS.length - 1) setIdx(idx + 1)
   }
 
@@ -216,7 +240,7 @@ export const CalibrationMode = ({
   const ySemi = spanSemitones(spanYRef.current)
   const zSemi = spanSemitones(spanZRef.current)
   const fmtRange = (s: { lo: number; hi: number }) =>
-    `${s.lo.toFixed(1)}..+${s.hi.toFixed(1)} semitonos`
+    `${s.lo.toFixed(1)}..${s.hi >= 0 ? '+' : ''}${s.hi.toFixed(1)} semitonos`
 
   return (
     <div className="cal-mode">
@@ -394,7 +418,7 @@ export const CalibrationMode = ({
           <button
             type="button"
             className="cal-next"
-            disabled={!stepDone(step.id)}
+            disabled={!canAdvance(step.id)}
             onClick={advance}
           >
             Siguiente ▶

@@ -28,10 +28,12 @@ export { centsEffectSeen }
 export const TRIM_CENTER_TOL = 12
 
 // modY/modZ are signed -128..127; the firmware maps that full range to ±96 CV
-// (±1 octave). "Reached the octave" = the swept value got within OCTAVE_END of
-// both ends. A falsely-connected jack caps the span far short of this, which is
-// exactly the symptom this step exists to catch.
-export const OCTAVE_END = 100
+// (±1 octave). "Reached the octave" is judged by the swept span WIDTH, not by
+// hitting fixed ±ends: a healthy pot that rests a little off-center still has a
+// wide span, so a width test avoids false-negatives that an ends test would
+// give. A falsely-connected jack caps the width far below this — the symptom
+// this step exists to catch.
+export const OCTAVE_SPAN_MIN = 190 // of the 255-count full range
 export const MOD_PER_SEMITONE = 128 / 12 // ≈10.67 mod counts per semitone
 
 // final tuning check: a held reference note should land within this of ET.
@@ -95,12 +97,12 @@ export const spanSemitones = (s: Span): { lo: number; hi: number } =>
     : { lo: s.min / MOD_PER_SEMITONE, hi: s.max / MOD_PER_SEMITONE }
 
 /*
- * Did the swept mod reach the full ±octave? Both ends must come within
- * OCTAVE_END of the signed extremes. Measuring both ends (not just the width)
- * also rejects a span that is wide but sits off-center.
+ * Did the swept mod reach the full ±octave? The span must be wide enough AND
+ * straddle zero (a bipolar attenuverter sweeps through its center): the sign
+ * check rejects a one-sided sweep that a width test alone would pass.
  */
 export const reachedOctave = (s: Span): boolean =>
-  s.n > 0 && s.min <= -OCTAVE_END && s.max >= OCTAVE_END
+  s.n > 0 && spanWidth(s) >= OCTAVE_SPAN_MIN && s.min < 0 && s.max > 0
 
 // ---------------------------------------------------------------------------
 // active jack test — confirms detection works in BOTH directions by watching
