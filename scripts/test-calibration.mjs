@@ -74,13 +74,15 @@ check('precheck: samples older than the window are ignored', () => {
 })
 
 check(
-  'precheck: a connected jack blocks readiness (latest sample wins)',
+  'precheck: a connected jack drops the ready aggregate but NOT quiet',
   () => {
     const samples = restSamples(20, (i) => ({ yConn: i === 19 }))
     const r = evalPrecheck(samples, NOW)
     assert.equal(r.jacksOk, false)
-    assert.equal(r.ready, false)
-    // stability itself is still fine — only the jack condition is red
+    assert.equal(r.ready, false) // display aggregate reflects the jack
+    // quiet is the capture gate: it must stay independent of jack detection,
+    // or an uncalibrated module (phantom jacks) could never be calibrated
+    assert.equal(r.quiet, true)
     assert.equal(r.pitchStable, true)
   },
 )

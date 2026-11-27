@@ -170,7 +170,7 @@ export const CalibrationMode = ({
   const verified = (id: WizStepId): boolean => {
     switch (id) {
       case 'prepare':
-        return pre.readyToCapture
+        return true // setup step: its rows are guidance, never a gate
       case 'capture':
         return capture?.afterCents != null
       case 'jacks':
@@ -188,25 +188,18 @@ export const CalibrationMode = ({
     }
   }
 
-  // the gate for "Siguiente". Steps whose check is reliably telemetry-measured
-  // block until verified; steps that need v2 voices frames (capture, tuning) or
-  // a signal-carrying cable (jacks — detection is voltage-based) stay
-  // advanceable, so a module without that telemetry never traps the operator.
-  // The summary still records the truth via verified().
-  // Only the capture pre-conditions hard-block: jacks out + quiet is reliable
-  // and a bad rest capture is not recoverable. The sweeps, jack test and tuning
-  // are advisory — a guessed octave threshold, a bare cable or missing voices
-  // telemetry must never trap a remote operator. The summary records the truth.
-  const BLOCKING: WizStepId[] = ['prepare']
+  // No step blocks on a module reading. An uncalibrated module reports phantom
+  // jacks (the state calibration fixes), so gating on them traps exactly the
+  // module that needs calibrating. Every step is advanceable; its live check is
+  // guidance and the summary records the truth. Capture only waits for its own
+  // command to be sent and settle (or time out), never for a module condition.
   const canAdvance = (id: WizStepId): boolean => {
-    if (id === 'done') return true
     if (id === 'capture')
       return (
         capture != null &&
         (capture.afterCents != null || now - capture.sentAt > EFFECT_TIMEOUT_MS)
       )
-    if (!BLOCKING.includes(id)) return true
-    return verified(id)
+    return true
   }
 
   const doCapture = () => {
@@ -289,10 +282,21 @@ export const CalibrationMode = ({
 
         {step.id === 'prepare' && (
           <div className="cal-checks">
+            <p className="cal-hint">
+              Sacá los 4 CV y centrá los 3 trimmers. Un módulo sin calibrar puede
+              mostrar jacks "conectados" sin cable: es normal y no bloquea — la
+              calibración lo corrige.
+            </p>
             <CheckRow
               ok={pre.jacksOk}
-              label="jacks desconectados"
-              value={pre.latest ? '' : 'sin datos'}
+              label="jacks (lectura del módulo)"
+              value={
+                !pre.latest
+                  ? 'sin datos'
+                  : pre.jacksOk
+                    ? 'desconectados'
+                    : 'detecta cable — normal sin calibrar'
+              }
             />
             <CheckRow
               ok={pre.centered}
@@ -304,7 +308,7 @@ export const CalibrationMode = ({
               }
             />
             <CheckRow
-              ok={pre.pitchStable && pre.xStable && pre.yStable && pre.zStable}
+              ok={pre.quiet}
               label="todo quieto (pp ≤2 en 2s)"
               value={
                 pre.pp
