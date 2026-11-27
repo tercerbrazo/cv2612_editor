@@ -49,35 +49,37 @@ const wizSamples = (n, over = {}) =>
   }))
 
 // --- evalCapturePrecheck -----------------------------------------------------
-check('capture precheck: green when quiet, jacks out, trimmers centered', () => {
+check('capture precheck: quiet, jacks out, trimmers centered', () => {
   const r = evalCapturePrecheck(wizSamples(20), NOW)
-  assert.equal(r.ready, true) // base precheck ready
+  assert.equal(r.quiet, true)
+  assert.equal(r.jacksOk, true)
   assert.equal(r.centered, true)
-  assert.equal(r.readyToCapture, true)
 })
 
-check('capture precheck: off-center trimmer is flagged but does NOT block', () => {
+check('capture precheck: off-center trimmer is flagged (advisory only)', () => {
   const r = evalCapturePrecheck(
     wizSamples(20, (i) => ({ ay: i === 19 ? TRIM_CENTER_TOL + 1 : 0 })),
     NOW,
   )
-  assert.equal(r.centered, false) // advisory flag is raised
-  assert.equal(r.readyToCapture, true) // but centering does not gate capture
+  assert.equal(r.centered, false)
 })
 
 check('capture precheck: trimmer exactly at the tolerance still centered', () => {
   const r = evalCapturePrecheck(wizSamples(20, { ax: TRIM_CENTER_TOL }), NOW)
   assert.equal(r.centered, true)
-  assert.equal(r.readyToCapture, true)
 })
 
-check('capture precheck: a connected jack still blocks (inherited)', () => {
+// the uncalibrated-module trap: a module reports phantom jacks until it is
+// calibrated, so capture must NOT be gated on that — no "ready to capture"
+// aggregate exists to gate on.
+check('capture precheck: phantom jack does NOT produce any capture gate', () => {
   const r = evalCapturePrecheck(
     wizSamples(20, (i) => ({ zConn: i === 19 })),
     NOW,
   )
-  assert.equal(r.jacksOk, false)
-  assert.equal(r.readyToCapture, false)
+  assert.equal(r.jacksOk, false) // module reads a phantom jack
+  assert.equal(r.quiet, true) // but the module is at rest — capture is fine
+  assert.ok(!('readyToCapture' in r)) // no module-derived gate exists
 })
 
 // --- span tracker + reachedOctave -------------------------------------------

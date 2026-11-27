@@ -910,7 +910,9 @@ const RestCalibration = ({
       <summary>Rest calibration</summary>
       <p className="cal-hint">
         Captures the rest levels (pitch, X/Y/Z and trimmer centers) and persists
-        them to EEPROM. Leave the module at rest with no CV cables.
+        them to EEPROM. Leave the module at rest with no CV cables. An
+        uncalibrated module may show jacks "connected" with no cable — that is
+        normal and does not block; calibration fixes it.
         {pitchRest !== null && ` · calibrated rest: ${pitchRest}`}
       </p>
       {!pre.hasData ? (
@@ -921,11 +923,11 @@ const RestCalibration = ({
         <div className="cal-checks">
           <CalCheck
             ok={pre.jacksOk}
-            label="jacks disconnected"
+            label="jacks (module reading)"
             value={
               pre.jacksOk
                 ? jackBits
-                : `${jackBits}; disconnect all CV cables`
+                : `${jackBits}; remove any real cable — phantom jacks are normal before calibration`
             }
           />
           <CalCheck
@@ -956,7 +958,7 @@ const RestCalibration = ({
       <div className="row-btns">
         <button
           type="button"
-          disabled={!pre.ready || noOut || !serialConnected}
+          disabled={noOut || !serialConnected}
           onClick={capturar}
         >
           ▶ Capture rests
@@ -966,8 +968,8 @@ const RestCalibration = ({
             ? 'no MIDI output; pick one in the Editor tab'
             : !serialConnected
               ? 'connect the serial to verify the pre-checks'
-              : !pre.ready
-                ? 'waiting for pre-checks to go green…'
+              : !pre.quiet
+                ? `→ ${outName} · best captured while quiet`
                 : `→ ${outName}`}
         </span>
       </div>

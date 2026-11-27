@@ -52,15 +52,15 @@ export type WizSample = RestSample & {
 export type CapturePrecheck = Omit<PrecheckResult, 'latest'> & {
   latest: WizSample | null // narrowed: the wizard feeds WizSamples
   centered: boolean // all three trimmers within TRIM_CENTER_TOL of center
-  readyToCapture: boolean // precheck ready AND centered
 }
 
 /*
- * Pre-conditions for capturing the rests: the rest-panel checks (jacks out,
- * everything quiet). "centered" is computed for display but is ADVISORY: the
- * firmware clamps the stored trimmer centers, and a tolerance guessed without
- * hardware must not block a remote operator from capturing, so it is not part
- * of readyToCapture.
+ * Pre-condition fields for display only. There is no "ready to capture"
+ * aggregate on purpose: rest capture must never be blocked by what the module
+ * reports. An uncalibrated module shows phantom jacks (that IS the uncalibrated
+ * state calibration fixes), so gating capture on jacksOk traps the operator at
+ * exactly the module that needs calibrating. jacks/quiet/centered are shown as
+ * guidance; the capture button gates on host-side readiness (serial + MIDI out).
  */
 export const evalCapturePrecheck = (
   samples: WizSample[],
@@ -73,7 +73,7 @@ export const evalCapturePrecheck = (
     Math.abs(latest.ax) <= TRIM_CENTER_TOL &&
     Math.abs(latest.ay) <= TRIM_CENTER_TOL &&
     Math.abs(latest.az) <= TRIM_CENTER_TOL
-  return { ...base, latest, centered, readyToCapture: base.ready }
+  return { ...base, latest, centered }
 }
 
 // ---------------------------------------------------------------------------

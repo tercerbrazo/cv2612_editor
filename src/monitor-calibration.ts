@@ -47,7 +47,12 @@ export type PrecheckResult = {
   xStable: boolean
   yStable: boolean
   zStable: boolean
-  ready: boolean // all of the above → safe to capture
+  quiet: boolean // pitch/X/Y/Z all stable — independent of jack detection
+  // NEVER gate rest capture on `ready`: an uncalibrated module reports phantom
+  // jacks, so jacksOk is false exactly when calibration is needed (it is what
+  // fixes the false detection). `ready` is a display aggregate only; the
+  // capture gate is host-side (serial + MIDI out), nothing the module reports.
+  ready: boolean
   // window peak-to-peak per signal (null without data), for display
   pp: { pitch: number; x: number; y: number; z: number } | null
   latest: RestSample | null
@@ -77,6 +82,7 @@ export const evalPrecheck = (
       xStable: false,
       yStable: false,
       zStable: false,
+      quiet: false,
       ready: false,
       pp: null,
       latest: null,
@@ -95,6 +101,7 @@ export const evalPrecheck = (
   const xStable = enough && pp.x <= STABILITY_PP_MAX
   const yStable = enough && pp.y <= STABILITY_PP_MAX
   const zStable = enough && pp.z <= STABILITY_PP_MAX
+  const quiet = pitchStable && xStable && yStable && zStable
   return {
     hasData: true,
     enough,
@@ -103,7 +110,8 @@ export const evalPrecheck = (
     xStable,
     yStable,
     zStable,
-    ready: jacksOk && pitchStable && xStable && yStable && zStable,
+    quiet,
+    ready: jacksOk && quiet,
     pp,
     latest,
   }
